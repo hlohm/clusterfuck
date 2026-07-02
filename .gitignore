@@ -1,0 +1,5 @@
+DEV-ENVIRONMENT.local.md
+.env.local
+dev-cluster.json
+*.local.md
+.claude/
