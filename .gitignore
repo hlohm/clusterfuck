@@ -1,0 +1,18 @@
+DEV-ENVIRONMENT.local.md
+.env.local
+dev-cluster.json
+*.local.md
+.claude/
+
+# Node / Vite
+node_modules
+dist
+dist-ssr
+*.local
+npm-debug.log*
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
