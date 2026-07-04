@@ -70,6 +70,16 @@ Listens on `PORT` (default `4000`). Routes:
   disk). Remove it from the other sharing nodes separately if that's what you
   want.
 
+**Cluster-wide (Phase 5's first bulk actions):**
+
+- `POST /api/devices/all/pause` / `.../resume` — pauses/resumes every device
+  every registered node knows about, skipping each node's own self-entry (one
+  refresh for the whole batch, not one per device; a partial failure still
+  applies to and refreshes the rest, and is reported by node→device label,
+  capped to 5 shown).
+- `POST /api/folders/all/pause` / `.../resume` — same, but for every folder on
+  every registered node that has it.
+
 `:deviceId` here is always a registered node's own Syncthing device ID — the
 same value as a Share's `deviceId` in the normalized model, since Phase 2's
 aggregation only ever produces Share rows from a node's first-hand view of

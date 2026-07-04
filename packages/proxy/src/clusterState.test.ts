@@ -19,7 +19,7 @@ function jsonResponse(body: unknown): Response {
  * (default 0) delays every response, to give a test room to run something
  * else while a refresh cycle is still in flight.
  */
-function installFakeCluster(delayMs = 0) {
+function installFakeCluster(delayMs = 0, failOn?: { host: string; pathname: string }) {
   const calls: { method: string; url: string; host: string; body?: string }[] = []
   let folderTypeOnA: 'sendreceive' | 'sendonly' = 'sendreceive'
 
@@ -34,6 +34,10 @@ function installFakeCluster(delayMs = 0) {
       body: init?.body !== undefined ? String(init.body) : undefined,
     })
     const base = `${url.protocol}//${url.host}`
+
+    if (failOn && url.host === failOn.host && url.pathname === failOn.pathname) {
+      return new Response('nope', { status: 500 })
+    }
 
     if (url.pathname === '/rest/system/status') {
       return jsonResponse({ myID: base.includes('a.test') ? 'DEVICE-A' : 'DEVICE-B' })
@@ -243,6 +247,48 @@ describe('ClusterStateManager mutations', () => {
     const deletes = calls.filter((c) => c.method === 'DELETE' && c.url === '/rest/config/folders/f1')
     expect(deletes).toHaveLength(1)
     expect(deletes[0]!.host).toBe('a.test')
+  })
+
+  it('pauses every device on every node, skipping each node\'s own self-entry', async () => {
+    const { manager, calls } = installFakeCluster()
+    await refreshed(manager)
+    calls.length = 0
+
+    await manager.setAllDevicesPaused(true)
+
+    const pauseCalls = calls.filter((c) => c.method === 'POST' && c.url.startsWith('/rest/system/pause'))
+    expect(pauseCalls).toHaveLength(2)
+    expect(pauseCalls.find((c) => c.host === 'a.test')?.url).toBe('/rest/system/pause?device=DEVICE-B')
+    expect(pauseCalls.find((c) => c.host === 'b.test')?.url).toBe('/rest/system/pause?device=DEVICE-A')
+  })
+
+  it('pauses every folder on every node that has it — cluster-wide', async () => {
+    const { manager, calls } = installFakeCluster()
+    await refreshed(manager)
+    calls.length = 0
+
+    await manager.setAllFoldersPaused(true)
+
+    const puts = calls.filter((c) => c.method === 'PUT' && c.url === '/rest/config/folders/f1')
+    expect(puts.map((p) => p.host).sort()).toEqual(['a.test', 'b.test'])
+    for (const put of puts) {
+      const folder = JSON.parse(put.body!) as { paused: boolean }
+      expect(folder.paused).toBe(true)
+    }
+  })
+
+  it('a bulk action still refreshes and reports which node failed, not all-or-nothing', async () => {
+    const { manager, calls } = installFakeCluster(0, { host: 'b.test', pathname: '/rest/system/pause' })
+    await refreshed(manager)
+    calls.length = 0
+
+    await expect(manager.setAllDevicesPaused(true)).rejects.toThrow(/failed on 1\/2/)
+
+    // The node that didn't fail should still have gotten its pause call.
+    const pauseCalls = calls.filter((c) => c.method === 'POST' && c.url.startsWith('/rest/system/pause'))
+    expect(pauseCalls.find((c) => c.host === 'a.test')).toBeDefined()
+    // And a refresh must have happened regardless (a GET /rest/config after the pause attempts).
+    expect(calls.some((c) => c.method === 'GET' && c.url === '/rest/config')).toBe(true)
   })
 
   it('rejects adding a share for a device the node has no config entry for', async () => {

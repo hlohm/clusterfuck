@@ -207,6 +207,50 @@ export class ClusterStateManager {
     })
   }
 
+  /**
+   * Pauses/resumes every device every registered node knows about (skipping
+   * each node's own self-entry). One mutation covering the whole cluster —
+   * looping setDevicePaused per device would serialize a full refresh per
+   * device instead of one for the whole batch.
+   */
+  setAllDevicesPaused(paused: boolean): Promise<void> {
+    return this.enqueueMutation(async () => {
+      const jobs: { label: string; run: () => Promise<void> }[] = []
+      for (const snap of this.snapshots) {
+        const entry = this.clients.find((c) => c.nodeId === snap.nodeId)
+        if (!entry) continue
+        const { client } = entry
+        for (const d of snap.devices) {
+          if (d.deviceId === snap.myID) continue
+          jobs.push({
+            label: `${snap.nodeId}→${d.deviceId}`,
+            run: () => (paused ? client.pauseDevice(d.deviceId) : client.resumeDevice(d.deviceId)),
+          })
+        }
+      }
+      await this.runBulk(`${paused ? 'pause' : 'resume'} all devices`, jobs)
+    })
+  }
+
+  /** Pauses/resumes every folder on every registered node that has it — cluster-wide. */
+  setAllFoldersPaused(paused: boolean): Promise<void> {
+    return this.enqueueMutation(async () => {
+      const jobs: { label: string; run: () => Promise<void> }[] = []
+      for (const snap of this.snapshots) {
+        const entry = this.clients.find((c) => c.nodeId === snap.nodeId)
+        if (!entry) continue
+        const { client } = entry
+        for (const f of snap.folders) {
+          jobs.push({
+            label: `${snap.nodeId}/${f.id}`,
+            run: () => this.applyFolderPatch(client, f.id, (folder) => (folder.paused = paused)),
+          })
+        }
+      }
+      await this.runBulk(`${paused ? 'pause' : 'resume'} all folders`, jobs)
+    })
+  }
+
   rescanFolder(deviceId: string, folderId: string): Promise<void> {
     return this.enqueueMutation(async () => {
       await this.clientForDevice(deviceId).rescanFolder(folderId)
@@ -333,6 +377,34 @@ export class ClusterStateManager {
     }
   }
 
+  /**
+   * Bulk epilogue for cluster-wide actions (setAllDevicesPaused,
+   * setAllFoldersPaused): runs every job, refreshes once regardless of
+   * per-job outcome, then reports failures by label (capped, so one job
+   * failing on a 200-device cluster doesn't produce an unreadable error).
+   */
+  private async runBulk(what: string, jobs: { label: string; run: () => Promise<void> }[]): Promise<void> {
+    if (jobs.length === 0) return
+    const results = await Promise.allSettled(jobs.map((j) => j.run()))
+    await this.refreshAfterMutation()
+    const failed = results.flatMap((r, i) => (r.status === 'rejected' ? [jobs[i]!.label] : []))
+    if (failed.length > 0) {
+      const shown = failed.slice(0, 5).join(', ') + (failed.length > 5 ? `, +${failed.length - 5} more` : '')
+      throw new Error(`${what} failed on ${failed.length}/${jobs.length}: ${shown}`)
+    }
+  }
+
+  /** GET-modify-PUT of one folder's config on one node — the shared core patchFolder and the bulk actions build on. */
+  private async applyFolderPatch(
+    client: SyncthingClient,
+    folderId: string,
+    mutate: (folder: ConfigFolder) => void,
+  ): Promise<void> {
+    const folder = await client.folderConfig(folderId)
+    mutate(folder)
+    await client.putFolderConfig(folderId, folder)
+  }
+
   private patchFolder(
     deviceId: string,
     folderId: string,
@@ -340,9 +412,7 @@ export class ClusterStateManager {
   ): Promise<void> {
     return this.enqueueMutation(async () => {
       const client = this.clientForDevice(deviceId)
-      const folder = await client.folderConfig(folderId)
-      mutate(folder)
-      await client.putFolderConfig(folderId, folder)
+      await this.applyFolderPatch(client, folderId, mutate)
       await this.refreshAfterMutation()
     })
   }

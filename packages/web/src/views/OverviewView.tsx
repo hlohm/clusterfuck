@@ -4,10 +4,54 @@ import { FOLDER_TYPE_STYLE } from '../encoding/folderTypeStyle'
 import { STATUS } from '../encoding/colors'
 import { cssColor } from '../encoding/colors'
 import { StatusBadge } from './StatusBadge'
+import { useAsyncAction } from '../data/useAsyncAction'
+import * as mutations from '../data/mutations'
 
 export interface OverviewViewProps {
   cluster: ClusterModel
   onOpenShare?: (share: Share) => void
+  /** Cluster-wide actions only make sense against the live proxy, never fixtures. */
+  isLive?: boolean
+}
+
+/** The first cluster-wide (as opposed to per-device/per-folder) mutations — see ROADMAP.md Phase 5. */
+function ClusterActions() {
+  const { busy, error, run } = useAsyncAction()
+
+  return (
+    <section className="overview__section">
+      <h3>Cluster actions</h3>
+      <div className="detail-panel__action-row">
+        <button
+          className="detail-panel__button--warning"
+          disabled={busy}
+          onClick={() => run('Pause every device on every registered node?', () => mutations.setAllDevicesPaused(true))}
+        >
+          Pause all devices
+        </button>
+        <button
+          disabled={busy}
+          onClick={() => run('Resume every device on every registered node?', () => mutations.setAllDevicesPaused(false))}
+        >
+          Resume all devices
+        </button>
+        <button
+          className="detail-panel__button--warning"
+          disabled={busy}
+          onClick={() => run('Pause every folder on every registered node?', () => mutations.setAllFoldersPaused(true))}
+        >
+          Pause all folders
+        </button>
+        <button
+          disabled={busy}
+          onClick={() => run('Resume every folder on every registered node?', () => mutations.setAllFoldersPaused(false))}
+        >
+          Resume all folders
+        </button>
+      </div>
+      {error && <div className="detail-panel__error">{error}</div>}
+    </section>
+  )
 }
 
 function StatTile({ label, value, detail }: { label: string; value: string; detail?: string }) {
@@ -28,7 +72,7 @@ function CompletionMeter({ pct }: { pct: number }) {
   )
 }
 
-export function OverviewView({ cluster, onOpenShare }: OverviewViewProps) {
+export function OverviewView({ cluster, onOpenShare, isLive }: OverviewViewProps) {
   const health = clusterHealth(cluster)
   const deviceById = new Map(cluster.devices.map((d) => [d.id, d]))
 
@@ -63,6 +107,8 @@ export function OverviewView({ cluster, onOpenShare }: OverviewViewProps) {
         <StatTile label="Out-of-sync items" value={String(health.outOfSyncItems)} />
         <StatTile label="Needs attention" value={String(health.attention.length)} />
       </div>
+
+      {isLive && <ClusterActions />}
 
       {health.attention.length > 0 && (
         <section className="overview__section">
