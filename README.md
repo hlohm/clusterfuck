@@ -183,7 +183,9 @@ Multiple ways of reading the same cluster model, plus a design pass.
   becomes pairwise edges between the devices sharing it, colored by folder
   identity from a validated categorical palette (8 slots; past 8 the tail
   goes neutral and the legend/table carry identity). Devices sit on a circle;
-  parallel edges between a pair fan out with different curvatures.
+  the k folders a pair shares render as k straight parallel lines (evenly
+  offset around the pair's axis, node-center to node-center) so links never
+  overlap and stay countable per pair.
 - **Topology editing** (same iteration): *Add device* (register a peer on any
   subset of managed nodes) and *Add folder* (create a folder on ≥2 managed
   nodes, shared among them) via header dialogs that preview exactly which

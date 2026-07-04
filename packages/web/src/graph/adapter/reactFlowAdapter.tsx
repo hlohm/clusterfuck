@@ -15,6 +15,7 @@ import type { GraphAdapterProps, GraphMode } from './GraphAdapter'
 import { deviceNodeId, folderNodeId } from './GraphAdapter'
 import { DeviceNode, type DeviceNodeData } from '../nodes/DeviceNode'
 import { FolderNode, type FolderNodeData } from '../nodes/FolderNode'
+import { ParallelEdge } from '../edges/ParallelEdge'
 import { folderHealthForDevice, sharesByFolder, type ClusterModel } from '@clusterfuck/shared'
 import { FOLDER_TYPE_STYLE, type ArrowDirection } from '../../encoding/folderTypeStyle'
 import { folderColorMap } from '../../encoding/folderColors'
@@ -22,6 +23,7 @@ import { cssColor } from '../../encoding/colors'
 import type { Selection } from '../selection'
 
 const nodeTypes = { device: DeviceNode, folder: FolderNode }
+const edgeTypes = { parallel: ParallelEdge }
 
 const FOLDER_ROW_Y = 40
 const DEVICE_ROW_Y = 260
@@ -99,10 +101,15 @@ function hubGraph(cluster: ClusterModel, selection: Selection) {
   return { nodes: [...folderNodes, ...deviceNodes], edges }
 }
 
+/** Gap between parallel lines of the same device pair. */
+const PARALLEL_SPACING = 7
+
 /**
  * mesh: devices only, on a circle. Each folder becomes pairwise edges among
- * the devices sharing it, colored by folder identity. Parallel edges between
- * the same pair fan out via different bezier curvatures.
+ * the devices sharing it, colored by folder identity. The k folders a pair
+ * shares render as k straight parallel lines (perpendicular offsets centered
+ * on the pair's axis, node-center to node-center) so they never overlap and
+ * stay countable.
  */
 function meshGraph(cluster: ClusterModel, selection: Selection) {
   const count = cluster.devices.length
@@ -113,38 +120,53 @@ function meshGraph(cluster: ClusterModel, selection: Selection) {
   })
 
   const colors = folderColorMap(cluster.folders.map((f) => f.id))
-  const pairCounts = new Map<string, number>()
-  const edges: Edge[] = []
 
+  // Pass 1: group the folders each device pair shares, in stable folder order.
+  const pairFolders = new Map<string, { a: string; b: string; folderIds: string[] }>()
   for (const folder of cluster.folders) {
     const members = sharesByFolder(cluster, folder.id).map((s) => s.deviceId)
-    const color = colors.get(folder.id)
-    const isSelected =
-      (selection?.kind === 'folder' || selection?.kind === 'share') &&
-      selection.folderId === folder.id
-
     for (let i = 0; i < members.length; i++) {
       for (let j = i + 1; j < members.length; j++) {
-        const pairKey = [members[i]!, members[j]!].sort().join('|')
-        const nth = pairCounts.get(pairKey) ?? 0
-        pairCounts.set(pairKey, nth + 1)
-        // 0 -> +0.2, 1 -> -0.2, 2 -> +0.45, 3 -> -0.45, ...
-        const curvature = (0.2 + 0.25 * Math.floor(nth / 2)) * (nth % 2 === 0 ? 1 : -1)
-
-        edges.push({
-          id: `mesh:${folder.id}:${members[i]}:${members[j]}`,
-          source: deviceNodeId(members[i]!),
-          target: deviceNodeId(members[j]!),
-          type: 'default',
-          pathOptions: { curvature },
-          style: {
-            stroke: color ? cssColor(color) : undefined,
-            strokeWidth: isSelected ? 3 : 1.5,
-          },
-          label: isSelected && i === 0 && j === 1 ? folder.label : undefined,
-        } as Edge)
+        const [a, b] = [members[i]!, members[j]!].sort() as [string, string]
+        const key = `${a}|${b}`
+        const entry = pairFolders.get(key) ?? { a, b, folderIds: [] }
+        entry.folderIds.push(folder.id)
+        pairFolders.set(key, entry)
       }
     }
+  }
+
+  // Pass 2: one parallel line per (pair, folder), offsets centered on the axis.
+  const folderLabelById = new Map(cluster.folders.map((f) => [f.id, f.label]))
+  const labeledFolders = new Set<string>()
+  const edges: Edge[] = []
+
+  for (const { a, b, folderIds } of pairFolders.values()) {
+    folderIds.forEach((folderId, index) => {
+      const color = colors.get(folderId)
+      const isSelected =
+        (selection?.kind === 'folder' || selection?.kind === 'share') &&
+        selection.folderId === folderId
+      const showLabel = isSelected && !labeledFolders.has(folderId)
+      if (showLabel) labeledFolders.add(folderId)
+
+      edges.push({
+        id: `mesh:${folderId}:${a}:${b}`,
+        source: deviceNodeId(a),
+        target: deviceNodeId(b),
+        sourceHandle: 'center-out',
+        targetHandle: 'center-in',
+        type: 'parallel',
+        data: {
+          offset: (index - (folderIds.length - 1) / 2) * PARALLEL_SPACING,
+          label: showLabel ? folderLabelById.get(folderId) : undefined,
+        },
+        style: {
+          stroke: color ? cssColor(color) : undefined,
+          strokeWidth: isSelected ? 3 : 1.5,
+        },
+      })
+    })
   }
 
   return { nodes, edges }
@@ -168,6 +190,7 @@ function ReactFlowAdapterInner({
       nodes={nodes}
       edges={edges}
       nodeTypes={nodeTypes}
+      edgeTypes={edgeTypes}
       nodesDraggable={false}
       nodesConnectable={false}
       panOnScroll
