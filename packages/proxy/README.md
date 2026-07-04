@@ -66,5 +66,5 @@ you won't hit CORS at all).
 ## Notes
 
 - Runs `.ts` source directly via Node's native type stripping — no build
-  step, no bundler/ts-node. `npm run typecheck` still gates correctness.
+  step, no bundler/ts-node. `pnpm typecheck` still gates correctness.
 - Targets the Syncthing 1.x REST shape (see `src/syncthing/types.ts`).

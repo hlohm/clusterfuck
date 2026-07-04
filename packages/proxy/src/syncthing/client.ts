@@ -26,23 +26,12 @@ export class SyncthingClient {
     return this.node.id
   }
 
-  private async get<T>(path: string, signal?: AbortSignal): Promise<T> {
-    const res = await fetch(new URL(path, this.node.url), {
-      headers: { 'X-API-Key': this.node.apiKey },
-      signal,
-    })
-    if (!res.ok) {
-      throw new Error(`${this.node.id}: GET ${path} -> HTTP ${res.status}`)
-    }
-    return (await res.json()) as T
-  }
-
-  private async send(
-    method: 'POST' | 'PUT',
+  private async request(
+    method: 'GET' | 'POST' | 'PUT',
     path: string,
     body?: unknown,
     signal?: AbortSignal,
-  ): Promise<void> {
+  ): Promise<Response> {
     const res = await fetch(new URL(path, this.node.url), {
       method,
       headers: {
@@ -55,6 +44,21 @@ export class SyncthingClient {
     if (!res.ok) {
       throw new Error(`${this.node.id}: ${method} ${path} -> HTTP ${res.status}`)
     }
+    return res
+  }
+
+  private async get<T>(path: string, signal?: AbortSignal): Promise<T> {
+    const res = await this.request('GET', path, undefined, signal)
+    return (await res.json()) as T
+  }
+
+  private async send(
+    method: 'POST' | 'PUT',
+    path: string,
+    body?: unknown,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    await this.request(method, path, body, signal)
   }
 
   systemStatus(signal?: AbortSignal): Promise<SystemStatusResponse> {

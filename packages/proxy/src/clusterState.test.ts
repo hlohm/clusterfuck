@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ClusterStateManager, NotManagedError } from './clusterState.ts'
+import { ClusterStateManager, InvalidTargetError, NotManagedError } from './clusterState.ts'
 
 function jsonResponse(body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -27,7 +27,6 @@ function installFakeCluster() {
       return jsonResponse({ myID: base.includes('a.test') ? 'DEVICE-A' : 'DEVICE-B' })
     }
     if (url.pathname === '/rest/config') {
-      const myID = base.includes('a.test') ? 'DEVICE-A' : 'DEVICE-B'
       return jsonResponse({
         devices: [
           { deviceID: 'DEVICE-A', name: 'st-a', paused: false },
@@ -39,7 +38,7 @@ function installFakeCluster() {
             label: 'F1',
             type: base.includes('a.test') ? folderTypeOnA : 'sendreceive',
             paused: false,
-            devices: [{ deviceID: myID }],
+            devices: [{ deviceID: 'DEVICE-A' }, { deviceID: 'DEVICE-B' }],
           },
         ],
       })
@@ -57,13 +56,12 @@ function installFakeCluster() {
       return jsonResponse({})
     }
     if (url.pathname === '/rest/config/folders/f1' && method === 'GET') {
-      const myID = base.includes('a.test') ? 'DEVICE-A' : 'DEVICE-B'
       return jsonResponse({
         id: 'f1',
         label: 'F1',
         type: base.includes('a.test') ? folderTypeOnA : 'sendreceive',
         paused: false,
-        devices: [{ deviceID: myID }],
+        devices: [{ deviceID: 'DEVICE-A' }, { deviceID: 'DEVICE-B' }],
       })
     }
     if (url.pathname === '/rest/config/folders/f1' && method === 'PUT') {
@@ -113,6 +111,17 @@ describe('ClusterStateManager mutations', () => {
     await expect(manager.setDevicePaused('DEVICE-UNKNOWN', true)).rejects.toBeInstanceOf(
       NotManagedError,
     )
+  })
+
+  it('rejects adding a share for a device the node has no config entry for', async () => {
+    const { manager, calls } = installFakeCluster()
+    await (manager as unknown as { refresh(): Promise<void> }).refresh()
+    calls.length = 0
+
+    await expect(manager.addShare('DEVICE-A', 'f1', 'DEVICE-UNKNOWN')).rejects.toBeInstanceOf(
+      InvalidTargetError,
+    )
+    expect(calls.some((c) => c.method === 'PUT')).toBe(false)
   })
 
   it('edits a folder on the node identified by its own device ID, not the config label', async () => {

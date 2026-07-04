@@ -1,6 +1,5 @@
 import type { FolderType } from '@clusterfuck/shared'
-
-const PROXY_BASE = import.meta.env.VITE_PROXY_URL ?? ''
+import { PROXY_BASE } from './proxyBase'
 
 async function call(method: string, path: string, body?: unknown): Promise<void> {
   const res = await fetch(`${PROXY_BASE}${path}`, {

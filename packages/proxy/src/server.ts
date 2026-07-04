@@ -1,12 +1,23 @@
 import { createServer, type IncomingMessage, type ServerResponse, type Server } from 'node:http'
-import { NotManagedError, type ClusterStateManager } from './clusterState.ts'
-import type { SyncthingFolderType } from './syncthing/types.ts'
+import { InvalidTargetError, NotManagedError, type ClusterStateManager } from './clusterState.ts'
+import { SYNCTHING_FOLDER_TYPES, type SyncthingFolderType } from './syncthing/types.ts'
+
+/** Sentinel thrown by readJsonBody so the handler can answer 400, not 502. */
+class BodyParseError extends Error {}
 
 async function readJsonBody(req: IncomingMessage): Promise<unknown> {
   const chunks: Buffer[] = []
   for await (const chunk of req) chunks.push(chunk as Buffer)
   if (chunks.length === 0) return undefined
-  return JSON.parse(Buffer.concat(chunks).toString('utf8'))
+  try {
+    return JSON.parse(Buffer.concat(chunks).toString('utf8'))
+  } catch {
+    throw new BodyParseError('request body is not valid JSON')
+  }
+}
+
+function isFolderType(value: unknown): value is SyncthingFolderType {
+  return (SYNCTHING_FOLDER_TYPES as readonly unknown[]).includes(value)
 }
 
 function sendJson(res: ServerResponse, status: number, body: unknown): void {
@@ -20,9 +31,18 @@ function sendJson(res: ServerResponse, status: number, body: unknown): void {
  * cluster-wide actions and no auth, per the confirmed Phase 3 decisions.
  */
 export function createHttpServer(manager: ClusterStateManager, allowedOrigin: string): Server {
+  // One subscription serializes each new model once and fans the same frame
+  // out to every SSE client, instead of stringifying per client per change.
+  const sseClients = new Set<ServerResponse>()
+  manager.subscribe((model) => {
+    if (sseClients.size === 0) return
+    const frame = `data: ${JSON.stringify(model)}\n\n`
+    for (const client of sseClients) client.write(frame)
+  })
+
   return createServer((req, res) => {
     res.setHeader('Access-Control-Allow-Origin', allowedOrigin)
-    handleRequest(req, res, manager).catch((err: unknown) => {
+    handleRequest(req, res, manager, sseClients).catch((err: unknown) => {
       console.error('[clusterfuck-proxy] unhandled request error:', err)
       if (!res.headersSent) sendJson(res, 500, { error: 'internal error' })
     })
@@ -33,6 +53,7 @@ async function handleRequest(
   req: IncomingMessage,
   res: ServerResponse,
   manager: ClusterStateManager,
+  sseClients: Set<ServerResponse>,
 ): Promise<void> {
   const method = req.method ?? 'GET'
   const url = new URL(req.url ?? '/', 'http://internal')
@@ -64,11 +85,8 @@ async function handleRequest(
       Connection: 'keep-alive',
     })
     res.write(`data: ${JSON.stringify(manager.getModel())}\n\n`)
-
-    const unsubscribe = manager.subscribe((model) => {
-      res.write(`data: ${JSON.stringify(model)}\n\n`)
-    })
-    req.on('close', unsubscribe)
+    sseClients.add(res)
+    req.on('close', () => sseClients.delete(res))
     return
   }
 
@@ -104,9 +122,11 @@ async function handleRequest(
       }
 
       if (method === 'PATCH' && parts.length === 5) {
-        const body = (await readJsonBody(req)) as { type?: SyncthingFolderType } | undefined
-        if (!body?.type) {
-          sendJson(res, 400, { error: 'type is required' })
+        const body = (await readJsonBody(req)) as { type?: unknown } | undefined
+        if (!isFolderType(body?.type)) {
+          sendJson(res, 400, {
+            error: `type must be one of: ${SYNCTHING_FOLDER_TYPES.join(', ')}`,
+          })
           return
         }
         await manager.setFolderType(deviceId, folderId, body.type)
@@ -115,8 +135,8 @@ async function handleRequest(
       }
 
       if (method === 'POST' && parts.length === 6 && parts[5] === 'shares') {
-        const body = (await readJsonBody(req)) as { deviceId?: string } | undefined
-        if (!body?.deviceId) {
+        const body = (await readJsonBody(req)) as { deviceId?: unknown } | undefined
+        if (typeof body?.deviceId !== 'string' || body.deviceId === '') {
           sendJson(res, 400, { error: 'deviceId is required' })
           return
         }
@@ -133,12 +153,17 @@ async function handleRequest(
       }
     }
   } catch (err) {
+    if (err instanceof BodyParseError || err instanceof InvalidTargetError) {
+      sendJson(res, 400, { error: err.message })
+      return
+    }
     if (err instanceof NotManagedError) {
       sendJson(res, 409, { error: err.message })
       return
     }
-    console.error('[clusterfuck-proxy] mutation failed:', (err as Error).message)
-    sendJson(res, 502, { error: 'upstream request failed' })
+    const message = (err as Error).message
+    console.error('[clusterfuck-proxy] mutation failed:', message)
+    sendJson(res, 502, { error: message })
     return
   }
 

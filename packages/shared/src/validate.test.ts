@@ -43,6 +43,20 @@ describe('validateCluster', () => {
     expect(errors.some((e) => e.message.includes('unknown folder'))).toBe(true)
   })
 
+  it('flags a sharedWith entry referencing an unknown device', () => {
+    const cluster = baseCluster()
+    cluster.shares[0]!.sharedWith = ['a', 'ghost']
+    const errors = validateCluster(cluster)
+    expect(errors.some((e) => e.message.includes('unknown device "ghost" in sharedWith'))).toBe(true)
+  })
+
+  it('flags a share whose own device is missing from sharedWith', () => {
+    const cluster = baseCluster()
+    cluster.shares[0]!.sharedWith = []
+    const errors = validateCluster(cluster)
+    expect(errors.some((e) => e.message.includes('missing its own device in sharedWith'))).toBe(true)
+  })
+
   it('flags a duplicate (folder, device) share pair', () => {
     const cluster = baseCluster()
     cluster.shares.push({

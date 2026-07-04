@@ -18,7 +18,9 @@ function useAsyncAction() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string>()
 
-  const run = (fn: () => Promise<void>) => {
+  /** CLAUDE.md gates every Phase 3 mutation behind a confirmation. Returns false if declined. */
+  const run = (confirmMessage: string | null, fn: () => Promise<void>): boolean => {
+    if (confirmMessage !== null && !window.confirm(confirmMessage)) return false
     setBusy(true)
     setError(undefined)
     fn()
@@ -26,6 +28,7 @@ function useAsyncAction() {
         setError(err instanceof Error ? err.message : 'Action failed')
       })
       .finally(() => setBusy(false))
+    return true
   }
 
   return { busy, error, run }
@@ -36,14 +39,20 @@ function DeviceActions({ device }: { device: Device }) {
 
   if (device.state === 'this-device') return null
 
+  const pausing = device.state !== 'paused'
   return (
     <div className="detail-panel__actions">
       <div className="detail-panel__action-row">
         <button
           disabled={busy}
-          onClick={() => run(() => mutations.setDevicePaused(device.id, device.state !== 'paused'))}
+          onClick={() =>
+            run(
+              `${pausing ? 'Pause' : 'Resume'} ${device.name} on every registered node?`,
+              () => mutations.setDevicePaused(device.id, pausing),
+            )
+          }
         >
-          {device.state === 'paused' ? 'Resume device' : 'Pause device'}
+          {pausing ? 'Pause device' : 'Resume device'}
         </button>
       </div>
       {error && <div className="detail-panel__error">{error}</div>}
@@ -51,31 +60,46 @@ function DeviceActions({ device }: { device: Device }) {
   )
 }
 
-const FOLDER_TYPE_OPTIONS: { value: FolderType; label: string }[] = [
-  { value: 'sendreceive', label: 'Send & receive' },
-  { value: 'sendonly', label: 'Send only' },
-  { value: 'receiveonly', label: 'Receive only' },
-  { value: 'receiveencrypted', label: 'Receive encrypted' },
-]
+const FOLDER_TYPE_OPTIONS = (Object.keys(FOLDER_TYPE_STYLE) as FolderType[]).map((value) => ({
+  value,
+  label: FOLDER_TYPE_STYLE[value].label,
+}))
 
 function ShareActions({ cluster, share }: { cluster: ClusterModel; share: Share }) {
   const { busy, error, run } = useAsyncAction()
   const [addTarget, setAddTarget] = useState('')
 
+  const deviceById = new Map(cluster.devices.map((d) => [d.id, d]))
+  const nodeName = deviceById.get(share.deviceId)?.name ?? share.deviceId
+  const folderLabel = cluster.folders.find((f) => f.id === share.folderId)?.label ?? share.folderId
   const addCandidates = cluster.devices.filter((d) => !share.sharedWith.includes(d.id))
 
+  // Converting a live folder to/from receiveencrypted needs an encryption
+  // password Syncthing derives per share — a plain type flip would break the
+  // folder, so mirror Syncthing's own GUI and don't offer it.
+  const isEncrypted = share.type === 'receiveencrypted'
+  const typeOptions = FOLDER_TYPE_OPTIONS.filter(
+    (opt) => opt.value !== 'receiveencrypted' || isEncrypted,
+  )
+
+  const pausing = share.state !== 'paused'
   return (
     <div className="detail-panel__actions">
       <div className="detail-panel__action-row">
         <button
           disabled={busy}
           onClick={() =>
-            run(() => mutations.setFolderPaused(share.deviceId, share.folderId, share.state !== 'paused'))
+            run(`${pausing ? 'Pause' : 'Resume'} folder "${folderLabel}" on ${nodeName}?`, () =>
+              mutations.setFolderPaused(share.deviceId, share.folderId, pausing),
+            )
           }
         >
-          {share.state === 'paused' ? 'Resume folder' : 'Pause folder'}
+          {pausing ? 'Pause folder' : 'Resume folder'}
         </button>
-        <button disabled={busy} onClick={() => run(() => mutations.rescanFolder(share.deviceId, share.folderId))}>
+        <button
+          disabled={busy}
+          onClick={() => run(null, () => mutations.rescanFolder(share.deviceId, share.folderId))}
+        >
           Rescan
         </button>
       </div>
@@ -84,12 +108,17 @@ function ShareActions({ cluster, share }: { cluster: ClusterModel; share: Share 
         Type:
         <select
           value={share.type}
-          disabled={busy}
-          onChange={(event) =>
-            run(() => mutations.setFolderType(share.deviceId, share.folderId, event.target.value as FolderType))
-          }
+          disabled={busy || isEncrypted}
+          title={isEncrypted ? 'Encrypted folders cannot be converted in place' : undefined}
+          onChange={(event) => {
+            const type = event.target.value as FolderType
+            run(
+              `Change folder "${folderLabel}" to ${FOLDER_TYPE_STYLE[type].label} on ${nodeName}?`,
+              () => mutations.setFolderType(share.deviceId, share.folderId, type),
+            )
+          }}
         >
-          {FOLDER_TYPE_OPTIONS.map((opt) => (
+          {typeOptions.map((opt) => (
             <option key={opt.value} value={opt.value}>
               {opt.label}
             </option>
@@ -101,14 +130,18 @@ function ShareActions({ cluster, share }: { cluster: ClusterModel; share: Share 
         <h4>Shared with (via this node)</h4>
         <ul>
           {share.sharedWith.map((id) => {
-            const device = cluster.devices.find((d) => d.id === id)
+            const name = deviceById.get(id)?.name ?? id
             return (
               <li key={id}>
-                {device?.name ?? id}
+                {name}
                 {id !== share.deviceId && (
                   <button
                     disabled={busy}
-                    onClick={() => run(() => mutations.removeShare(share.deviceId, share.folderId, id))}
+                    onClick={() =>
+                      run(`Remove ${name} from "${folderLabel}" on ${nodeName}?`, () =>
+                        mutations.removeShare(share.deviceId, share.folderId, id),
+                      )
+                    }
                   >
                     Remove
                   </button>
@@ -131,8 +164,11 @@ function ShareActions({ cluster, share }: { cluster: ClusterModel; share: Share 
               disabled={busy || !addTarget}
               onClick={() => {
                 const target = addTarget
-                run(() => mutations.addShare(share.deviceId, share.folderId, target))
-                setAddTarget('')
+                const name = deviceById.get(target)?.name ?? target
+                const started = run(`Share "${folderLabel}" with ${name} via ${nodeName}?`, () =>
+                  mutations.addShare(share.deviceId, share.folderId, target),
+                )
+                if (started) setAddTarget('')
               }}
             >
               Add
@@ -160,6 +196,7 @@ export function DetailPanel({ cluster, selection, isLive }: DetailPanelProps) {
     if (!device) return null
     const style = DEVICE_STATE_STYLE[device.state]
     const shares = sharesByDevice(cluster, device.id)
+    const folderById = new Map(cluster.folders.map((f) => [f.id, f]))
 
     return (
       <aside className="detail-panel">
@@ -176,7 +213,7 @@ export function DetailPanel({ cluster, selection, isLive }: DetailPanelProps) {
           {shares.map((share) => {
             const typeStyle = FOLDER_TYPE_STYLE[share.type]
             const stateStyle = FOLDER_STATE_STYLE[share.state]
-            const folder = cluster.folders.find((f) => f.id === share.folderId)
+            const folder = folderById.get(share.folderId)
             return (
               <li key={share.folderId}>
                 <strong>{folder?.label ?? share.folderId}</strong> — {typeStyle.label},{' '}
@@ -194,6 +231,7 @@ export function DetailPanel({ cluster, selection, isLive }: DetailPanelProps) {
     const folder = cluster.folders.find((f) => f.id === selection.folderId)
     if (!folder) return null
     const shares = sharesByFolder(cluster, folder.id)
+    const deviceById = new Map(cluster.devices.map((d) => [d.id, d]))
 
     return (
       <aside className="detail-panel">
@@ -206,7 +244,7 @@ export function DetailPanel({ cluster, selection, isLive }: DetailPanelProps) {
           {shares.map((share) => {
             const typeStyle = FOLDER_TYPE_STYLE[share.type]
             const stateStyle = FOLDER_STATE_STYLE[share.state]
-            const device = cluster.devices.find((d) => d.id === share.deviceId)
+            const device = deviceById.get(share.deviceId)
             return (
               <li key={share.deviceId}>
                 <strong>{device?.name ?? share.deviceId}</strong> — {typeStyle.label},{' '}

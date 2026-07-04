@@ -19,6 +19,19 @@ export function validateCluster(cluster: ClusterModel): ValidationError[] {
       errors.push({ message: `Share references unknown folder "${share.folderId}"` })
     }
 
+    for (const sharedId of share.sharedWith) {
+      if (!deviceIds.has(sharedId)) {
+        errors.push({
+          message: `Share "${share.folderId}"/"${share.deviceId}" lists unknown device "${sharedId}" in sharedWith`,
+        })
+      }
+    }
+    if (!share.sharedWith.includes(share.deviceId)) {
+      errors.push({
+        message: `Share "${share.folderId}"/"${share.deviceId}" is missing its own device in sharedWith`,
+      })
+    }
+
     const pairKey = `${share.folderId}::${share.deviceId}`
     if (seenPairs.has(pairKey)) {
       errors.push({

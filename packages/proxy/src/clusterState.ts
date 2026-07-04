@@ -11,6 +11,9 @@ export class NotManagedError extends Error {
   }
 }
 
+/** Thrown when a mutation is invalid as requested — the upstream node would reject it. */
+export class InvalidTargetError extends Error {}
+
 const RELEVANT_EVENT_TYPES = new Set([
   'StateChanged',
   'FolderSummary',
@@ -44,6 +47,9 @@ export class ClusterStateManager {
   private readonly label: string
   private readonly pollIntervalMs: number
   private stopped = false
+  private refreshInFlight: Promise<void> | undefined
+  private refreshQueued = false
+  private mutationChain: Promise<void> = Promise.resolve()
 
   constructor(
     nodeConfigs: NodeConfig[],
@@ -77,7 +83,30 @@ export class ClusterStateManager {
     this.stopped = true
   }
 
-  private async refresh(): Promise<void> {
+  /**
+   * Single-flight with coalescing: the N per-node event loops, the poll
+   * backstop, and mutations can all trigger refreshes concurrently. Sharing
+   * one in-flight run prevents a stampede of full-cluster re-polls, and
+   * prevents a slower, older run from overwriting a newer model. A trigger
+   * that arrives mid-run queues exactly one follow-up so changes made after
+   * the in-flight fetch began are still picked up.
+   */
+  private refresh(): Promise<void> {
+    if (this.refreshInFlight) {
+      this.refreshQueued = true
+      return this.refreshInFlight
+    }
+    this.refreshInFlight = this.doRefresh().finally(() => {
+      this.refreshInFlight = undefined
+      if (this.refreshQueued && !this.stopped) {
+        this.refreshQueued = false
+        void this.refresh()
+      }
+    })
+    return this.refreshInFlight
+  }
+
+  private async doRefresh(): Promise<void> {
     const snapshots = await Promise.all(
       this.clients.map(({ nodeId, client }) =>
         fetchNodeSnapshot(client, nodeId).catch((err: unknown) => {
@@ -92,6 +121,20 @@ export class ClusterStateManager {
     this.snapshots = valid
     this.model = aggregateCluster(valid, this.clusterId, this.label)
     for (const fn of this.subscribers) fn(this.model)
+  }
+
+  /**
+   * Serializes mutations. Folder edits are GET-modify-PUT of the whole
+   * folder config, so two concurrent edits would clobber each other
+   * (last-write-wins over the entire object, not just the changed field).
+   */
+  private enqueueMutation<T>(fn: () => Promise<T>): Promise<T> {
+    const result = this.mutationChain.then(fn)
+    this.mutationChain = result.then(
+      () => undefined,
+      () => undefined,
+    )
+    return result
   }
 
   /**
@@ -113,62 +156,86 @@ export class ClusterStateManager {
    * device doesn't need to be one of our own registered nodes for this to
    * work, only referenced by at least one registered node's own config.
    */
-  async setDevicePaused(deviceId: string, paused: boolean): Promise<void> {
-    const targets = this.clients.filter(({ nodeId }) => {
-      const snap = this.snapshots.find((s) => s.nodeId === nodeId)
-      if (!snap || snap.myID === deviceId) return false
-      return snap.devices.some((d) => d.deviceId === deviceId)
+  setDevicePaused(deviceId: string, paused: boolean): Promise<void> {
+    return this.enqueueMutation(async () => {
+      const targets = this.clients.filter(({ nodeId }) => {
+        const snap = this.snapshots.find((s) => s.nodeId === nodeId)
+        if (!snap || snap.myID === deviceId) return false
+        return snap.devices.some((d) => d.deviceId === deviceId)
+      })
+      if (targets.length === 0) throw new NotManagedError(deviceId)
+
+      // allSettled, not all: if one node fails mid-fan-out the others have
+      // already changed state, so always refresh, then report which failed.
+      const results = await Promise.allSettled(
+        targets.map(({ client }) =>
+          paused ? client.pauseDevice(deviceId) : client.resumeDevice(deviceId),
+        ),
+      )
+      await this.refresh()
+      const failed = results.flatMap((r, i) =>
+        r.status === 'rejected' ? [targets[i]!.nodeId] : [],
+      )
+      if (failed.length > 0) {
+        throw new Error(
+          `${paused ? 'pause' : 'resume'} of ${deviceId} failed on ${failed.join(', ')}` +
+            (failed.length < targets.length ? ' (applied on the remaining nodes)' : ''),
+        )
+      }
     })
-    if (targets.length === 0) throw new NotManagedError(deviceId)
-    await Promise.all(
-      targets.map(({ client }) =>
-        paused ? client.pauseDevice(deviceId) : client.resumeDevice(deviceId),
-      ),
-    )
-    await this.refresh()
   }
 
-  async rescanFolder(deviceId: string, folderId: string): Promise<void> {
-    await this.clientForDevice(deviceId).rescanFolder(folderId)
-    await this.refresh()
+  rescanFolder(deviceId: string, folderId: string): Promise<void> {
+    return this.enqueueMutation(async () => {
+      await this.clientForDevice(deviceId).rescanFolder(folderId)
+      await this.refresh()
+    })
   }
 
-  async setFolderPaused(deviceId: string, folderId: string, paused: boolean): Promise<void> {
-    await this.patchFolder(deviceId, folderId, (f) => {
+  setFolderPaused(deviceId: string, folderId: string, paused: boolean): Promise<void> {
+    return this.patchFolder(deviceId, folderId, (f) => {
       f.paused = paused
     })
   }
 
-  async setFolderType(deviceId: string, folderId: string, type: SyncthingFolderType): Promise<void> {
-    await this.patchFolder(deviceId, folderId, (f) => {
+  setFolderType(deviceId: string, folderId: string, type: SyncthingFolderType): Promise<void> {
+    return this.patchFolder(deviceId, folderId, (f) => {
       f.type = type
     })
   }
 
-  async addShare(deviceId: string, folderId: string, shareDeviceId: string): Promise<void> {
-    await this.patchFolder(deviceId, folderId, (f) => {
+  addShare(deviceId: string, folderId: string, shareDeviceId: string): Promise<void> {
+    return this.patchFolder(deviceId, folderId, (f) => {
+      const snap = this.snapshots.find((s) => s.myID === deviceId)
+      if (snap && !snap.devices.some((d) => d.deviceId === shareDeviceId)) {
+        throw new InvalidTargetError(
+          `${shareDeviceId} is not a configured peer on ${snap.nodeId}, so it cannot be added to this folder`,
+        )
+      }
       if (!f.devices.some((d) => d.deviceID === shareDeviceId)) {
         f.devices.push({ deviceID: shareDeviceId })
       }
     })
   }
 
-  async removeShare(deviceId: string, folderId: string, shareDeviceId: string): Promise<void> {
-    await this.patchFolder(deviceId, folderId, (f) => {
+  removeShare(deviceId: string, folderId: string, shareDeviceId: string): Promise<void> {
+    return this.patchFolder(deviceId, folderId, (f) => {
       f.devices = f.devices.filter((d) => d.deviceID !== shareDeviceId)
     })
   }
 
-  private async patchFolder(
+  private patchFolder(
     deviceId: string,
     folderId: string,
     mutate: (folder: ConfigFolder) => void,
   ): Promise<void> {
-    const client = this.clientForDevice(deviceId)
-    const folder = await client.folderConfig(folderId)
-    mutate(folder)
-    await client.putFolderConfig(folderId, folder)
-    await this.refresh()
+    return this.enqueueMutation(async () => {
+      const client = this.clientForDevice(deviceId)
+      const folder = await client.folderConfig(folderId)
+      mutate(folder)
+      await client.putFolderConfig(folderId, folder)
+      await this.refresh()
+    })
   }
 
   private async runPollLoop(): Promise<void> {
