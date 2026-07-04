@@ -18,6 +18,16 @@ export function setDevicePaused(deviceId: string, paused: boolean): Promise<void
   return call('POST', `/api/devices/${encodeURIComponent(deviceId)}/${paused ? 'pause' : 'resume'}`)
 }
 
+/** Cluster-wide: pauses/resumes every device on every registered node. */
+export function setAllDevicesPaused(paused: boolean): Promise<void> {
+  return call('POST', `/api/devices/all/${paused ? 'pause' : 'resume'}`)
+}
+
+/** Cluster-wide: pauses/resumes every folder on every registered node. */
+export function setAllFoldersPaused(paused: boolean): Promise<void> {
+  return call('POST', `/api/folders/all/${paused ? 'pause' : 'resume'}`)
+}
+
 /** Adds a device as a peer in each named registered node's config. */
 export function addDevice(deviceId: string, name: string, nodes: string[]): Promise<void> {
   return call('POST', '/api/devices', { deviceId, name: name || undefined, nodes })

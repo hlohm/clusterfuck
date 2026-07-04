@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react'
 import { OverviewView } from './OverviewView'
 import { TableView } from './TableView'
 import { edgeCases } from '../fixtures/edge-cases'
+import * as mutations from '../data/mutations'
 
 describe('OverviewView', () => {
   it('renders the KPI row from cluster health', () => {
@@ -32,6 +33,27 @@ describe('OverviewView', () => {
     render(<OverviewView cluster={edgeCases} />)
     expect(screen.getByRole('heading', { name: 'ledger' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'coldstore' })).toBeInTheDocument()
+  })
+
+  it('only offers cluster-wide actions against the live source, never a fixture', () => {
+    render(<OverviewView cluster={edgeCases} />)
+    expect(screen.queryByText('Cluster actions')).not.toBeInTheDocument()
+  })
+
+  it('pauses every device cluster-wide from the Overview, once confirmed', () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const pauseAll = vi.spyOn(mutations, 'setAllDevicesPaused').mockResolvedValue(undefined)
+
+    render(<OverviewView cluster={edgeCases} isLive />)
+    expect(screen.getByText('Cluster actions')).toBeInTheDocument()
+
+    screen.getByText('Pause all devices').click()
+
+    expect(confirmSpy).toHaveBeenCalled()
+    expect(pauseAll).toHaveBeenCalledWith(true)
+
+    confirmSpy.mockRestore()
+    pauseAll.mockRestore()
   })
 })
 

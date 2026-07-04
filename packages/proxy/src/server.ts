@@ -154,12 +154,33 @@ async function handleRequest(
       return
     }
 
-    // POST /api/devices/:deviceId/pause|resume
+    // POST /api/devices/:deviceId/pause|resume — ":deviceId" of "all" means
+    // every device on every registered node (cluster-wide), not a literal id.
     if (method === 'POST' && parts.length === 4 && parts[0] === 'api' && parts[1] === 'devices') {
-      const deviceId = decodeURIComponent(parts[2]!)
+      const rawId = parts[2]!
       const action = parts[3]
       if (action === 'pause' || action === 'resume') {
-        await manager.setDevicePaused(deviceId, action === 'pause')
+        if (rawId === 'all') {
+          await manager.setAllDevicesPaused(action === 'pause')
+        } else {
+          await manager.setDevicePaused(decodeURIComponent(rawId), action === 'pause')
+        }
+        sendJson(res, 200, { ok: true })
+        return
+      }
+    }
+
+    // POST /api/folders/all/pause|resume — cluster-wide, every folder on every registered node
+    if (
+      method === 'POST' &&
+      parts.length === 4 &&
+      parts[0] === 'api' &&
+      parts[1] === 'folders' &&
+      parts[2] === 'all'
+    ) {
+      const action = parts[3]
+      if (action === 'pause' || action === 'resume') {
+        await manager.setAllFoldersPaused(action === 'pause')
         sendJson(res, 200, { ok: true })
         return
       }

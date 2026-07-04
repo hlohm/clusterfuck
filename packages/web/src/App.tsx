@@ -155,7 +155,7 @@ function App() {
           </>
         ) : view === 'overview' ? (
           <div className="app__scroll">
-            <OverviewView cluster={cluster} onOpenShare={openShare} />
+            <OverviewView cluster={cluster} onOpenShare={openShare} isLive={isLive} />
           </div>
         ) : (
           <div className="app__scroll">
