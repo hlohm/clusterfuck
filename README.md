@@ -27,7 +27,10 @@ manage nodes (and eventually the cluster as a whole) from one place.
 |---|---|---|
 | Platform | Web app (React + TypeScript) | SPA; deployable anywhere |
 | Data source | Syncthing REST API | Live cluster state via REST + `/rest/events` stream |
-| Graph library | TBD | Chosen in the visualization phase (D3 / Cytoscape / React Flow candidates) |
+| Graph library | React Flow (`@xyflow/react`) | Isolated behind a `GraphAdapter` interface for swappability |
+| 3+ device folder shares | Hyperedge via a folder-hub node | Rather than pairwise edges between every device pair |
+| Proxy runtime | Node.js + TypeScript | Shares the normalized model with the frontend as one `@clusterfuck/shared` workspace package |
+| Node registration | Static, untracked config file | Read once at proxy startup; see Phase 2 below |
 | First deliverable | Coded static prototype | Clickable React mockup on fake data, then wire to the real API |
 
 ### Connecting to Syncthing
@@ -76,9 +79,32 @@ Replace fixtures with real, live cluster state. Read-only — no mutations yet.
 - Live updates via the `/rest/events` stream (completion, state changes,
   connect/disconnect).
 - Health/progress overlays: sync percentage, out-of-sync items, errors.
-- **Open decisions to settle here:** proxy implementation language/runtime;
-  how the user registers nodes and supplies API keys; how aggressively to poll
-  vs. rely on the event stream.
+- **Decisions made:**
+  - **Proxy runtime:** Node.js + TypeScript. Runs the `.ts` source directly
+    (Node 24's native type-stripping — no bundler/ts-node step); shares the
+    normalized model with the frontend via an npm-workspaces package
+    (`@clusterfuck/shared`) instead of duplicating or code-generating types.
+  - **Node registration:** a static, untracked JSON config file
+    (`packages/proxy/dev-cluster.json`, gitignored; see
+    `dev-cluster.example.json` for the shape), read once at proxy startup.
+    Matches the existing fixture-cluster convention. An in-app "add node" UI
+    with persistent storage is deferred to Phase 3, since it's a mutable-state
+    concern that doesn't belong in a read-only phase.
+  - **Update strategy:** event-stream-first. The proxy long-polls each node's
+    `/rest/events` and recomputes on relevant events, plus a low-frequency
+    (default 45s) full re-poll as a backstop against a missed event or a
+    silently dropped connection. The frontend gets updates via a Server-Sent
+    Events endpoint (`/api/events`) that pushes a full `ClusterModel` snapshot
+    on every change.
+  - **Aggregation/reconciliation policy:** per device, an explicit `paused`
+    view from any node wins; else `connected` if any node currently sees a
+    live link; else `disconnected`. Folder type/state/completion are only
+    known first-hand from a device's own node — a device visible only as a
+    remote peer in another node's config still appears in the graph (for
+    topology completeness) but gets no `Share` rows.
+  - **Targets Syncthing 1.x's REST shape** (per the sample `/rest/system/status`
+    response used to validate this) — revisit if the deployed cluster turns
+    out to be 2.x.
 
 ### Phase 3 — Management
 

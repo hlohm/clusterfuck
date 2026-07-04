@@ -1,0 +1,7 @@
+{
+  "nodes": [
+    { "id": "st-a", "url": "http://127.0.0.1:18384", "apiKey": "fixture-key-a" },
+    { "id": "st-b", "url": "http://127.0.0.1:28384", "apiKey": "fixture-key-b" },
+    { "id": "st-c", "url": "http://127.0.0.1:38384", "apiKey": "fixture-key-c" }
+  ]
+}
