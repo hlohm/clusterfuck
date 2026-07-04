@@ -58,7 +58,7 @@ function App() {
               <GraphView cluster={cluster} selection={selection} onSelect={setSelection} />
             </div>
             <div className="app__sidebar">
-              <DetailPanel cluster={cluster} selection={selection} />
+              <DetailPanel cluster={cluster} selection={selection} isLive={isLive} />
               <Legend />
             </div>
           </>

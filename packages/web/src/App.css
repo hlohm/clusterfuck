@@ -116,6 +116,32 @@
   margin-top: 2px;
 }
 
+.detail-panel__actions {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.detail-panel__action-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.detail-panel__shared-with ul {
+  margin: 4px 0;
+}
+
+.detail-panel__shared-with li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .legend section + section {
   margin-top: 16px;
 }

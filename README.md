@@ -110,18 +110,52 @@ Replace fixtures with real, live cluster state. Read-only — no mutations yet.
 
 Make the graph actionable. Per-node first, then cluster-wide.
 
-- **Per-node / per-folder:** pause/resume device or folder; change folder type;
-  add/remove a share; rescan; accept pending devices/folders.
-- **Cluster-wide (to be designed):** candidate ideas — pause-all / resume-all;
-  introduce a new device to a whole folder group at once; bulk folder-type
-  changes; apply a "policy" (e.g. mark a node receive-encrypted everywhere);
-  templated folder defaults. We'll decide which of these are genuinely useful
-  vs. footguns.
+- **Per-node / per-folder (first slice):** pause/resume device; pause/resume
+  folder; change folder type; add/remove a share; rescan.
+  - **Device pause/resume** fans out to every registered node whose own config
+    lists that device as a peer, and pauses/resumes *that connection* — same
+    as clicking pause in that node's own Syncthing GUI. This works even for a
+    device we don't hold API keys for ourselves, as long as some registered
+    node has a connection to it; if no registered node references it at all,
+    the action has no valid target and fails.
+  - **Folder-scoped actions** (pause/resume folder, change type, add/remove
+    share, rescan) always edit one specific registered node's own folder
+    config — the node identified by the Share's `deviceId`, which by
+    construction of the aggregation is always one of our own registered
+    nodes (Phase 2 only ever produces Share rows from a node's first-hand
+    view of its own folders).
+- **Deferred to a later slice:** accept pending devices/folders (needs new
+  "pending" UI, not just mutation plumbing); cluster-wide actions (pause-all /
+  resume-all, bulk folder-type changes, policy application, templated folder
+  defaults, introducing a device to a whole folder group at once) — candidate
+  ideas, to be designed once single-node mutations are proven safe.
 - Safety: confirmations, dry-run/preview of what a bulk action will change,
-  and clear surfacing of partial failures across nodes.
-- **Open decisions to settle here:** which cluster-wide actions ship (if any);
-  how much we mirror Syncthing's own config model vs. impose our own
-  higher-level concepts; auth/permissions if this is ever multi-user.
+  and clear surfacing of partial failures across nodes (relevant once
+  cluster-wide actions exist).
+- **Decisions made:**
+  - **Scope:** per-node/per-folder actions first; cluster-wide actions are a
+    separate, later decision.
+  - **API shape:** mirrors Syncthing's own config/action model closely (e.g.
+    `POST /rest/system/pause?device=`, element-scoped `GET`/`PUT
+    /rest/config/folders/:id`, `POST /rest/db/scan`) rather than inventing
+    clusterfuck-native higher-level operations. Keeps the proxy thin and the
+    mutation surface auditable.
+  - **Auth/permissions:** none added for mutations specifically — same trust
+    model as Phase 2 (the proxy holds the keys; anyone who can reach the proxy
+    can already read everything). Revisit if this ever becomes multi-user or
+    is exposed beyond localhost.
+
+### Phase 4 — ideas (not scoped yet)
+
+Not started, not phase-gated into the roadmap above yet — noted here so they
+aren't lost:
+
+- **Multiple views**, switchable, beyond the single graph canvas (e.g. a flat
+  list/table view, a dashboard/health-summary view).
+- **Shape encoding refinement:** round nodes for devices, square nodes for
+  folders (currently both use the same rounded-rect style) — a second visual
+  channel alongside color, likely worth doing regardless of which other Phase
+  4 ideas land.
 
 ## Status
 

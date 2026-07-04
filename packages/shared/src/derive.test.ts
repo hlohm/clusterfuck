@@ -15,9 +15,9 @@ function cluster(): ClusterModel {
       { id: 'f2', label: 'Folder 2' },
     ],
     shares: [
-      { folderId: 'f1', deviceId: 'a', type: 'sendreceive', state: 'idle' },
-      { folderId: 'f2', deviceId: 'a', type: 'sendonly', state: 'error' },
-      { folderId: 'f1', deviceId: 'b', type: 'sendreceive', state: 'syncing' },
+      { folderId: 'f1', deviceId: 'a', type: 'sendreceive', state: 'idle', sharedWith: ['a', 'b'] },
+      { folderId: 'f2', deviceId: 'a', type: 'sendonly', state: 'error', sharedWith: ['a'] },
+      { folderId: 'f1', deviceId: 'b', type: 'sendreceive', state: 'syncing', sharedWith: ['a', 'b'] },
     ],
   }
 }

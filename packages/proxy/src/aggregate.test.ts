@@ -22,7 +22,13 @@ describe('aggregateCluster', () => {
         { deviceId: 'DEVICE-B', name: 'st-b', paused: false },
       ],
       folders: [
-        { id: 'spectrum', label: 'Spectrum', type: 'sendreceive', state: 'idle' },
+        {
+          id: 'spectrum',
+          label: 'Spectrum',
+          type: 'sendreceive',
+          state: 'idle',
+          sharedWith: ['DEVICE-A', 'DEVICE-B'],
+        },
       ],
       connections: { 'DEVICE-B': { connected: true, paused: false } },
     })
@@ -34,7 +40,13 @@ describe('aggregateCluster', () => {
         { deviceId: 'DEVICE-B', name: 'st-b', paused: false },
       ],
       folders: [
-        { id: 'spectrum', label: 'Spectrum', type: 'sendreceive', state: 'syncing' },
+        {
+          id: 'spectrum',
+          label: 'Spectrum',
+          type: 'sendreceive',
+          state: 'syncing',
+          sharedWith: ['DEVICE-A', 'DEVICE-B'],
+        },
       ],
       connections: { 'DEVICE-A': { connected: true, paused: false } },
     })
@@ -75,7 +87,9 @@ describe('aggregateCluster', () => {
       nodeId: 'st-a',
       myID: 'DEVICE-A',
       devices: [{ deviceId: 'DEVICE-C', name: 'st-c (unregistered)', paused: false }],
-      folders: [{ id: 'spectrum', label: 'Spectrum', type: 'sendreceive', state: 'idle' }],
+      folders: [
+        { id: 'spectrum', label: 'Spectrum', type: 'sendreceive', state: 'idle', sharedWith: ['DEVICE-A'] },
+      ],
     })
 
     const model = aggregateCluster([a], 'live', 'Live cluster')

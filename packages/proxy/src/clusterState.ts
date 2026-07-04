@@ -2,6 +2,14 @@ import type { ClusterModel } from '@clusterfuck/shared'
 import { aggregateCluster, type NodeSnapshot } from './aggregate.ts'
 import { fetchNodeSnapshot } from './snapshot.ts'
 import { SyncthingClient, type NodeConfig } from './syncthing/client.ts'
+import type { ConfigFolder, SyncthingFolderType } from './syncthing/types.ts'
+
+/** Thrown when a mutation targets a device/node no registered node can act on. */
+export class NotManagedError extends Error {
+  constructor(id: string) {
+    super(`${id} is not controllable by any registered node`)
+  }
+}
 
 const RELEVANT_EVENT_TYPES = new Set([
   'StateChanged',
@@ -29,6 +37,7 @@ function sleep(ms: number): Promise<void> {
  */
 export class ClusterStateManager {
   private model: ClusterModel
+  private snapshots: NodeSnapshot[] = []
   private readonly subscribers = new Set<(model: ClusterModel) => void>()
   private readonly clients: { nodeId: string; client: SyncthingClient }[]
   private readonly clusterId: string
@@ -80,8 +89,86 @@ export class ClusterStateManager {
     const valid = snapshots.filter((s): s is NodeSnapshot => s !== undefined)
     if (valid.length === 0) return // keep last-known-good model rather than blanking it out
 
+    this.snapshots = valid
     this.model = aggregateCluster(valid, this.clusterId, this.label)
     for (const fn of this.subscribers) fn(this.model)
+  }
+
+  /**
+   * Looks up the client for the registered node whose *own Syncthing device
+   * ID* (not our internal config label) is `deviceId` — i.e. the node a
+   * Share's `deviceId` refers to, since aggregation only ever produces Share
+   * rows from a node's first-hand view of its own folders.
+   */
+  private clientForDevice(deviceId: string): SyncthingClient {
+    const snap = this.snapshots.find((s) => s.myID === deviceId)
+    const entry = snap && this.clients.find((c) => c.nodeId === snap.nodeId)
+    if (!entry) throw new NotManagedError(deviceId)
+    return entry.client
+  }
+
+  /**
+   * Pauses/resumes *every* registered node's connection to this device — same
+   * effect as clicking pause in each of those nodes' own Syncthing GUIs. A
+   * device doesn't need to be one of our own registered nodes for this to
+   * work, only referenced by at least one registered node's own config.
+   */
+  async setDevicePaused(deviceId: string, paused: boolean): Promise<void> {
+    const targets = this.clients.filter(({ nodeId }) => {
+      const snap = this.snapshots.find((s) => s.nodeId === nodeId)
+      if (!snap || snap.myID === deviceId) return false
+      return snap.devices.some((d) => d.deviceId === deviceId)
+    })
+    if (targets.length === 0) throw new NotManagedError(deviceId)
+    await Promise.all(
+      targets.map(({ client }) =>
+        paused ? client.pauseDevice(deviceId) : client.resumeDevice(deviceId),
+      ),
+    )
+    await this.refresh()
+  }
+
+  async rescanFolder(deviceId: string, folderId: string): Promise<void> {
+    await this.clientForDevice(deviceId).rescanFolder(folderId)
+    await this.refresh()
+  }
+
+  async setFolderPaused(deviceId: string, folderId: string, paused: boolean): Promise<void> {
+    await this.patchFolder(deviceId, folderId, (f) => {
+      f.paused = paused
+    })
+  }
+
+  async setFolderType(deviceId: string, folderId: string, type: SyncthingFolderType): Promise<void> {
+    await this.patchFolder(deviceId, folderId, (f) => {
+      f.type = type
+    })
+  }
+
+  async addShare(deviceId: string, folderId: string, shareDeviceId: string): Promise<void> {
+    await this.patchFolder(deviceId, folderId, (f) => {
+      if (!f.devices.some((d) => d.deviceID === shareDeviceId)) {
+        f.devices.push({ deviceID: shareDeviceId })
+      }
+    })
+  }
+
+  async removeShare(deviceId: string, folderId: string, shareDeviceId: string): Promise<void> {
+    await this.patchFolder(deviceId, folderId, (f) => {
+      f.devices = f.devices.filter((d) => d.deviceID !== shareDeviceId)
+    })
+  }
+
+  private async patchFolder(
+    deviceId: string,
+    folderId: string,
+    mutate: (folder: ConfigFolder) => void,
+  ): Promise<void> {
+    const client = this.clientForDevice(deviceId)
+    const folder = await client.folderConfig(folderId)
+    mutate(folder)
+    await client.putFolderConfig(folderId, folder)
+    await this.refresh()
   }
 
   private async runPollLoop(): Promise<void> {

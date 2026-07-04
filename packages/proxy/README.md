@@ -18,9 +18,9 @@ cp dev-cluster.example.json dev-cluster.json
 ## Run
 
 ```sh
-npm run dev --workspace=@clusterfuck/proxy   # from the repo root
+pnpm --filter @clusterfuck/proxy dev   # from the repo root
 # or, from this directory:
-npm run dev
+pnpm dev
 ```
 
 Listens on `PORT` (default `4000`). Routes:
@@ -29,6 +29,30 @@ Listens on `PORT` (default `4000`). Routes:
 - `GET /api/events` — Server-Sent Events stream; pushes a full snapshot on
   every change.
 - `GET /api/health` — liveness check.
+
+**Mutations (Phase 3, first slice — per-node/per-folder only, no auth):**
+
+- `POST /api/devices/:deviceId/pause` / `.../resume` — pauses/resumes *every*
+  registered node's connection to that device (mirrors clicking pause in each
+  of those nodes' own Syncthing GUIs). Works even for a device we don't hold
+  keys for ourselves, as long as some registered node has it configured as a
+  peer; 409 if no registered node references it at all.
+- `POST /api/folders/:folderId/devices/:deviceId/pause` / `.../resume` —
+  pauses/resumes that folder on that specific registered node.
+- `POST /api/folders/:folderId/devices/:deviceId/rescan` — triggers an
+  immediate rescan of that folder on that node.
+- `PATCH /api/folders/:folderId/devices/:deviceId` body
+  `{ "type": "sendonly" }` — changes that folder's type on that node.
+- `POST /api/folders/:folderId/devices/:deviceId/shares` body
+  `{ "deviceId": "..." }` — adds a device to that folder's share list on that
+  node.
+- `DELETE /api/folders/:folderId/devices/:deviceId/shares/:targetDeviceId` —
+  removes a device from that folder's share list on that node.
+
+`:deviceId` here is always a registered node's own Syncthing device ID — the
+same value as a Share's `deviceId` in the normalized model, since Phase 2's
+aggregation only ever produces Share rows from a node's first-hand view of
+its own folders.
 
 `CLUSTERFUCK_WEB_ORIGIN` (default `http://localhost:5173`) sets the CORS
 origin allowed to read these routes — only needed if the frontend talks to

@@ -15,14 +15,27 @@ export const smallMirror: ClusterModel = {
   ],
   folders: [{ id: 'spectrum', label: 'spectrum' }],
   shares: [
-    { folderId: 'spectrum', deviceId: 'device-alpha', type: 'sendreceive', state: 'idle' },
-    { folderId: 'spectrum', deviceId: 'device-bravo', type: 'sendreceive', state: 'idle' },
+    {
+      folderId: 'spectrum',
+      deviceId: 'device-alpha',
+      type: 'sendreceive',
+      state: 'idle',
+      sharedWith: ['device-alpha', 'device-bravo', 'device-charlie'],
+    },
+    {
+      folderId: 'spectrum',
+      deviceId: 'device-bravo',
+      type: 'sendreceive',
+      state: 'idle',
+      sharedWith: ['device-alpha', 'device-bravo', 'device-charlie'],
+    },
     {
       folderId: 'spectrum',
       deviceId: 'device-charlie',
       type: 'receiveencrypted',
       state: 'syncing',
       completionPct: 87,
+      sharedWith: ['device-alpha', 'device-bravo', 'device-charlie'],
     },
   ],
 }

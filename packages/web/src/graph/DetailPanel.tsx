@@ -1,16 +1,152 @@
-import type { ClusterModel } from '@clusterfuck/shared'
+import { useState } from 'react'
+import type { ClusterModel, Device, FolderType, Share } from '@clusterfuck/shared'
 import type { Selection } from './selection'
 import { sharesByDevice, sharesByFolder } from '@clusterfuck/shared'
 import { FOLDER_TYPE_STYLE } from '../encoding/folderTypeStyle'
 import { FOLDER_STATE_STYLE } from '../encoding/folderStateStyle'
 import { DEVICE_STATE_STYLE } from '../encoding/deviceStateStyle'
+import * as mutations from '../data/mutations'
 
 export interface DetailPanelProps {
   cluster: ClusterModel
   selection: Selection
+  /** Mutation actions only make sense against the live proxy, never fixtures. */
+  isLive: boolean
 }
 
-export function DetailPanel({ cluster, selection }: DetailPanelProps) {
+function useAsyncAction() {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string>()
+
+  const run = (fn: () => Promise<void>) => {
+    setBusy(true)
+    setError(undefined)
+    fn()
+      .catch((err: unknown) => {
+        setError(err instanceof Error ? err.message : 'Action failed')
+      })
+      .finally(() => setBusy(false))
+  }
+
+  return { busy, error, run }
+}
+
+function DeviceActions({ device }: { device: Device }) {
+  const { busy, error, run } = useAsyncAction()
+
+  if (device.state === 'this-device') return null
+
+  return (
+    <div className="detail-panel__actions">
+      <div className="detail-panel__action-row">
+        <button
+          disabled={busy}
+          onClick={() => run(() => mutations.setDevicePaused(device.id, device.state !== 'paused'))}
+        >
+          {device.state === 'paused' ? 'Resume device' : 'Pause device'}
+        </button>
+      </div>
+      {error && <div className="detail-panel__error">{error}</div>}
+    </div>
+  )
+}
+
+const FOLDER_TYPE_OPTIONS: { value: FolderType; label: string }[] = [
+  { value: 'sendreceive', label: 'Send & receive' },
+  { value: 'sendonly', label: 'Send only' },
+  { value: 'receiveonly', label: 'Receive only' },
+  { value: 'receiveencrypted', label: 'Receive encrypted' },
+]
+
+function ShareActions({ cluster, share }: { cluster: ClusterModel; share: Share }) {
+  const { busy, error, run } = useAsyncAction()
+  const [addTarget, setAddTarget] = useState('')
+
+  const addCandidates = cluster.devices.filter((d) => !share.sharedWith.includes(d.id))
+
+  return (
+    <div className="detail-panel__actions">
+      <div className="detail-panel__action-row">
+        <button
+          disabled={busy}
+          onClick={() =>
+            run(() => mutations.setFolderPaused(share.deviceId, share.folderId, share.state !== 'paused'))
+          }
+        >
+          {share.state === 'paused' ? 'Resume folder' : 'Pause folder'}
+        </button>
+        <button disabled={busy} onClick={() => run(() => mutations.rescanFolder(share.deviceId, share.folderId))}>
+          Rescan
+        </button>
+      </div>
+
+      <label className="detail-panel__action-row">
+        Type:
+        <select
+          value={share.type}
+          disabled={busy}
+          onChange={(event) =>
+            run(() => mutations.setFolderType(share.deviceId, share.folderId, event.target.value as FolderType))
+          }
+        >
+          {FOLDER_TYPE_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <div className="detail-panel__shared-with">
+        <h4>Shared with (via this node)</h4>
+        <ul>
+          {share.sharedWith.map((id) => {
+            const device = cluster.devices.find((d) => d.id === id)
+            return (
+              <li key={id}>
+                {device?.name ?? id}
+                {id !== share.deviceId && (
+                  <button
+                    disabled={busy}
+                    onClick={() => run(() => mutations.removeShare(share.deviceId, share.folderId, id))}
+                  >
+                    Remove
+                  </button>
+                )}
+              </li>
+            )
+          })}
+        </ul>
+        {addCandidates.length > 0 && (
+          <div className="detail-panel__action-row">
+            <select value={addTarget} disabled={busy} onChange={(event) => setAddTarget(event.target.value)}>
+              <option value="">Add device…</option>
+              {addCandidates.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+            <button
+              disabled={busy || !addTarget}
+              onClick={() => {
+                const target = addTarget
+                run(() => mutations.addShare(share.deviceId, share.folderId, target))
+                setAddTarget('')
+              }}
+            >
+              Add
+            </button>
+          </div>
+        )}
+      </div>
+
+      {error && <div className="detail-panel__error">{error}</div>}
+    </div>
+  )
+}
+
+export function DetailPanel({ cluster, selection, isLive }: DetailPanelProps) {
   if (!selection) {
     return (
       <aside className="detail-panel detail-panel--empty">
@@ -34,6 +170,7 @@ export function DetailPanel({ cluster, selection }: DetailPanelProps) {
         <p>
           <strong>Device ID:</strong> <code>{device.id}</code>
         </p>
+        {isLive && <DeviceActions device={device} />}
         <h4>Folder shares ({shares.length})</h4>
         <ul>
           {shares.map((share) => {
@@ -74,6 +211,7 @@ export function DetailPanel({ cluster, selection }: DetailPanelProps) {
               <li key={share.deviceId}>
                 <strong>{device?.name ?? share.deviceId}</strong> — {typeStyle.label},{' '}
                 {stateStyle.label}
+                {isLive && <ShareActions cluster={cluster} share={share} />}
               </li>
             )
           })}
@@ -119,6 +257,7 @@ export function DetailPanel({ cluster, selection }: DetailPanelProps) {
           <strong>Error:</strong> {share.errorMessage}
         </p>
       )}
+      {isLive && <ShareActions cluster={cluster} share={share} />}
     </aside>
   )
 }

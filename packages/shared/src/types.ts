@@ -32,6 +32,8 @@ export interface Share {
   completionPct?: number
   outOfSyncItems?: number
   errorMessage?: string
+  /** Every device `deviceId`'s own config shares this folder with (incl. itself). */
+  sharedWith: DeviceId[]
 }
 
 export interface ClusterModel {

@@ -22,13 +22,20 @@ export const edgeCases: ClusterModel = {
     { id: 'coldstore', label: 'coldstore' },
   ],
   shares: [
-    { folderId: 'ledger', deviceId: 'device-origin', type: 'sendreceive', state: 'idle' },
+    {
+      folderId: 'ledger',
+      deviceId: 'device-origin',
+      type: 'sendreceive',
+      state: 'idle',
+      sharedWith: ['device-origin', 'device-mirror', 'device-satellite', 'device-vault'],
+    },
     {
       folderId: 'ledger',
       deviceId: 'device-mirror',
       type: 'sendonly',
       state: 'out-of-sync',
       outOfSyncItems: 12,
+      sharedWith: ['device-origin', 'device-mirror', 'device-satellite', 'device-vault'],
     },
     {
       folderId: 'ledger',
@@ -36,8 +43,15 @@ export const edgeCases: ClusterModel = {
       type: 'receiveonly',
       state: 'error',
       errorMessage: 'disk full: no space to write incoming files',
+      sharedWith: ['device-origin', 'device-mirror', 'device-satellite', 'device-vault'],
     },
-    { folderId: 'ledger', deviceId: 'device-vault', type: 'receiveonly', state: 'paused' },
+    {
+      folderId: 'ledger',
+      deviceId: 'device-vault',
+      type: 'receiveonly',
+      state: 'paused',
+      sharedWith: ['device-origin', 'device-mirror', 'device-satellite', 'device-vault'],
+    },
 
     // coldstore: mutual encrypted relay between two untrusted peers
     {
@@ -46,7 +60,14 @@ export const edgeCases: ClusterModel = {
       type: 'receiveencrypted',
       state: 'syncing',
       completionPct: 63,
+      sharedWith: ['device-relay-a', 'device-relay-b'],
     },
-    { folderId: 'coldstore', deviceId: 'device-relay-b', type: 'receiveencrypted', state: 'idle' },
+    {
+      folderId: 'coldstore',
+      deviceId: 'device-relay-b',
+      type: 'receiveencrypted',
+      state: 'idle',
+      sharedWith: ['device-relay-a', 'device-relay-b'],
+    },
   ],
 }

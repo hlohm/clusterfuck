@@ -23,28 +23,66 @@ export const hubAndSpoke: ClusterModel = {
   ],
   shares: [
     // photos: shared by 4 devices, mixed types/states
-    { folderId: 'photos', deviceId: 'device-hub', type: 'sendreceive', state: 'idle' },
+    {
+      folderId: 'photos',
+      deviceId: 'device-hub',
+      type: 'sendreceive',
+      state: 'idle',
+      sharedWith: ['device-hub', 'device-phone', 'device-tablet', 'device-nas'],
+    },
     {
       folderId: 'photos',
       deviceId: 'device-phone',
       type: 'sendonly',
       state: 'syncing',
       completionPct: 42,
+      sharedWith: ['device-hub', 'device-phone', 'device-tablet', 'device-nas'],
     },
-    { folderId: 'photos', deviceId: 'device-tablet', type: 'sendonly', state: 'idle' },
+    {
+      folderId: 'photos',
+      deviceId: 'device-tablet',
+      type: 'sendonly',
+      state: 'idle',
+      sharedWith: ['device-hub', 'device-phone', 'device-tablet', 'device-nas'],
+    },
     {
       folderId: 'photos',
       deviceId: 'device-nas',
       type: 'receiveonly',
       state: 'scanning',
+      sharedWith: ['device-hub', 'device-phone', 'device-tablet', 'device-nas'],
     },
 
     // notes: two-device sendreceive pair
-    { folderId: 'notes', deviceId: 'device-hub', type: 'sendreceive', state: 'idle' },
-    { folderId: 'notes', deviceId: 'device-laptop', type: 'sendreceive', state: 'idle' },
+    {
+      folderId: 'notes',
+      deviceId: 'device-hub',
+      type: 'sendreceive',
+      state: 'idle',
+      sharedWith: ['device-hub', 'device-laptop'],
+    },
+    {
+      folderId: 'notes',
+      deviceId: 'device-laptop',
+      type: 'sendreceive',
+      state: 'idle',
+      sharedWith: ['device-hub', 'device-laptop'],
+    },
 
     // archive: hub pushes to a read-only kiosk display
-    { folderId: 'archive', deviceId: 'device-hub', type: 'sendonly', state: 'idle' },
-    { folderId: 'archive', deviceId: 'device-kiosk', type: 'receiveonly', state: 'idle' },
+    {
+      folderId: 'archive',
+      deviceId: 'device-hub',
+      type: 'sendonly',
+      state: 'idle',
+      sharedWith: ['device-hub', 'device-kiosk'],
+    },
+    {
+      folderId: 'archive',
+      deviceId: 'device-kiosk',
+      type: 'receiveonly',
+      state: 'idle',
+      sharedWith: ['device-hub', 'device-kiosk'],
+    },
   ],
 }

@@ -29,6 +29,8 @@ export interface NodeSnapshot {
     completionPct?: number
     outOfSyncItems?: number
     errorMessage?: string
+    /** Every device this node's own config shares this folder with (incl. itself). */
+    sharedWith: DeviceId[]
   }[]
   /** Per-remote-device connection state, as seen from this node. */
   connections: Record<DeviceId, { connected: boolean; paused: boolean }>
@@ -100,6 +102,7 @@ export function aggregateCluster(
         completionPct: f.completionPct,
         outOfSyncItems: f.outOfSyncItems,
         errorMessage: f.errorMessage,
+        sharedWith: f.sharedWith,
       })
     }
   }
