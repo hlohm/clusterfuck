@@ -1,6 +1,7 @@
 import { createServer, type IncomingMessage, type ServerResponse, type Server } from 'node:http'
 import { InvalidTargetError, NotManagedError, type ClusterStateManager } from './clusterState.ts'
 import { SYNCTHING_FOLDER_TYPES, type SyncthingFolderType } from './syncthing/types.ts'
+import { PROXY_VERSION } from './version.ts'
 
 /** Sentinel thrown by readJsonBody so the handler can answer 400, not 502. */
 class BodyParseError extends Error {}
@@ -70,6 +71,13 @@ async function handleRequest(
 
   if (url.pathname === '/api/health' && method === 'GET') {
     res.end('ok')
+    return
+  }
+
+  // Cheap way to tell a stale running process apart from a freshly deployed
+  // one — compare this against the frontend build's own version.
+  if (url.pathname === '/api/version' && method === 'GET') {
+    sendJson(res, 200, { version: PROXY_VERSION })
     return
   }
 
@@ -222,6 +230,11 @@ async function handleRequest(
     return
   }
 
+  // Logged, not silent: an unmatched API path/method is usually a client/
+  // proxy version mismatch (e.g. a newer frontend calling a route an older
+  // running proxy process doesn't have yet) — this is the fastest way to
+  // tell the two apart from a generic 404 in the browser.
+  console.error(`[clusterfuck-proxy] no route for ${method} ${url.pathname}`)
   res.statusCode = 404
   res.end('not found')
 }

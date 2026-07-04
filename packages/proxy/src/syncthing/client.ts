@@ -32,15 +32,24 @@ export class SyncthingClient {
     body?: unknown,
     signal?: AbortSignal,
   ): Promise<Response> {
-    const res = await fetch(new URL(path, this.node.url), {
-      method,
-      headers: {
-        'X-API-Key': this.node.apiKey,
-        ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
-      },
-      body: body !== undefined ? JSON.stringify(body) : undefined,
-      signal,
-    })
+    let res: Response
+    try {
+      res = await fetch(new URL(path, this.node.url), {
+        method,
+        headers: {
+          'X-API-Key': this.node.apiKey,
+          ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+        },
+        body: body !== undefined ? JSON.stringify(body) : undefined,
+        signal,
+      })
+    } catch {
+      // A connection-level failure (ECONNREFUSED, DNS, TLS, ...) throws
+      // whatever fetch/undici attaches, which can include this node's raw
+      // internal URL in .cause — normalize instead of letting that bubble
+      // into an HTTP error response.
+      throw new Error(`${this.node.id}: ${method} ${path} -> connection failed`)
+    }
     if (!res.ok) {
       throw new Error(`${this.node.id}: ${method} ${path} -> HTTP ${res.status}`)
     }

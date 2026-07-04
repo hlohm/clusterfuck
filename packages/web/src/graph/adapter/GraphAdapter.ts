@@ -3,11 +3,11 @@ import type { ClusterModel } from '@clusterfuck/shared'
 import type { Selection } from '../selection'
 
 /**
- * hubs: the two-layer layout — folder hub nodes with one edge per share
- * (edge color = folder type). mesh: devices only, one edge per device pair
- * per shared folder (edge color = folder identity).
+ * nodes (default): devices only, one edge per device pair per shared folder
+ * (edge color = folder identity). folders: the two-layer layout — folder hub
+ * nodes with one edge per share (edge color = folder type).
  */
-export type GraphMode = 'hubs' | 'mesh'
+export type GraphMode = 'nodes' | 'folders'
 
 export interface GraphAdapterProps {
   cluster: ClusterModel

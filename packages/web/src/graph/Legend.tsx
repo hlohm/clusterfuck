@@ -20,7 +20,7 @@ export function Legend({ cluster, mode }: LegendProps) {
 
   return (
     <aside className="legend">
-      {mode === 'hubs' && (
+      {mode === 'folders' && (
         <section>
           <h3>Shapes</h3>
           <ul>
@@ -36,7 +36,7 @@ export function Legend({ cluster, mode }: LegendProps) {
         </section>
       )}
 
-      {mode === 'hubs' ? (
+      {mode === 'folders' ? (
         <section>
           <h3>Folder type (edge)</h3>
           <ul>

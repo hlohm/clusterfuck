@@ -15,13 +15,16 @@ function jsonResponse(body: unknown): Response {
 /**
  * Two-node fake cluster: st-a (DEVICE-A) and st-b (DEVICE-B), each sharing
  * folder f1 with the other. Mocks global.fetch so ClusterStateManager's real
- * REST client code runs unmodified against canned responses.
+ * REST client code runs unmodified against canned responses. `delayMs`
+ * (default 0) delays every response, to give a test room to run something
+ * else while a refresh cycle is still in flight.
  */
-function installFakeCluster() {
+function installFakeCluster(delayMs = 0) {
   const calls: { method: string; url: string; host: string; body?: string }[] = []
   let folderTypeOnA: 'sendreceive' | 'sendonly' = 'sendreceive'
 
   const fetchMock = vi.fn(async (input: string | URL, init?: RequestInit) => {
+    if (delayMs > 0) await new Promise((resolve) => setTimeout(resolve, delayMs))
     const url = new URL(input)
     const method = (init?.method ?? 'GET').toUpperCase()
     calls.push({
@@ -173,6 +176,37 @@ describe('ClusterStateManager mutations', () => {
     ).rejects.toBeInstanceOf(InvalidTargetError)
   })
 
+  it('rejects creating a folder shared with fewer than two distinct nodes', async () => {
+    const { manager, calls } = installFakeCluster()
+    await refreshed(manager)
+    calls.length = 0
+
+    await expect(
+      manager.createFolder({ id: 'f2', label: 'F2', path: '~/f2', type: 'sendreceive' }, [
+        'DEVICE-A',
+      ]),
+    ).rejects.toBeInstanceOf(InvalidTargetError)
+    // A duplicated id is only one *distinct* node, so this must be rejected too.
+    await expect(
+      manager.createFolder({ id: 'f2', label: 'F2', path: '~/f2', type: 'sendreceive' }, [
+        'DEVICE-A',
+        'DEVICE-A',
+      ]),
+    ).rejects.toBeInstanceOf(InvalidTargetError)
+    expect(calls.some((c) => c.method === 'POST' && c.url === '/rest/config/folders')).toBe(false)
+  })
+
+  it('de-duplicates repeated target ids instead of double-posting to the same node', async () => {
+    const { manager, calls } = installFakeCluster()
+    await refreshed(manager)
+    calls.length = 0
+
+    await manager.addDevice('DEVICE-NEW', undefined, ['DEVICE-A', 'DEVICE-A'])
+
+    const posts = calls.filter((c) => c.method === 'POST' && c.url === '/rest/config/devices')
+    expect(posts).toHaveLength(1)
+  })
+
   it('rejects adding a share for a device the node has no config entry for', async () => {
     const { manager, calls } = installFakeCluster()
     await (manager as unknown as { refresh(): Promise<void> }).refresh()
@@ -199,6 +233,27 @@ describe('ClusterStateManager mutations', () => {
     )
     expect(getCall).toBeDefined()
     expect(putCall).toBeDefined()
+
+    const model = manager.getModel()
+    expect(model.shares.find((s) => s.deviceId === 'DEVICE-A')?.type).toBe('sendonly')
+  })
+
+  it("a mutation's own refresh reflects its write even if a slower refresh cycle was already running", async () => {
+    // Regression test: refresh() used to coalesce onto whatever cycle was
+    // already in flight, even one that started (and read its snapshots)
+    // before this mutation's write landed — resolving "success" while the
+    // model still showed the pre-mutation state.
+    const { manager } = installFakeCluster(20)
+    await refreshed(manager)
+
+    const staleRefresh = (manager as unknown as { refresh(): Promise<void> }).refresh()
+    // Give the stale cycle's fetches a head start so it's genuinely in
+    // flight (and its snapshots reflect the pre-mutation type) once the
+    // mutation's own writes complete below.
+    await new Promise((resolve) => setTimeout(resolve, 5))
+
+    await manager.setFolderType('DEVICE-A', 'f1', 'sendonly')
+    await staleRefresh
 
     const model = manager.getModel()
     expect(model.shares.find((s) => s.deviceId === 'DEVICE-A')?.type).toBe('sendonly')

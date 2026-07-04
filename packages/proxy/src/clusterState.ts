@@ -48,7 +48,6 @@ export class ClusterStateManager {
   private readonly pollIntervalMs: number
   private stopped = false
   private refreshInFlight: Promise<void> | undefined
-  private refreshQueued = false
   private mutationChain: Promise<void> = Promise.resolve()
 
   constructor(
@@ -84,26 +83,36 @@ export class ClusterStateManager {
   }
 
   /**
-   * Single-flight with coalescing: the N per-node event loops, the poll
-   * backstop, and mutations can all trigger refreshes concurrently. Sharing
-   * one in-flight run prevents a stampede of full-cluster re-polls, and
-   * prevents a slower, older run from overwriting a newer model. A trigger
-   * that arrives mid-run queues exactly one follow-up so changes made after
-   * the in-flight fetch began are still picked up.
+   * Single-flight with coalescing: the N per-node event loops and the poll
+   * backstop can all trigger refreshes concurrently. Sharing one in-flight
+   * run prevents a stampede of full-cluster re-polls. Callers that don't
+   * need a freshness guarantee (the poll/event loops — another cycle is
+   * always coming) use this; mutations use refreshAfterMutation() instead,
+   * see below.
    */
   private refresh(): Promise<void> {
-    if (this.refreshInFlight) {
-      this.refreshQueued = true
-      return this.refreshInFlight
-    }
-    this.refreshInFlight = this.doRefresh().finally(() => {
-      this.refreshInFlight = undefined
-      if (this.refreshQueued && !this.stopped) {
-        this.refreshQueued = false
-        void this.refresh()
-      }
+    if (this.refreshInFlight) return this.refreshInFlight
+    const p = this.doRefresh().finally(() => {
+      if (this.refreshInFlight === p) this.refreshInFlight = undefined
     })
-    return this.refreshInFlight
+    this.refreshInFlight = p
+    return p
+  }
+
+  /**
+   * Used right after a mutation's own writes complete. A plain refresh()
+   * can coalesce onto a cycle that started (and already read snapshots)
+   * before this mutation's writes landed — coalescing into it would resolve
+   * "success" while the model, and the next SSE frame, still show the
+   * pre-mutation state. Waiting out any in-flight cycle first, then always
+   * running one more, guarantees the cycle we wait on started after our own
+   * writes landed.
+   */
+  private async refreshAfterMutation(): Promise<void> {
+    if (this.refreshInFlight) {
+      await this.refreshInFlight.catch(() => undefined)
+    }
+    await this.refresh()
   }
 
   private async doRefresh(): Promise<void> {
@@ -169,7 +178,7 @@ export class ClusterStateManager {
           paused ? client.pauseDevice(deviceId) : client.resumeDevice(deviceId),
         ),
       )
-      await this.refresh()
+      await this.refreshAfterMutation()
       const failed = results.flatMap((r, i) =>
         r.status === 'rejected' ? [targets[i]!.nodeId] : [],
       )
@@ -185,7 +194,7 @@ export class ClusterStateManager {
   rescanFolder(deviceId: string, folderId: string): Promise<void> {
     return this.enqueueMutation(async () => {
       await this.clientForDevice(deviceId).rescanFolder(folderId)
-      await this.refresh()
+      await this.refreshAfterMutation()
     })
   }
 
@@ -235,21 +244,28 @@ export class ClusterStateManager {
   /**
    * Creates a folder on each named registered node, shared among all of
    * them. Same id + same share group everywhere; per-node paths/types can
-   * be edited afterwards via the folder-scoped mutations.
+   * be edited afterwards via the folder-scoped mutations. Requires 2+
+   * distinct nodes — a 1-node "shared" folder isn't shared with anyone,
+   * which the web dialog already enforces, but the HTTP API must too so a
+   * direct call can't create one.
    */
   createFolder(
     spec: { id: string; label: string; path: string; type: SyncthingFolderType },
     targetDeviceIds: string[],
   ): Promise<void> {
     return this.enqueueMutation(async () => {
-      const targets = this.resolveTargets(targetDeviceIds)
+      const distinctIds = [...new Set(targetDeviceIds)]
+      if (distinctIds.length < 2) {
+        throw new InvalidTargetError('at least two distinct target nodes are required to share a folder')
+      }
+      const targets = this.resolveTargets(distinctIds)
       const folder: ConfigFolder = {
         id: spec.id,
         label: spec.label,
         type: spec.type,
         paused: false,
         path: spec.path,
-        devices: targetDeviceIds.map((deviceID) => ({ deviceID })),
+        devices: distinctIds.map((deviceID) => ({ deviceID })),
       }
       const results = await Promise.allSettled(
         targets.map(({ client }) => client.postFolder(folder)),
@@ -258,14 +274,18 @@ export class ClusterStateManager {
     })
   }
 
-  /** Maps target device IDs to their nodes' clients; rejects unmanaged targets up front. */
+  /**
+   * Maps target device IDs to their nodes' clients; rejects unmanaged
+   * targets up front and de-duplicates so a repeated id doesn't produce
+   * doubled config entries or doubled fan-out calls.
+   */
   private resolveTargets(
     targetDeviceIds: string[],
   ): { nodeId: string; client: SyncthingClient }[] {
     if (targetDeviceIds.length === 0) {
       throw new InvalidTargetError('at least one target node is required')
     }
-    return targetDeviceIds.map((deviceId) => {
+    return [...new Set(targetDeviceIds)].map((deviceId) => {
       const snap = this.snapshots.find((s) => s.myID === deviceId)
       const entry = snap && this.clients.find((c) => c.nodeId === snap.nodeId)
       if (!entry) throw new NotManagedError(deviceId)
@@ -279,7 +299,7 @@ export class ClusterStateManager {
     targets: { nodeId: string }[],
     results: PromiseSettledResult<void>[],
   ): Promise<void> {
-    await this.refresh()
+    await this.refreshAfterMutation()
     const failed = results.flatMap((r, i) => (r.status === 'rejected' ? [targets[i]!.nodeId] : []))
     if (failed.length > 0) {
       throw new Error(
@@ -299,7 +319,7 @@ export class ClusterStateManager {
       const folder = await client.folderConfig(folderId)
       mutate(folder)
       await client.putFolderConfig(folderId, folder)
-      await this.refresh()
+      await this.refreshAfterMutation()
     })
   }
 

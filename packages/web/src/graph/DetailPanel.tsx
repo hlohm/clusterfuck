@@ -45,6 +45,7 @@ function DeviceActions({ device }: { device: Device }) {
     <div className="detail-panel__actions">
       <div className="detail-panel__action-row">
         <button
+          className={pausing ? 'detail-panel__button--warning' : undefined}
           disabled={busy}
           onClick={() =>
             run(
@@ -90,6 +91,7 @@ function ShareActions({ cluster, share }: { cluster: ClusterModel; share: Share 
         <div className="detail-panel__group-label">Actions</div>
         <div className="detail-panel__action-row">
           <button
+            className={pausing ? 'detail-panel__button--warning' : undefined}
             disabled={busy}
             onClick={() =>
               run(`${pausing ? 'Pause' : 'Resume'} folder "${folderLabel}" on ${nodeName}?`, () =>
@@ -139,6 +141,7 @@ function ShareActions({ cluster, share }: { cluster: ClusterModel; share: Share 
                 <span>{name}</span>
                 {id !== share.deviceId && (
                   <button
+                    className="detail-panel__button--danger"
                     disabled={busy}
                     onClick={() =>
                       run(`Remove ${name} from "${folderLabel}" on ${nodeName}?`, () =>
@@ -164,6 +167,7 @@ function ShareActions({ cluster, share }: { cluster: ClusterModel; share: Share 
               ))}
             </select>
             <button
+              className="detail-panel__button--primary"
               disabled={busy || !addTarget}
               onClick={() => {
                 const target = addTarget
