@@ -165,6 +165,14 @@ async function handleRequest(
       }
     }
 
+    // DELETE /api/devices/:deviceId — remove as a peer from every registered node that has it
+    if (method === 'DELETE' && parts.length === 3 && parts[0] === 'api' && parts[1] === 'devices') {
+      const deviceId = decodeURIComponent(parts[2]!)
+      await manager.removeDevice(deviceId)
+      sendJson(res, 200, { ok: true })
+      return
+    }
+
     // /api/folders/:folderId/devices/:deviceId[/...] — :deviceId is the
     // registered node's own Syncthing device ID (same value as a Share's
     // deviceId), identifying whose folder config we're editing.
@@ -193,6 +201,13 @@ async function handleRequest(
           return
         }
         await manager.setFolderType(deviceId, folderId, body.type)
+        sendJson(res, 200, { ok: true })
+        return
+      }
+
+      // Removes the folder from this one node's config only — not cluster-wide.
+      if (method === 'DELETE' && parts.length === 5) {
+        await manager.removeFolder(deviceId, folderId)
         sendJson(res, 200, { ok: true })
         return
       }

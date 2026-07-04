@@ -73,6 +73,12 @@ function installFakeCluster(delayMs = 0) {
     ) {
       return jsonResponse({})
     }
+    if (url.pathname.startsWith('/rest/config/devices/') && method === 'DELETE') {
+      return jsonResponse({})
+    }
+    if (url.pathname === '/rest/config/folders/f1' && method === 'DELETE') {
+      return jsonResponse({})
+    }
     if (url.pathname === '/rest/config/folders/f1' && method === 'GET') {
       return jsonResponse({
         id: 'f1',
@@ -205,6 +211,38 @@ describe('ClusterStateManager mutations', () => {
 
     const posts = calls.filter((c) => c.method === 'POST' && c.url === '/rest/config/devices')
     expect(posts).toHaveLength(1)
+  })
+
+  it('removes a device only from nodes that reference it, not itself', async () => {
+    const { manager, calls } = installFakeCluster()
+    await refreshed(manager)
+    calls.length = 0
+
+    await manager.removeDevice('DEVICE-B')
+
+    const deletes = calls.filter((c) => c.method === 'DELETE' && c.url.startsWith('/rest/config/devices/'))
+    expect(deletes).toHaveLength(1)
+    expect(deletes[0]!.url).toBe('/rest/config/devices/DEVICE-B')
+    expect(deletes[0]!.host).toBe('a.test') // st-a references DEVICE-B; st-b IS DEVICE-B
+  })
+
+  it('rejects removing a device no registered node references', async () => {
+    const { manager } = installFakeCluster()
+    await refreshed(manager)
+
+    await expect(manager.removeDevice('DEVICE-UNKNOWN')).rejects.toBeInstanceOf(NotManagedError)
+  })
+
+  it('removes a folder from one node only, not cluster-wide', async () => {
+    const { manager, calls } = installFakeCluster()
+    await refreshed(manager)
+    calls.length = 0
+
+    await manager.removeFolder('DEVICE-A', 'f1')
+
+    const deletes = calls.filter((c) => c.method === 'DELETE' && c.url === '/rest/config/folders/f1')
+    expect(deletes).toHaveLength(1)
+    expect(deletes[0]!.host).toBe('a.test')
   })
 
   it('rejects adding a share for a device the node has no config entry for', async () => {

@@ -56,6 +56,18 @@ function DeviceActions({ device }: { device: Device }) {
         >
           {pausing ? 'Pause device' : 'Resume device'}
         </button>
+        <button
+          className="detail-panel__button--danger"
+          disabled={busy}
+          onClick={() =>
+            run(
+              `Remove ${device.name} as a peer from every registered node that has it configured? This can't be undone from here.`,
+              () => mutations.removeDevice(device.id),
+            )
+          }
+        >
+          Remove device
+        </button>
       </div>
       {error && <div className="detail-panel__error">{error}</div>}
     </div>
@@ -106,6 +118,18 @@ function ShareActions({ cluster, share }: { cluster: ClusterModel; share: Share 
             onClick={() => run(null, () => mutations.rescanFolder(share.deviceId, share.folderId))}
           >
             Rescan
+          </button>
+          <button
+            className="detail-panel__button--danger"
+            disabled={busy}
+            onClick={() =>
+              run(
+                `Remove folder "${folderLabel}" from ${nodeName}? This only affects this node — other nodes still sharing it are untouched. The data on disk is not deleted.`,
+                () => mutations.removeFolder(share.deviceId, share.folderId),
+              )
+            }
+          >
+            Remove folder
           </button>
         </div>
         <label className="detail-panel__action-row">

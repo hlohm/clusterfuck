@@ -27,7 +27,7 @@ export class SyncthingClient {
   }
 
   private async request(
-    method: 'GET' | 'POST' | 'PUT',
+    method: 'GET' | 'POST' | 'PUT' | 'DELETE',
     path: string,
     body?: unknown,
     signal?: AbortSignal,
@@ -62,7 +62,7 @@ export class SyncthingClient {
   }
 
   private async send(
-    method: 'POST' | 'PUT',
+    method: 'POST' | 'PUT' | 'DELETE',
     path: string,
     body?: unknown,
     signal?: AbortSignal,
@@ -129,5 +129,15 @@ export class SyncthingClient {
   /** Adds (or replaces) a folder in this node's config. */
   postFolder(folder: ConfigFolder, signal?: AbortSignal): Promise<void> {
     return this.send('POST', '/rest/config/folders', folder, signal)
+  }
+
+  /** Removes a device from this node's config (and from every folder it shared on this node). */
+  deleteDevice(deviceId: string, signal?: AbortSignal): Promise<void> {
+    return this.send('DELETE', `/rest/config/devices/${encodeURIComponent(deviceId)}`, undefined, signal)
+  }
+
+  /** Removes a folder from this node's config (does not touch the data on disk). */
+  deleteFolder(folderId: string, signal?: AbortSignal): Promise<void> {
+    return this.send('DELETE', `/rest/config/folders/${encodeURIComponent(folderId)}`, undefined, signal)
   }
 }
