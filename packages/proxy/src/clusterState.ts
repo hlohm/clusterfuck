@@ -234,7 +234,20 @@ export class ClusterStateManager {
     })
   }
 
-  addShare(deviceId: string, folderId: string, shareDeviceId: string): Promise<void> {
+  /**
+   * Adds shareDeviceId to this folder on this node, optionally with an
+   * encryption password for an untrusted/receiveencrypted peer (the peer's
+   * own copy of the folder ends up receiveencrypted; we never see or store
+   * that — only this trusted-side share entry carries the password). Also
+   * doubles as "set/change the password on an already-shared device", since
+   * re-adding an existing device just updates its entry.
+   */
+  addShare(
+    deviceId: string,
+    folderId: string,
+    shareDeviceId: string,
+    encryptionPassword?: string,
+  ): Promise<void> {
     return this.patchFolder(deviceId, folderId, (f) => {
       const snap = this.snapshots.find((s) => s.myID === deviceId)
       if (snap && !snap.devices.some((d) => d.deviceId === shareDeviceId)) {
@@ -242,8 +255,14 @@ export class ClusterStateManager {
           `${shareDeviceId} is not a configured peer on ${snap.nodeId}, so it cannot be added to this folder`,
         )
       }
-      if (!f.devices.some((d) => d.deviceID === shareDeviceId)) {
-        f.devices.push({ deviceID: shareDeviceId })
+      const existing = f.devices.find((d) => d.deviceID === shareDeviceId)
+      if (existing) {
+        if (encryptionPassword !== undefined) existing.encryptionPassword = encryptionPassword
+      } else {
+        f.devices.push({
+          deviceID: shareDeviceId,
+          ...(encryptionPassword !== undefined ? { encryptionPassword } : {}),
+        })
       }
     })
   }

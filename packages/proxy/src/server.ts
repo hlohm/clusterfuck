@@ -213,12 +213,21 @@ async function handleRequest(
       }
 
       if (method === 'POST' && parts.length === 6 && parts[5] === 'shares') {
-        const body = (await readJsonBody(req)) as { deviceId?: unknown } | undefined
+        const body = (await readJsonBody(req)) as
+          | { deviceId?: unknown; encryptionPassword?: unknown }
+          | undefined
         if (typeof body?.deviceId !== 'string' || body.deviceId === '') {
           sendJson(res, 400, { error: 'deviceId is required' })
           return
         }
-        await manager.addShare(deviceId, folderId, body.deviceId)
+        if (body.encryptionPassword !== undefined && typeof body.encryptionPassword !== 'string') {
+          sendJson(res, 400, { error: 'encryptionPassword must be a string' })
+          return
+        }
+        // Pass the field through as-is (not `|| undefined`) — an explicit
+        // empty string is how a caller clears an already-set password, and
+        // coercing it away would make that silently impossible.
+        await manager.addShare(deviceId, folderId, body.deviceId, body.encryptionPassword)
         sendJson(res, 200, { ok: true })
         return
       }

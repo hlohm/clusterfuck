@@ -256,6 +256,61 @@ describe('ClusterStateManager mutations', () => {
     expect(calls.some((c) => c.method === 'PUT')).toBe(false)
   })
 
+  it('adds a share with an encryption password for an untrusted peer', async () => {
+    const { manager, calls } = installFakeCluster()
+    await refreshed(manager)
+    calls.length = 0
+
+    await manager.addShare('DEVICE-A', 'f1', 'DEVICE-B', 'hunter2')
+
+    const putCall = calls.find((c) => c.method === 'PUT' && c.url === '/rest/config/folders/f1')
+    const folder = JSON.parse(putCall!.body!) as { devices: { deviceID: string; encryptionPassword?: string }[] }
+    expect(folder.devices.find((d) => d.deviceID === 'DEVICE-B')?.encryptionPassword).toBe('hunter2')
+  })
+
+  it('adding a share with no password omits encryptionPassword entirely', async () => {
+    const { manager, calls } = installFakeCluster()
+    await refreshed(manager)
+    calls.length = 0
+
+    // DEVICE-B is already on f1's device list in the fake cluster; re-adding
+    // it without a password must not introduce an encryptionPassword key.
+    await manager.addShare('DEVICE-A', 'f1', 'DEVICE-B')
+
+    const putCall = calls.find((c) => c.method === 'PUT' && c.url === '/rest/config/folders/f1')
+    const folder = JSON.parse(putCall!.body!) as { devices: { deviceID: string; encryptionPassword?: string }[] }
+    expect(folder.devices.find((d) => d.deviceID === 'DEVICE-B')).not.toHaveProperty('encryptionPassword')
+  })
+
+  it('an explicit empty-string password clears a previously-set one', async () => {
+    const { manager, calls } = installFakeCluster()
+    await refreshed(manager)
+
+    await manager.addShare('DEVICE-A', 'f1', 'DEVICE-B', 'hunter2')
+    calls.length = 0
+    await manager.addShare('DEVICE-A', 'f1', 'DEVICE-B', '')
+
+    const putCall = calls.find((c) => c.method === 'PUT' && c.url === '/rest/config/folders/f1')
+    const folder = JSON.parse(putCall!.body!) as { devices: { deviceID: string; encryptionPassword?: string }[] }
+    expect(folder.devices.find((d) => d.deviceID === 'DEVICE-B')?.encryptionPassword).toBe('')
+  })
+
+  it('re-adding an already-shared device updates its encryption password', async () => {
+    const { manager, calls } = installFakeCluster()
+    await refreshed(manager)
+    calls.length = 0
+
+    // DEVICE-B is already shared on f1 (no password); calling addShare again
+    // with a password should set it on the existing entry, not duplicate it.
+    await manager.addShare('DEVICE-A', 'f1', 'DEVICE-B', 'newpassword')
+
+    const putCall = calls.find((c) => c.method === 'PUT' && c.url === '/rest/config/folders/f1')
+    const folder = JSON.parse(putCall!.body!) as { devices: { deviceID: string; encryptionPassword?: string }[] }
+    const entries = folder.devices.filter((d) => d.deviceID === 'DEVICE-B')
+    expect(entries).toHaveLength(1)
+    expect(entries[0]!.encryptionPassword).toBe('newpassword')
+  })
+
   it('edits a folder on the node identified by its own device ID, not the config label', async () => {
     const { manager, calls } = installFakeCluster()
     await (manager as unknown as { refresh(): Promise<void> }).refresh()

@@ -59,11 +59,21 @@ export function setFolderType(deviceId: string, folderId: string, type: FolderTy
   )
 }
 
-export function addShare(deviceId: string, folderId: string, shareDeviceId: string): Promise<void> {
+/**
+ * `encryptionPassword`, if set, makes shareDeviceId untrusted/receiveencrypted
+ * on its own side. Also doubles as "set/change the password on an
+ * already-shared device" — omit it to leave an existing password untouched.
+ */
+export function addShare(
+  deviceId: string,
+  folderId: string,
+  shareDeviceId: string,
+  encryptionPassword?: string,
+): Promise<void> {
   return call(
     'POST',
     `/api/folders/${encodeURIComponent(folderId)}/devices/${encodeURIComponent(deviceId)}/shares`,
-    { deviceId: shareDeviceId },
+    { deviceId: shareDeviceId, encryptionPassword },
   )
 }
 
