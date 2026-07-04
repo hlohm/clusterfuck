@@ -8,9 +8,9 @@ import { useId } from 'react'
 export function Logo({ size = 28 }: { size?: number }) {
   const gradientId = useId()
 
-  // Each layer is its own rotation + slight scale about the center (not a pure
-  // 120° copy), so the nodes and spokes sit at different positions/angles
-  // between layers instead of stacking — the interweaving reads clearly.
+  // Each layer is its own rotation + slight scale about the center AND its own
+  // hub position, so the three center nodes and their spokes land at different
+  // spots — the copies read as jumbled/interwoven, not a stack of one glyph.
   const layer = (
     rot: number,
     scale: number,
@@ -18,6 +18,8 @@ export function Logo({ size = 28 }: { size?: number }) {
     stroke: number,
     satR: number,
     hubR: number,
+    hubX: number,
+    hubY: number,
   ) => (
     <g
       transform={`translate(32 32) rotate(${rot}) scale(${scale}) translate(-32 -32)`}
@@ -27,13 +29,13 @@ export function Logo({ size = 28 }: { size?: number }) {
       strokeWidth={stroke}
       strokeLinecap="round"
     >
-      <line x1="36.83" y1="35.14" x2="53.26" y2="21.50" />
+      <line x1={hubX} y1={hubY} x2="53.26" y2="21.50" />
       <circle cx="53.26" cy="21.50" r={satR} stroke="none" />
-      <line x1="36.83" y1="35.14" x2="47.20" y2="50.10" />
+      <line x1={hubX} y1={hubY} x2="47.20" y2="50.10" />
       <circle cx="47.20" cy="50.10" r={satR} stroke="none" />
-      <line x1="36.83" y1="35.14" x2="9.06" y2="37.71" />
+      <line x1={hubX} y1={hubY} x2="9.06" y2="37.71" />
       <circle cx="9.06" cy="37.71" r={satR} stroke="none" />
-      <circle cx="36.83" cy="35.14" r={hubR} stroke="none" />
+      <circle cx={hubX} cy={hubY} r={hubR} stroke="none" />
     </g>
   )
 
@@ -47,9 +49,9 @@ export function Logo({ size = 28 }: { size?: number }) {
       </defs>
       <circle cx="32" cy="32" r="32" fill={`url(#${gradientId})`} />
       <circle cx="32" cy="32" r="23.85" fill="none" stroke="#fff" strokeWidth="3.27" />
-      {layer(126, 0.93, 0.62, 2.6, 3.6, 3.8)}
-      {layer(242, 0.97, 0.82, 2.9, 4.2, 4.4)}
-      {layer(2, 1, 1, 3.27, 5.0, 5.1)}
+      {layer(112, 0.91, 0.6, 2.5, 3.5, 3.7, 40.83, 31.64)}
+      {layer(250, 0.96, 0.8, 2.8, 4.1, 4.3, 33.33, 32.64)}
+      {layer(6, 1, 1, 3.27, 5.0, 5.1, 37.83, 38.64)}
     </svg>
   )
 }
