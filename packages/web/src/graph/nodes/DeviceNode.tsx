@@ -32,8 +32,9 @@ export function DeviceNode({ data }: NodeProps & { data: DeviceNodeData }) {
         borderColor: isSelected ? 'var(--accent)' : cssColor(style.accent),
       }}
     >
-      <Handle type="target" position={Position.Top} style={{ opacity: 0 }} />
-      <Handle type="source" position={Position.Top} style={{ opacity: 0 }} />
+      {/* Top handles for hub-mode edges (folder above → device below). */}
+      <Handle id="top-in" type="target" position={Position.Top} style={{ opacity: 0 }} />
+      <Handle id="top-out" type="source" position={Position.Top} style={{ opacity: 0 }} />
       {/* Centered handles for mesh-mode edges: lines run node-center to
           node-center so parallel offsets stay parallel from end to end. */}
       <Handle id="center-in" type="target" position={Position.Top} style={CENTER_HANDLE} />

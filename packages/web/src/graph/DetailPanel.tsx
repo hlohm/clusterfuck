@@ -5,6 +5,7 @@ import { sharesByDevice, sharesByFolder } from '@clusterfuck/shared'
 import { FOLDER_TYPE_STYLE } from '../encoding/folderTypeStyle'
 import { FOLDER_STATE_STYLE } from '../encoding/folderStateStyle'
 import { DEVICE_STATE_STYLE } from '../encoding/deviceStateStyle'
+import { StatusBadge } from '../views/StatusBadge'
 import * as mutations from '../data/mutations'
 
 export interface DetailPanelProps {
@@ -85,55 +86,57 @@ function ShareActions({ cluster, share }: { cluster: ClusterModel; share: Share 
   const pausing = share.state !== 'paused'
   return (
     <div className="detail-panel__actions">
-      <div className="detail-panel__action-row">
-        <button
-          disabled={busy}
-          onClick={() =>
-            run(`${pausing ? 'Pause' : 'Resume'} folder "${folderLabel}" on ${nodeName}?`, () =>
-              mutations.setFolderPaused(share.deviceId, share.folderId, pausing),
-            )
-          }
-        >
-          {pausing ? 'Pause folder' : 'Resume folder'}
-        </button>
-        <button
-          disabled={busy}
-          onClick={() => run(null, () => mutations.rescanFolder(share.deviceId, share.folderId))}
-        >
-          Rescan
-        </button>
+      <div className="detail-panel__group">
+        <div className="detail-panel__group-label">Actions</div>
+        <div className="detail-panel__action-row">
+          <button
+            disabled={busy}
+            onClick={() =>
+              run(`${pausing ? 'Pause' : 'Resume'} folder "${folderLabel}" on ${nodeName}?`, () =>
+                mutations.setFolderPaused(share.deviceId, share.folderId, pausing),
+              )
+            }
+          >
+            {pausing ? 'Pause folder' : 'Resume folder'}
+          </button>
+          <button
+            disabled={busy}
+            onClick={() => run(null, () => mutations.rescanFolder(share.deviceId, share.folderId))}
+          >
+            Rescan
+          </button>
+        </div>
+        <label className="detail-panel__action-row">
+          Type:
+          <select
+            value={share.type}
+            disabled={busy || isEncrypted}
+            title={isEncrypted ? 'Encrypted folders cannot be converted in place' : undefined}
+            onChange={(event) => {
+              const type = event.target.value as FolderType
+              run(
+                `Change folder "${folderLabel}" to ${FOLDER_TYPE_STYLE[type].label} on ${nodeName}?`,
+                () => mutations.setFolderType(share.deviceId, share.folderId, type),
+              )
+            }}
+          >
+            {typeOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
 
-      <label className="detail-panel__action-row">
-        Type:
-        <select
-          value={share.type}
-          disabled={busy || isEncrypted}
-          title={isEncrypted ? 'Encrypted folders cannot be converted in place' : undefined}
-          onChange={(event) => {
-            const type = event.target.value as FolderType
-            run(
-              `Change folder "${folderLabel}" to ${FOLDER_TYPE_STYLE[type].label} on ${nodeName}?`,
-              () => mutations.setFolderType(share.deviceId, share.folderId, type),
-            )
-          }}
-        >
-          {typeOptions.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-      </label>
-
-      <div className="detail-panel__shared-with">
-        <h4>Shared with (via this node)</h4>
+      <div className="detail-panel__group detail-panel__shared-with">
+        <div className="detail-panel__group-label">Shared with (via this node)</div>
         <ul>
           {share.sharedWith.map((id) => {
             const name = deviceById.get(id)?.name ?? id
             return (
               <li key={id}>
-                {name}
+                <span>{name}</span>
                 {id !== share.deviceId && (
                   <button
                     disabled={busy}
@@ -240,20 +243,22 @@ export function DetailPanel({ cluster, selection, isLive }: DetailPanelProps) {
           <strong>Folder ID:</strong> <code>{folder.id}</code>
         </p>
         <h4>Devices sharing this folder ({shares.length})</h4>
-        <ul>
+        <div className="detail-panel__nodes">
           {shares.map((share) => {
             const typeStyle = FOLDER_TYPE_STYLE[share.type]
-            const stateStyle = FOLDER_STATE_STYLE[share.state]
             const device = deviceById.get(share.deviceId)
             return (
-              <li key={share.deviceId}>
-                <strong>{device?.name ?? share.deviceId}</strong> — {typeStyle.label},{' '}
-                {stateStyle.label}
+              <section className="node-section" key={share.deviceId}>
+                <header className="node-section__header">
+                  <span className="node-section__name">{device?.name ?? share.deviceId}</span>
+                  <StatusBadge state={share.state} />
+                </header>
+                <div className="node-section__type">{typeStyle.label}</div>
                 {isLive && <ShareActions cluster={cluster} share={share} />}
-              </li>
+              </section>
             )
           })}
-        </ul>
+        </div>
       </aside>
     )
   }

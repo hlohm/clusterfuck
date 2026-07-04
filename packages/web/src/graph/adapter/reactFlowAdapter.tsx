@@ -88,6 +88,7 @@ function hubGraph(cluster: ClusterModel, selection: Selection) {
       id: `share:${share.folderId}:${share.deviceId}`,
       source: folderNodeId(share.folderId),
       target: deviceNodeId(share.deviceId),
+      targetHandle: 'top-in',
       style: {
         stroke: cssColor(style.color),
         strokeWidth: isSelected ? 3 : 1.5,

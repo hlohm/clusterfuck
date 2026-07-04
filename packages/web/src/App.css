@@ -582,13 +582,61 @@ button {
   margin-top: 2px;
 }
 
+/* Each device that shares the selected folder is its own bounded card. */
+.detail-panel__nodes {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.node-section {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: var(--code-bg);
+}
+
+.node-section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.node-section__name {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-h);
+}
+
+.node-section__type {
+  font-size: 12px;
+  color: var(--text);
+  margin-top: 2px;
+}
+
 .detail-panel__actions {
   margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px dashed var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* A labelled subsection inside a node's controls (Actions, Shared with). */
+.detail-panel__group {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.detail-panel__group-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text);
 }
 
 .detail-panel__action-row {
@@ -596,6 +644,7 @@ button {
   align-items: center;
   gap: 6px;
   font-size: 13px;
+  flex-wrap: wrap;
 }
 
 .detail-panel__action-row select {
@@ -609,12 +658,13 @@ button {
 }
 
 .detail-panel__shared-with ul {
-  margin: 4px 0;
+  margin: 0;
 }
 
 .detail-panel__shared-with li {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 6px;
 }
 
