@@ -3,7 +3,7 @@
 The thin backend between the frontend and one or more Syncthing nodes. Holds
 API keys, aggregates each node's own view into one normalized `ClusterModel`
 (`@clusterfuck/shared`), and serves it read-only over HTTP + Server-Sent
-Events. See the root `README.md` (Phase 2 section) for the decisions behind
+Events. See [`ROADMAP.md`](../../ROADMAP.md) (Phase 2) for the decisions behind
 this design.
 
 ## Setup
