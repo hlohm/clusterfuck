@@ -116,7 +116,8 @@ tabs. Mapped from the GUI's actual surface, in priority order.
 ### Folder management
 
 - [x] Pause/resume, rescan, change type, add/remove share, create shared folder
-- [ ] **(next)** Remove folder (per node / cluster-wide)
+- [x] Remove folder (per node; cluster-wide removal is doing this on each
+      sharing node in turn, no bulk action yet — see Cluster operations)
 - [ ] **(next)** Per-share encryption passwords — first-class `receiveencrypted`
       setup, the case this app exists to make legible
 - [ ] Versioning config (trashcan/simple/staggered/external) per node
@@ -128,7 +129,8 @@ tabs. Mapped from the GUI's actual surface, in priority order.
 ### Device management
 
 - [x] Pause/resume (fan-out), add device to chosen nodes
-- [ ] **(next)** Remove device (from chosen/all nodes)
+- [x] Remove device (fan-out to every registered node referencing it — same
+      scope as pause; never from the device's own config)
 - [ ] **(next)** Accept pending devices & folders — the cluster-wide "inbox"
       (Syncthing's pending API), so introducing a node becomes: accept once,
       everywhere

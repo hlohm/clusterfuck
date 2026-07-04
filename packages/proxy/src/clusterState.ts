@@ -157,6 +157,19 @@ export class ClusterStateManager {
   }
 
   /**
+   * Every registered node (other than the device's own, if it is one) whose
+   * own config lists `deviceId` as a peer — the fan-out target set for any
+   * "do this to a device everywhere we can" action (pause, remove, ...).
+   */
+  private nodesReferencing(deviceId: string): { nodeId: string; client: SyncthingClient }[] {
+    return this.clients.filter(({ nodeId }) => {
+      const snap = this.snapshots.find((s) => s.nodeId === nodeId)
+      if (!snap || snap.myID === deviceId) return false
+      return snap.devices.some((d) => d.deviceId === deviceId)
+    })
+  }
+
+  /**
    * Pauses/resumes *every* registered node's connection to this device — same
    * effect as clicking pause in each of those nodes' own Syncthing GUIs. A
    * device doesn't need to be one of our own registered nodes for this to
@@ -164,11 +177,7 @@ export class ClusterStateManager {
    */
   setDevicePaused(deviceId: string, paused: boolean): Promise<void> {
     return this.enqueueMutation(async () => {
-      const targets = this.clients.filter(({ nodeId }) => {
-        const snap = this.snapshots.find((s) => s.nodeId === nodeId)
-        if (!snap || snap.myID === deviceId) return false
-        return snap.devices.some((d) => d.deviceId === deviceId)
-      })
+      const targets = this.nodesReferencing(deviceId)
       if (targets.length === 0) throw new NotManagedError(deviceId)
 
       // allSettled, not all: if one node fails mid-fan-out the others have
@@ -178,22 +187,37 @@ export class ClusterStateManager {
           paused ? client.pauseDevice(deviceId) : client.resumeDevice(deviceId),
         ),
       )
-      await this.refreshAfterMutation()
-      const failed = results.flatMap((r, i) =>
-        r.status === 'rejected' ? [targets[i]!.nodeId] : [],
-      )
-      if (failed.length > 0) {
-        throw new Error(
-          `${paused ? 'pause' : 'resume'} of ${deviceId} failed on ${failed.join(', ')}` +
-            (failed.length < targets.length ? ' (applied on the remaining nodes)' : ''),
-        )
-      }
+      await this.finishFanOut(`${paused ? 'pause' : 'resume'} of ${deviceId}`, targets, results)
+    })
+  }
+
+  /**
+   * Removes this device as a peer from every registered node that has it
+   * configured — Syncthing also drops it from any folder it was shared on
+   * for that node. Same scope as setDevicePaused: every referencing node,
+   * never the device's own config (there's no "remove yourself").
+   */
+  removeDevice(deviceId: string): Promise<void> {
+    return this.enqueueMutation(async () => {
+      const targets = this.nodesReferencing(deviceId)
+      if (targets.length === 0) throw new NotManagedError(deviceId)
+
+      const results = await Promise.allSettled(targets.map(({ client }) => client.deleteDevice(deviceId)))
+      await this.finishFanOut(`removing device ${deviceId}`, targets, results)
     })
   }
 
   rescanFolder(deviceId: string, folderId: string): Promise<void> {
     return this.enqueueMutation(async () => {
       await this.clientForDevice(deviceId).rescanFolder(folderId)
+      await this.refreshAfterMutation()
+    })
+  }
+
+  /** Removes a folder from one specific registered node's config only — not cluster-wide. */
+  removeFolder(deviceId: string, folderId: string): Promise<void> {
+    return this.enqueueMutation(async () => {
+      await this.clientForDevice(deviceId).deleteFolder(folderId)
       await this.refreshAfterMutation()
     })
   }

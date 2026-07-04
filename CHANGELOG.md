@@ -6,6 +6,11 @@ Versioning policy is in `CLAUDE.md`; the phased feature history is in
 
 ## [Unreleased]
 
+- Phase 5: **Remove device** (`DELETE /api/devices/:deviceId`, fans out to
+  every registered node referencing it, same scope as pause) and **Remove
+  folder** (`DELETE /api/folders/:folderId/devices/:deviceId`, one node only,
+  doesn't touch the data on disk) — both behind a confirmation, both in the
+  detail panel.
 - Graph mode rename: the devices-only mesh is now called **Nodes** and is the
   default; the folder-hub layout is now **Folders** (was "Devices only" /
   "Folders as hubs").

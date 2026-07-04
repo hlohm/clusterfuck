@@ -23,6 +23,11 @@ export function addDevice(deviceId: string, name: string, nodes: string[]): Prom
   return call('POST', '/api/devices', { deviceId, name: name || undefined, nodes })
 }
 
+/** Removes a device as a peer from every registered node that has it configured. */
+export function removeDevice(deviceId: string): Promise<void> {
+  return call('DELETE', `/api/devices/${encodeURIComponent(deviceId)}`)
+}
+
 /** Creates a folder on each named registered node, shared among all of them. */
 export function createFolder(
   spec: { folderId: string; label: string; path: string; type: FolderType },
@@ -66,5 +71,13 @@ export function removeShare(deviceId: string, folderId: string, shareDeviceId: s
   return call(
     'DELETE',
     `/api/folders/${encodeURIComponent(folderId)}/devices/${encodeURIComponent(deviceId)}/shares/${encodeURIComponent(shareDeviceId)}`,
+  )
+}
+
+/** Removes the folder from this one node's config only — not cluster-wide. */
+export function removeFolder(deviceId: string, folderId: string): Promise<void> {
+  return call(
+    'DELETE',
+    `/api/folders/${encodeURIComponent(folderId)}/devices/${encodeURIComponent(deviceId)}`,
   )
 }

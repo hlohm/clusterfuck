@@ -50,6 +50,10 @@ Listens on `PORT` (default `4000`). Routes:
   of those nodes' own Syncthing GUIs). Works even for a device we don't hold
   keys for ourselves, as long as some registered node has it configured as a
   peer; 409 if no registered node references it at all.
+- `DELETE /api/devices/:deviceId` — same fan-out scope as pause: removes the
+  device as a peer from *every* registered node that has it configured (never
+  from the device's own config — there's no "remove yourself"). Syncthing
+  also drops it from any folder it was shared on for that node.
 - `POST /api/folders/:folderId/devices/:deviceId/pause` / `.../resume` —
   pauses/resumes that folder on that specific registered node.
 - `POST /api/folders/:folderId/devices/:deviceId/rescan` — triggers an
@@ -61,6 +65,10 @@ Listens on `PORT` (default `4000`). Routes:
   node.
 - `DELETE /api/folders/:folderId/devices/:deviceId/shares/:targetDeviceId` —
   removes a device from that folder's share list on that node.
+- `DELETE /api/folders/:folderId/devices/:deviceId` — removes the folder from
+  that one node's config only, not cluster-wide (does not touch the data on
+  disk). Remove it from the other sharing nodes separately if that's what you
+  want.
 
 `:deviceId` here is always a registered node's own Syncthing device ID — the
 same value as a Share's `deviceId` in the normalized model, since Phase 2's
