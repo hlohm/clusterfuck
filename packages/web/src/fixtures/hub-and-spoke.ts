@@ -9,12 +9,12 @@ export const hubAndSpoke: ClusterModel = {
   id: 'hub-and-spoke',
   label: 'Hub and spoke (6 devices, shared photos folder)',
   devices: [
-    { id: 'device-hub', name: 'hub-server', state: 'this-device' },
-    { id: 'device-phone', name: 'phone', state: 'connected' },
-    { id: 'device-tablet', name: 'tablet', state: 'connected' },
-    { id: 'device-laptop', name: 'laptop', state: 'connected' },
-    { id: 'device-nas', name: 'nas', state: 'connected' },
-    { id: 'device-kiosk', name: 'lobby-kiosk', state: 'connected' },
+    { id: 'device-hub', name: 'hub-server', state: 'this-device', managed: true },
+    { id: 'device-phone', name: 'phone', state: 'connected', managed: true },
+    { id: 'device-tablet', name: 'tablet', state: 'connected', managed: true },
+    { id: 'device-laptop', name: 'laptop', state: 'connected', managed: true },
+    { id: 'device-nas', name: 'nas', state: 'connected', managed: true },
+    { id: 'device-kiosk', name: 'lobby-kiosk', state: 'connected', managed: true },
   ],
   folders: [
     { id: 'photos', label: 'photos' },

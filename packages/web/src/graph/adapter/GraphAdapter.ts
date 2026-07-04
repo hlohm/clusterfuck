@@ -2,10 +2,19 @@ import type { ComponentType } from 'react'
 import type { ClusterModel } from '@clusterfuck/shared'
 import type { Selection } from '../selection'
 
+/**
+ * hubs: the two-layer layout — folder hub nodes with one edge per share
+ * (edge color = folder type). mesh: devices only, one edge per device pair
+ * per shared folder (edge color = folder identity).
+ */
+export type GraphMode = 'hubs' | 'mesh'
+
 export interface GraphAdapterProps {
   cluster: ClusterModel
   selection: Selection
   onSelect: (selection: Selection) => void
+  mode: GraphMode
+  onModeChange: (mode: GraphMode) => void
 }
 
 /**

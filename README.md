@@ -177,12 +177,75 @@ Multiple ways of reading the same cluster model, plus a design pass.
   app's accent color is drawn from that gradient, and the encoding colors are
   now theme-aware (CSS `light-dark()`) in both modes. The folder-type palette
   re-validated for color-blind-safe separation and contrast on both surfaces.
+- **Graph modes** (added in the follow-up iteration): the graph toggles
+  between *Folders as hubs* (the two-layer hyperedge layout; edge color =
+  folder type) and *Devices only* — a nodes-only mesh where each folder
+  becomes pairwise edges between the devices sharing it, colored by folder
+  identity from a validated categorical palette (8 slots; past 8 the tail
+  goes neutral and the legend/table carry identity). Devices sit on a circle;
+  parallel edges between a pair fan out with different curvatures.
+- **Topology editing** (same iteration): *Add device* (register a peer on any
+  subset of managed nodes) and *Add folder* (create a folder on ≥2 managed
+  nodes, shared among them) via header dialogs that preview exactly which
+  nodes the change lands on. The model gained `Device.managed` to distinguish
+  our registered nodes from devices only seen as remote peers.
+
+### Phase 5 — Cluster-wide Syncthing GUI parity (roadmap)
+
+The destination: everything the stock Syncthing web GUI can do *for one
+node*, doable here *for the whole cluster* — one pane of glass instead of N
+browser tabs. Mapped from the GUI's actual surface, in rough priority order.
+`✔` = already shipped, `→` = next up, `·` = later.
+
+**Folder management**
+- ✔ Pause/resume, rescan, change type, add/remove share, create shared folder
+- → Remove folder (per node / cluster-wide)
+- → Per-share encryption passwords — first-class `receiveencrypted` setup,
+  the case this app exists to make legible
+- · Versioning config (trashcan/simple/staggered/external) per node
+- · Ignore patterns — view/edit per node, diff across nodes
+- · Advanced folder options (rescan interval, watcher, min disk free);
+  `sendonly` override + `receiveonly` revert buttons
+- · Conflict & failed-item surfacing (per folder, cluster-rolled-up)
+
+**Device management**
+- ✔ Pause/resume (fan-out), add device to chosen nodes
+- → Remove device (from chosen/all nodes)
+- → Accept pending devices & folders — the cluster-wide "inbox" (Syncthing's
+  pending API), so introducing a node becomes: accept once, everywhere
+- · Edit device options: name, addresses, compression, introducer,
+  auto-accept, per-device rate limits
+- · Device identity: show ID/QR for any managed node
+
+**Cluster operations**
+- → Pause all / resume all (devices or folders)
+- · Rescan all; restart/shutdown a node's Syncthing; upgrade orchestration
+  (one node at a time, health-checked)
+- · Config drift detection: same folder configured differently across nodes
+  (label/type/versioning mismatches), asymmetric shares (A shares with B,
+  B doesn't share back), with suggested fixes — the genuinely novel
+  cluster-level feature the single-node GUI cannot have
+- · Bandwidth limits cluster-wide
+
+**Observability**
+- ✔ Live state/completion/errors via events + SSE; overview dashboard
+- · Per-node system status (version, uptime, listeners, discovery, RAM/CPU)
+- · Transfer rates and totals (per link, per node, cluster aggregate)
+- · Recent-changes feed and event log, merged across nodes
+- · Completion history/sparklines on the overview tiles
+
+**Foundations these need**
+- → Node registration UI (add a node's URL + API key at runtime, persisted
+  server-side) — replaces editing `dev-cluster.json` by hand
+- · Auth on the proxy the moment it's exposed beyond localhost
+- · Syncthing 2.x REST support (currently targets 1.x)
 
 ## Status
 
 Phases 1–4 are implemented: fixture mockup, live read-only visualization via
-the proxy, per-node/per-folder management actions, and the multi-view UI with
-the visual refresh. Phase 3's cluster-wide actions (and their dry-run/preview
-safety design) remain open, as do the Phase 3 auth question and anything not
-listed in a phase. Major decisions continue to be raised as they come up
-rather than guessed up front.
+the proxy, per-node/per-folder management actions (including creating devices
+and folders), and the multi-view UI — graph (hub and mesh modes), overview
+dashboard, and table — with the visual refresh. Phase 5 is the roadmap above:
+full cluster-wide parity with the Syncthing web GUI, worked through in
+priority order. Major decisions continue to be raised as they come up rather
+than guessed up front.

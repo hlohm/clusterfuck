@@ -11,9 +11,14 @@ export function validateCluster(cluster: ClusterModel): ValidationError[] {
   const folderIds = new Set(cluster.folders.map((f) => f.id))
   const seenPairs = new Set<string>()
 
+  const managedIds = new Set(cluster.devices.filter((d) => d.managed).map((d) => d.id))
+
   for (const share of cluster.shares) {
     if (!deviceIds.has(share.deviceId)) {
       errors.push({ message: `Share references unknown device "${share.deviceId}"` })
+    } else if (!managedIds.has(share.deviceId)) {
+      // Shares are first-hand views; only a registered (managed) node has one.
+      errors.push({ message: `Share references unmanaged device "${share.deviceId}"` })
     }
     if (!folderIds.has(share.folderId)) {
       errors.push({ message: `Share references unknown folder "${share.folderId}"` })

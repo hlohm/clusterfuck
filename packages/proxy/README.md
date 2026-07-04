@@ -30,7 +30,16 @@ Listens on `PORT` (default `4000`). Routes:
   every change.
 - `GET /api/health` — liveness check.
 
-**Mutations (Phase 3, first slice — per-node/per-folder only, no auth):**
+**Mutations (Phase 3+ — no auth, same trust model as the read routes):**
+
+- `POST /api/devices` body `{ "deviceId": "...", "name": "...", "nodes":
+  ["<node device ID>", ...] }` — adds the device as a peer in each named
+  registered node's config.
+- `POST /api/folders` body `{ "folderId": "...", "label": "...", "path":
+  "~/...", "type": "sendreceive", "devices": ["<node device ID>", ...] }` —
+  creates the folder on each named registered node, shared among all of
+  them. `path` defaults to `~/<folderId>` on every node; per-node paths and
+  types can be adjusted afterwards with the folder-scoped routes below.
 
 - `POST /api/devices/:deviceId/pause` / `.../resume` — pauses/resumes *every*
   registered node's connection to that device (mirrors clicking pause in each

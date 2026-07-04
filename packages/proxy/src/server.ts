@@ -91,6 +91,61 @@ async function handleRequest(
   }
 
   try {
+    // POST /api/devices — add a device to the named registered nodes' configs
+    if (method === 'POST' && parts.length === 2 && parts[0] === 'api' && parts[1] === 'devices') {
+      const body = (await readJsonBody(req)) as
+        | { deviceId?: unknown; name?: unknown; nodes?: unknown }
+        | undefined
+      if (typeof body?.deviceId !== 'string' || body.deviceId === '') {
+        sendJson(res, 400, { error: 'deviceId is required' })
+        return
+      }
+      if (!Array.isArray(body.nodes) || !body.nodes.every((n) => typeof n === 'string')) {
+        sendJson(res, 400, { error: 'nodes must be an array of registered node device IDs' })
+        return
+      }
+      await manager.addDevice(
+        body.deviceId,
+        typeof body.name === 'string' && body.name !== '' ? body.name : undefined,
+        body.nodes,
+      )
+      sendJson(res, 200, { ok: true })
+      return
+    }
+
+    // POST /api/folders — create a folder on (and shared among) the named nodes
+    if (method === 'POST' && parts.length === 2 && parts[0] === 'api' && parts[1] === 'folders') {
+      const body = (await readJsonBody(req)) as
+        | { folderId?: unknown; label?: unknown; path?: unknown; type?: unknown; devices?: unknown }
+        | undefined
+      if (typeof body?.folderId !== 'string' || body.folderId === '') {
+        sendJson(res, 400, { error: 'folderId is required' })
+        return
+      }
+      if (!Array.isArray(body.devices) || !body.devices.every((d) => typeof d === 'string')) {
+        sendJson(res, 400, { error: 'devices must be an array of registered node device IDs' })
+        return
+      }
+      const type = body.type ?? 'sendreceive'
+      if (!isFolderType(type)) {
+        sendJson(res, 400, {
+          error: `type must be one of: ${SYNCTHING_FOLDER_TYPES.join(', ')}`,
+        })
+        return
+      }
+      await manager.createFolder(
+        {
+          id: body.folderId,
+          label: typeof body.label === 'string' && body.label !== '' ? body.label : body.folderId,
+          path: typeof body.path === 'string' && body.path !== '' ? body.path : `~/${body.folderId}`,
+          type,
+        },
+        body.devices,
+      )
+      sendJson(res, 200, { ok: true })
+      return
+    }
+
     // POST /api/devices/:deviceId/pause|resume
     if (method === 'POST' && parts.length === 4 && parts[0] === 'api' && parts[1] === 'devices') {
       const deviceId = decodeURIComponent(parts[2]!)

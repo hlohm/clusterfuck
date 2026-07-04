@@ -92,6 +92,138 @@
   color: var(--text);
 }
 
+.app__add {
+  display: flex;
+  gap: 6px;
+}
+
+.app__add button {
+  font: inherit;
+  font-size: 13px;
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+  cursor: pointer;
+}
+
+.app__add button:hover {
+  border-color: var(--accent-border);
+}
+
+/* ── Dialogs ────────────────────────────────────────────────────────── */
+
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+}
+
+.dialog {
+  width: 380px;
+  max-width: calc(100vw - 40px);
+  max-height: calc(100svh - 80px);
+  overflow-y: auto;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dialog h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.dialog__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.dialog__field input,
+.dialog__field select {
+  font: inherit;
+  font-size: 14px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+}
+
+.dialog__nodes {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.dialog__nodes legend {
+  font-size: 12px;
+  color: var(--text);
+  padding: 0 4px;
+}
+
+.dialog__nodes label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-h);
+}
+
+.dialog__preview {
+  font-size: 12px;
+  color: var(--text);
+}
+
+.dialog__error {
+  font-size: 12px;
+  color: light-dark(#d03b3b, #e5615f);
+}
+
+.dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.dialog__actions button {
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+  cursor: pointer;
+}
+
+.dialog__actions button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.dialog__primary {
+  background: var(--accent) !important;
+  border-color: var(--accent) !important;
+  color: #fff !important;
+}
+
 /* ── Layout ─────────────────────────────────────────────────────────── */
 
 .app__main {
@@ -535,6 +667,38 @@ button {
   height: 10px;
   border-radius: 50%;
   flex: 0 0 auto;
+}
+
+/* ── Graph mode toggle (React Flow panel) ───────────────────────────── */
+
+.graph-mode {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg);
+}
+
+.graph-mode__option {
+  font: inherit;
+  font-size: 12px;
+  padding: 3px 12px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.graph-mode__option:hover {
+  color: var(--text-h);
+}
+
+.graph-mode__option[data-active='true'] {
+  background: var(--accent-bg);
+  color: var(--text-h);
+  box-shadow: 0 0 0 1px var(--accent-border);
 }
 
 /* ── Graph nodes: devices are round, folders are square ────────────── */

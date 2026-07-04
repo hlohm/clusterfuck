@@ -10,12 +10,15 @@ export const edgeCases: ClusterModel = {
   id: 'edge-cases',
   label: 'Edge cases (paused, error, out-of-sync, encrypted relay)',
   devices: [
-    { id: 'device-origin', name: 'origin', state: 'this-device' },
-    { id: 'device-mirror', name: 'mirror', state: 'connected' },
-    { id: 'device-satellite', name: 'satellite', state: 'disconnected' },
-    { id: 'device-vault', name: 'vault', state: 'paused' },
-    { id: 'device-relay-a', name: 'relay-a', state: 'connected' },
-    { id: 'device-relay-b', name: 'relay-b', state: 'connected' },
+    { id: 'device-origin', name: 'origin', state: 'this-device', managed: true },
+    { id: 'device-mirror', name: 'mirror', state: 'connected', managed: true },
+    { id: 'device-satellite', name: 'satellite', state: 'disconnected', managed: true },
+    { id: 'device-vault', name: 'vault', state: 'paused', managed: true },
+    { id: 'device-relay-a', name: 'relay-a', state: 'connected', managed: true },
+    { id: 'device-relay-b', name: 'relay-b', state: 'connected', managed: true },
+    // Known only from other nodes' configs — appears in the topology but has
+    // no first-hand Share rows and can't be managed directly.
+    { id: 'device-roamer', name: 'roamer (unmanaged)', state: 'disconnected', managed: false },
   ],
   folders: [
     { id: 'ledger', label: 'ledger' },

@@ -5,18 +5,21 @@ import {
   Background,
   Controls,
   MarkerType,
+  Panel,
   type Edge,
   type Node,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 
-import type { GraphAdapterProps } from './GraphAdapter'
+import type { GraphAdapterProps, GraphMode } from './GraphAdapter'
 import { deviceNodeId, folderNodeId } from './GraphAdapter'
 import { DeviceNode, type DeviceNodeData } from '../nodes/DeviceNode'
 import { FolderNode, type FolderNodeData } from '../nodes/FolderNode'
-import { folderHealthForDevice } from '@clusterfuck/shared'
+import { folderHealthForDevice, sharesByFolder, type ClusterModel } from '@clusterfuck/shared'
 import { FOLDER_TYPE_STYLE, type ArrowDirection } from '../../encoding/folderTypeStyle'
+import { folderColorMap } from '../../encoding/folderColors'
 import { cssColor } from '../../encoding/colors'
+import type { Selection } from '../selection'
 
 const nodeTypes = { device: DeviceNode, folder: FolderNode }
 
@@ -31,62 +34,137 @@ function markersFor(direction: ArrowDirection) {
   return { markerStart: arrow, markerEnd: arrow }
 }
 
-function ReactFlowAdapterInner({ cluster, selection, onSelect }: GraphAdapterProps) {
-  const { nodes, edges } = useMemo(() => {
-    const folderNodes: Node[] = cluster.folders.map((folder, index) => {
-      const isSelected = selection?.kind === 'folder' && selection.folderId === folder.id
-      const data: FolderNodeData = { folder, isSelected }
-      return {
-        id: folderNodeId(folder.id),
-        type: 'folder',
-        position: { x: index * COLUMN_WIDTH + 80, y: FOLDER_ROW_Y },
-        data,
-        draggable: false,
-      }
-    })
+function deviceNodesFor(
+  cluster: ClusterModel,
+  selection: Selection,
+  positionFor: (index: number) => { x: number; y: number },
+): Node[] {
+  return cluster.devices.map((device, index) => {
+    const isSelected = selection?.kind === 'device' && selection.deviceId === device.id
+    const data: DeviceNodeData = {
+      device,
+      health: folderHealthForDevice(cluster, device.id),
+      isSelected,
+    }
+    return {
+      id: deviceNodeId(device.id),
+      type: 'device',
+      position: positionFor(index),
+      data,
+      draggable: false,
+    }
+  })
+}
 
-    const deviceNodes: Node[] = cluster.devices.map((device, index) => {
-      const isSelected = selection?.kind === 'device' && selection.deviceId === device.id
-      const data: DeviceNodeData = {
-        device,
-        health: folderHealthForDevice(cluster, device.id),
-        isSelected,
-      }
-      return {
-        id: deviceNodeId(device.id),
-        type: 'device',
-        position: { x: index * COLUMN_WIDTH + 80, y: DEVICE_ROW_Y },
-        data,
-        draggable: false,
-      }
-    })
+/** hubs: folders as hub nodes, one edge per share, colored by folder type. */
+function hubGraph(cluster: ClusterModel, selection: Selection) {
+  const folderNodes: Node[] = cluster.folders.map((folder, index) => {
+    const isSelected = selection?.kind === 'folder' && selection.folderId === folder.id
+    const data: FolderNodeData = { folder, isSelected }
+    return {
+      id: folderNodeId(folder.id),
+      type: 'folder',
+      position: { x: index * COLUMN_WIDTH + 80, y: FOLDER_ROW_Y },
+      data,
+      draggable: false,
+    }
+  })
 
-    const shareEdges: Edge[] = cluster.shares.map((share) => {
-      const style = FOLDER_TYPE_STYLE[share.type]
-      const isSelected =
-        selection?.kind === 'share' &&
-        selection.folderId === share.folderId &&
-        selection.deviceId === share.deviceId
+  const deviceNodes = deviceNodesFor(cluster, selection, (index) => ({
+    x: index * COLUMN_WIDTH + 80,
+    y: DEVICE_ROW_Y,
+  }))
 
-      return {
-        id: `share:${share.folderId}:${share.deviceId}`,
-        source: folderNodeId(share.folderId),
-        target: deviceNodeId(share.deviceId),
-        style: {
-          stroke: cssColor(style.color),
-          strokeWidth: isSelected ? 3 : 1.5,
-          strokeDasharray: style.dash === 'dashed' ? '6 4' : undefined,
-        },
-        label: isSelected ? style.label : undefined,
-        ...markersFor(style.arrow),
+  const edges: Edge[] = cluster.shares.map((share) => {
+    const style = FOLDER_TYPE_STYLE[share.type]
+    const isSelected =
+      selection?.kind === 'share' &&
+      selection.folderId === share.folderId &&
+      selection.deviceId === share.deviceId
+
+    return {
+      id: `share:${share.folderId}:${share.deviceId}`,
+      source: folderNodeId(share.folderId),
+      target: deviceNodeId(share.deviceId),
+      style: {
+        stroke: cssColor(style.color),
+        strokeWidth: isSelected ? 3 : 1.5,
+        strokeDasharray: style.dash === 'dashed' ? '6 4' : undefined,
+      },
+      label: isSelected ? style.label : undefined,
+      ...markersFor(style.arrow),
+    }
+  })
+
+  return { nodes: [...folderNodes, ...deviceNodes], edges }
+}
+
+/**
+ * mesh: devices only, on a circle. Each folder becomes pairwise edges among
+ * the devices sharing it, colored by folder identity. Parallel edges between
+ * the same pair fan out via different bezier curvatures.
+ */
+function meshGraph(cluster: ClusterModel, selection: Selection) {
+  const count = cluster.devices.length
+  const radius = Math.max(220, (count * 240) / (2 * Math.PI))
+  const nodes = deviceNodesFor(cluster, selection, (index) => {
+    const angle = -Math.PI / 2 + (2 * Math.PI * index) / Math.max(count, 1)
+    return { x: radius * Math.cos(angle), y: radius * Math.sin(angle) }
+  })
+
+  const colors = folderColorMap(cluster.folders.map((f) => f.id))
+  const pairCounts = new Map<string, number>()
+  const edges: Edge[] = []
+
+  for (const folder of cluster.folders) {
+    const members = sharesByFolder(cluster, folder.id).map((s) => s.deviceId)
+    const color = colors.get(folder.id)
+    const isSelected =
+      (selection?.kind === 'folder' || selection?.kind === 'share') &&
+      selection.folderId === folder.id
+
+    for (let i = 0; i < members.length; i++) {
+      for (let j = i + 1; j < members.length; j++) {
+        const pairKey = [members[i]!, members[j]!].sort().join('|')
+        const nth = pairCounts.get(pairKey) ?? 0
+        pairCounts.set(pairKey, nth + 1)
+        // 0 -> +0.2, 1 -> -0.2, 2 -> +0.45, 3 -> -0.45, ...
+        const curvature = (0.2 + 0.25 * Math.floor(nth / 2)) * (nth % 2 === 0 ? 1 : -1)
+
+        edges.push({
+          id: `mesh:${folder.id}:${members[i]}:${members[j]}`,
+          source: deviceNodeId(members[i]!),
+          target: deviceNodeId(members[j]!),
+          type: 'default',
+          pathOptions: { curvature },
+          style: {
+            stroke: color ? cssColor(color) : undefined,
+            strokeWidth: isSelected ? 3 : 1.5,
+          },
+          label: isSelected && i === 0 && j === 1 ? folder.label : undefined,
+        } as Edge)
       }
-    })
+    }
+  }
 
-    return { nodes: [...folderNodes, ...deviceNodes], edges: shareEdges }
-  }, [cluster, selection])
+  return { nodes, edges }
+}
+
+function ReactFlowAdapterInner({
+  cluster,
+  selection,
+  onSelect,
+  mode,
+  onModeChange,
+}: GraphAdapterProps) {
+  const { nodes, edges } = useMemo(
+    () => (mode === 'hubs' ? hubGraph(cluster, selection) : meshGraph(cluster, selection)),
+    [cluster, selection, mode],
+  )
 
   return (
     <ReactFlow
+      key={mode}
       nodes={nodes}
       edges={edges}
       nodeTypes={nodeTypes}
@@ -104,6 +182,11 @@ function ReactFlowAdapterInner({ cluster, selection, onSelect }: GraphAdapterPro
         }
       }}
       onEdgeClick={(_event, edge) => {
+        if (edge.id.startsWith('mesh:')) {
+          const folderId = edge.id.split(':')[1]!
+          onSelect({ kind: 'folder', folderId })
+          return
+        }
         const share = cluster.shares.find(
           (s) => `share:${s.folderId}:${s.deviceId}` === edge.id,
         )
@@ -111,6 +194,23 @@ function ReactFlowAdapterInner({ cluster, selection, onSelect }: GraphAdapterPro
       }}
       onPaneClick={() => onSelect(null)}
     >
+      <Panel position="top-left" className="graph-mode">
+        {(
+          [
+            ['hubs', 'Folders as hubs'],
+            ['mesh', 'Devices only'],
+          ] as [GraphMode, string][]
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            className="graph-mode__option"
+            data-active={mode === id}
+            onClick={() => onModeChange(id)}
+          >
+            {label}
+          </button>
+        ))}
+      </Panel>
       <Background />
       <Controls showInteractive={false} />
     </ReactFlow>

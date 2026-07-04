@@ -38,6 +38,7 @@ export interface NodeSnapshot {
 
 interface DeviceAcc {
   name: string
+  managed: boolean
   connectedViews: boolean[]
   pausedViews: boolean[]
 }
@@ -71,12 +72,13 @@ export function aggregateCluster(
     if (existing) {
       if (name) existing.name = name
     } else {
-      devices.set(id, { name: name || id, connectedViews: [], pausedViews: [] })
+      devices.set(id, { name: name || id, managed: false, connectedViews: [], pausedViews: [] })
     }
   }
 
   for (const snap of snapshots) {
     upsertDevice(snap.myID, snap.nodeId)
+    devices.get(snap.myID)!.managed = true
 
     for (const d of snap.devices) {
       upsertDevice(d.deviceId, d.name)
@@ -111,6 +113,7 @@ export function aggregateCluster(
     id,
     name: acc.name || id,
     state: reconcileDeviceState(acc),
+    managed: acc.managed,
   }))
 
   const folderList: Folder[] = [...folders].map(([id, folderLabel]) => ({

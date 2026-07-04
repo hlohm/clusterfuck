@@ -5,11 +5,13 @@ import { GraphView } from './graph/GraphView'
 import { Legend } from './graph/Legend'
 import { DetailPanel } from './graph/DetailPanel'
 import type { Selection } from './graph/selection'
+import type { GraphMode } from './graph/adapter/GraphAdapter'
 import { FIXTURE_CLUSTERS } from './fixtures'
 import { useLiveCluster } from './data/liveSource'
 import { Logo } from './Logo'
 import { OverviewView } from './views/OverviewView'
 import { TableView } from './views/TableView'
+import { AddDeviceDialog, AddFolderDialog } from './views/AddDialogs'
 
 const LIVE_SOURCE_ID = '__live__'
 
@@ -24,7 +26,9 @@ const VIEWS: { id: ViewId; label: string }[] = [
 function App() {
   const [sourceId, setSourceId] = useState(FIXTURE_CLUSTERS[0]!.id)
   const [view, setView] = useState<ViewId>('graph')
+  const [graphMode, setGraphMode] = useState<GraphMode>('hubs')
   const [selection, setSelection] = useState<Selection>(null)
+  const [dialog, setDialog] = useState<'device' | 'folder' | null>(null)
 
   const isLive = sourceId === LIVE_SOURCE_ID
   const live = useLiveCluster(isLive)
@@ -69,6 +73,12 @@ function App() {
               {live.status === 'connecting' ? 'Connecting to proxy…' : (live.error ?? 'Connection error')}
             </span>
           )}
+          {isLive && cluster && (
+            <div className="app__add">
+              <button onClick={() => setDialog('device')}>＋ Device</button>
+              <button onClick={() => setDialog('folder')}>＋ Folder</button>
+            </div>
+          )}
           <label className="app__fixture-picker">
             Source:
             <select
@@ -95,11 +105,17 @@ function App() {
         ) : view === 'graph' ? (
           <>
             <div className="app__graph">
-              <GraphView cluster={cluster} selection={selection} onSelect={setSelection} />
+              <GraphView
+                cluster={cluster}
+                selection={selection}
+                onSelect={setSelection}
+                mode={graphMode}
+                onModeChange={setGraphMode}
+              />
             </div>
             <div className="app__sidebar">
               <DetailPanel cluster={cluster} selection={selection} isLive={isLive} />
-              <Legend />
+              <Legend cluster={cluster} mode={graphMode} />
             </div>
           </>
         ) : view === 'overview' ? (
@@ -112,6 +128,13 @@ function App() {
           </div>
         )}
       </main>
+
+      {cluster && dialog === 'device' && (
+        <AddDeviceDialog cluster={cluster} onClose={() => setDialog(null)} />
+      )}
+      {cluster && dialog === 'folder' && (
+        <AddFolderDialog cluster={cluster} onClose={() => setDialog(null)} />
+      )}
     </div>
   )
 }

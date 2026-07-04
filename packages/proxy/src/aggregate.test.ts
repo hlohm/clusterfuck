@@ -96,5 +96,7 @@ describe('aggregateCluster', () => {
 
     expect(model.devices.map((d) => d.id)).toContain('DEVICE-C')
     expect(model.shares.some((s) => s.deviceId === 'DEVICE-C')).toBe(false)
+    expect(model.devices.find((d) => d.id === 'DEVICE-A')?.managed).toBe(true)
+    expect(model.devices.find((d) => d.id === 'DEVICE-C')?.managed).toBe(false)
   })
 })

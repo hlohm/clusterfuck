@@ -9,8 +9,8 @@ describe('OverviewView', () => {
     render(<OverviewView cluster={edgeCases} />)
 
     expect(screen.getByText('Devices online')).toBeInTheDocument()
-    // edge-cases: origin (this-device) + mirror + relay-a + relay-b connected = 4 of 6
-    expect(screen.getByText('4/6')).toBeInTheDocument()
+    // edge-cases: origin (this-device) + mirror + relay-a + relay-b connected = 4 of 7
+    expect(screen.getByText('4/7')).toBeInTheDocument()
     expect(screen.getByText('Out-of-sync items')).toBeInTheDocument()
     expect(screen.getByText('12')).toBeInTheDocument()
   })

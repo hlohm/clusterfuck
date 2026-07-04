@@ -33,6 +33,8 @@ export interface ConfigFolder {
   type: SyncthingFolderType
   paused: boolean
   devices: ConfigFolderDevice[]
+  /** Filesystem path on the owning node. Only set when creating a folder. */
+  path?: string
 }
 
 export interface ConfigResponse {

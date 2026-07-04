@@ -13,8 +13,8 @@ function cluster(): ClusterModel {
     id: 'c1',
     label: 'Test',
     devices: [
-      { id: 'a', name: 'A', state: 'connected' },
-      { id: 'b', name: 'B', state: 'connected' },
+      { id: 'a', name: 'A', state: 'connected', managed: true },
+      { id: 'b', name: 'B', state: 'connected', managed: true },
     ],
     folders: [
       { id: 'f1', label: 'Folder 1' },
@@ -56,7 +56,7 @@ describe('folderHealth', () => {
 describe('clusterHealth', () => {
   it('rolls up device counts, folder worst-states, and attention shares', () => {
     const c = cluster()
-    c.devices.push({ id: 'c', name: 'C', state: 'paused' })
+    c.devices.push({ id: 'c', name: 'C', state: 'paused', managed: false })
     c.shares[1]!.outOfSyncItems = 7
 
     const health = clusterHealth(c)
@@ -95,7 +95,7 @@ describe('folderHealthForDevice', () => {
 
   it('returns undefined for a device with no shares', () => {
     const c = cluster()
-    c.devices.push({ id: 'c', name: 'C', state: 'disconnected' })
+    c.devices.push({ id: 'c', name: 'C', state: 'disconnected', managed: false })
     expect(folderHealthForDevice(c, 'c')).toBeUndefined()
   })
 })

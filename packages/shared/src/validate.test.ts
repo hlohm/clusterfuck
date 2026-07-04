@@ -6,7 +6,7 @@ function baseCluster(): ClusterModel {
   return {
     id: 'c1',
     label: 'Test',
-    devices: [{ id: 'a', name: 'A', state: 'connected' }],
+    devices: [{ id: 'a', name: 'A', state: 'connected', managed: true }],
     folders: [{ id: 'f1', label: 'Folder 1' }],
     shares: [{ folderId: 'f1', deviceId: 'a', type: 'sendreceive', state: 'idle', sharedWith: ['a'] }],
   }
@@ -41,6 +41,20 @@ describe('validateCluster', () => {
     })
     const errors = validateCluster(cluster)
     expect(errors.some((e) => e.message.includes('unknown folder'))).toBe(true)
+  })
+
+  it('flags a share owned by an unmanaged device', () => {
+    const cluster = baseCluster()
+    cluster.devices.push({ id: 'peer', name: 'Peer', state: 'connected', managed: false })
+    cluster.shares.push({
+      folderId: 'f1',
+      deviceId: 'peer',
+      type: 'sendreceive',
+      state: 'idle',
+      sharedWith: ['peer'],
+    })
+    const errors = validateCluster(cluster)
+    expect(errors.some((e) => e.message.includes('unmanaged device "peer"'))).toBe(true)
   })
 
   it('flags a sharedWith entry referencing an unknown device', () => {

@@ -144,10 +144,7 @@ export class ClusterStateManager {
    * rows from a node's first-hand view of its own folders.
    */
   private clientForDevice(deviceId: string): SyncthingClient {
-    const snap = this.snapshots.find((s) => s.myID === deviceId)
-    const entry = snap && this.clients.find((c) => c.nodeId === snap.nodeId)
-    if (!entry) throw new NotManagedError(deviceId)
-    return entry.client
+    return this.resolveTargets([deviceId])[0]!.client
   }
 
   /**
@@ -222,6 +219,74 @@ export class ClusterStateManager {
     return this.patchFolder(deviceId, folderId, (f) => {
       f.devices = f.devices.filter((d) => d.deviceID !== shareDeviceId)
     })
+  }
+
+  /** Adds a device entry to each named registered node's config. */
+  addDevice(deviceId: string, name: string | undefined, targetDeviceIds: string[]): Promise<void> {
+    return this.enqueueMutation(async () => {
+      const targets = this.resolveTargets(targetDeviceIds)
+      const results = await Promise.allSettled(
+        targets.map(({ client }) => client.postDevice({ deviceID: deviceId, name })),
+      )
+      await this.finishFanOut(`adding device ${deviceId}`, targets, results)
+    })
+  }
+
+  /**
+   * Creates a folder on each named registered node, shared among all of
+   * them. Same id + same share group everywhere; per-node paths/types can
+   * be edited afterwards via the folder-scoped mutations.
+   */
+  createFolder(
+    spec: { id: string; label: string; path: string; type: SyncthingFolderType },
+    targetDeviceIds: string[],
+  ): Promise<void> {
+    return this.enqueueMutation(async () => {
+      const targets = this.resolveTargets(targetDeviceIds)
+      const folder: ConfigFolder = {
+        id: spec.id,
+        label: spec.label,
+        type: spec.type,
+        paused: false,
+        path: spec.path,
+        devices: targetDeviceIds.map((deviceID) => ({ deviceID })),
+      }
+      const results = await Promise.allSettled(
+        targets.map(({ client }) => client.postFolder(folder)),
+      )
+      await this.finishFanOut(`creating folder ${spec.id}`, targets, results)
+    })
+  }
+
+  /** Maps target device IDs to their nodes' clients; rejects unmanaged targets up front. */
+  private resolveTargets(
+    targetDeviceIds: string[],
+  ): { nodeId: string; client: SyncthingClient }[] {
+    if (targetDeviceIds.length === 0) {
+      throw new InvalidTargetError('at least one target node is required')
+    }
+    return targetDeviceIds.map((deviceId) => {
+      const snap = this.snapshots.find((s) => s.myID === deviceId)
+      const entry = snap && this.clients.find((c) => c.nodeId === snap.nodeId)
+      if (!entry) throw new NotManagedError(deviceId)
+      return entry
+    })
+  }
+
+  /** Shared fan-out epilogue: always refresh, then report which nodes failed. */
+  private async finishFanOut(
+    what: string,
+    targets: { nodeId: string }[],
+    results: PromiseSettledResult<void>[],
+  ): Promise<void> {
+    await this.refresh()
+    const failed = results.flatMap((r, i) => (r.status === 'rejected' ? [targets[i]!.nodeId] : []))
+    if (failed.length > 0) {
+      throw new Error(
+        `${what} failed on ${failed.join(', ')}` +
+          (failed.length < targets.length ? ' (applied on the remaining nodes)' : ''),
+      )
+    }
   }
 
   private patchFolder(

@@ -111,4 +111,14 @@ export class SyncthingClient {
   putFolderConfig(folderId: string, folder: ConfigFolder, signal?: AbortSignal): Promise<void> {
     return this.send('PUT', `/rest/config/folders/${encodeURIComponent(folderId)}`, folder, signal)
   }
+
+  /** Adds (or replaces) a device entry in this node's config. */
+  postDevice(device: { deviceID: string; name?: string }, signal?: AbortSignal): Promise<void> {
+    return this.send('POST', '/rest/config/devices', device, signal)
+  }
+
+  /** Adds (or replaces) a folder in this node's config. */
+  postFolder(folder: ConfigFolder, signal?: AbortSignal): Promise<void> {
+    return this.send('POST', '/rest/config/folders', folder, signal)
+  }
 }

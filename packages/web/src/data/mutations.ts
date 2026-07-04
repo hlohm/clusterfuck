@@ -18,6 +18,19 @@ export function setDevicePaused(deviceId: string, paused: boolean): Promise<void
   return call('POST', `/api/devices/${encodeURIComponent(deviceId)}/${paused ? 'pause' : 'resume'}`)
 }
 
+/** Adds a device as a peer in each named registered node's config. */
+export function addDevice(deviceId: string, name: string, nodes: string[]): Promise<void> {
+  return call('POST', '/api/devices', { deviceId, name: name || undefined, nodes })
+}
+
+/** Creates a folder on each named registered node, shared among all of them. */
+export function createFolder(
+  spec: { folderId: string; label: string; path: string; type: FolderType },
+  devices: string[],
+): Promise<void> {
+  return call('POST', '/api/folders', { ...spec, devices })
+}
+
 /** `deviceId` is the registered node whose folder config this edits (a Share's own deviceId). */
 export function setFolderPaused(deviceId: string, folderId: string, paused: boolean): Promise<void> {
   return call(
