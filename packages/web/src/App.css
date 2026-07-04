@@ -33,6 +33,19 @@
   letter-spacing: -0.2px;
 }
 
+.app__version {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.app__version--mismatch {
+  color: var(--warning-strong);
+  font-weight: 600;
+  cursor: help;
+}
+
 .app__tabs {
   display: flex;
   gap: 2px;
@@ -81,7 +94,7 @@
   font: inherit;
   font-size: 13px;
   padding: 4px 8px;
-  border-radius: 6px;
+  border-radius: 4px;
   border: 1px solid var(--border);
   background: var(--bg);
   color: var(--text-h);
@@ -102,7 +115,7 @@
   font-size: 13px;
   padding: 4px 12px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 4px;
   background: var(--bg);
   color: var(--text-h);
   cursor: pointer;
@@ -131,7 +144,7 @@
   overflow-y: auto;
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 6px;
   padding: 20px;
   box-shadow: var(--shadow);
   display: flex;
@@ -158,14 +171,14 @@
   font-size: 14px;
   padding: 6px 8px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 4px;
   background: var(--bg);
   color: var(--text-h);
 }
 
 .dialog__nodes {
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 4px;
   padding: 8px 12px 10px;
   display: flex;
   flex-direction: column;
@@ -207,7 +220,7 @@
   font-size: 13px;
   padding: 6px 14px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 4px;
   background: var(--bg);
   color: var(--text-h);
   cursor: pointer;
@@ -222,6 +235,11 @@
   background: var(--accent) !important;
   border-color: var(--accent) !important;
   color: #fff !important;
+}
+
+.dialog__primary:hover:not(:disabled) {
+  background: var(--accent-hover) !important;
+  border-color: var(--accent-hover) !important;
 }
 
 /* ── Layout ─────────────────────────────────────────────────────────── */
@@ -271,7 +289,7 @@ button {
   font-size: 12px;
   padding: 3px 10px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 4px;
   background: var(--bg);
   color: var(--text-h);
   cursor: pointer;
@@ -284,6 +302,45 @@ button {
 .detail-panel button:disabled {
   opacity: 0.5;
   cursor: default;
+}
+
+/* Button semantics harmonized with Syncthing's own GUI: destructive actions
+   are its btn-danger red, the "Add" confirm is its btn-primary blue — every
+   other action (Pause/Resume/Rescan/Type) stays the neutral default button,
+   same as Syncthing's own equivalents. */
+.detail-panel__button--danger {
+  border-color: var(--danger) !important;
+  color: var(--danger) !important;
+}
+
+.detail-panel__button--danger:hover:not(:disabled) {
+  background: var(--danger-hover) !important;
+  border-color: var(--danger-hover) !important;
+  color: #fff !important;
+}
+
+.detail-panel__button--primary {
+  background: var(--accent) !important;
+  border-color: var(--accent) !important;
+  color: #fff !important;
+}
+
+.detail-panel__button--primary:hover:not(:disabled) {
+  background: var(--accent-hover) !important;
+  border-color: var(--accent-hover) !important;
+}
+
+/* A button that's about to pause something (vs. resume) gets a hint of
+   Syncthing's own warning amber — resuming stays neutral. */
+.detail-panel__button--warning {
+  border-color: var(--warning-strong) !important;
+  color: var(--warning-strong) !important;
+}
+
+.detail-panel__button--warning:hover:not(:disabled) {
+  background: var(--warning-strong-hover) !important;
+  border-color: var(--warning-strong-hover) !important;
+  color: #222 !important;
 }
 
 .status-badge {
@@ -320,7 +377,7 @@ button {
 
 .stat-tile {
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 4px;
   padding: 14px 16px;
   background: var(--bg);
 }
@@ -364,7 +421,7 @@ button {
   width: 100%;
   text-align: left;
   padding: 8px 12px;
-  border-radius: 8px;
+  border-radius: 4px;
 }
 
 .attention-list__row:hover {
@@ -392,17 +449,21 @@ button {
 
 .folder-card {
   border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 12px 14px;
+  border-radius: 4px;
+  overflow: hidden;
   background: var(--bg);
 }
 
+/* Bootstrap panel-heading treatment: a differentiated strip above the body,
+   matching how Syncthing's own .panel > .panel-heading reads. */
 .folder-card__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-bottom: 8px;
+  padding: 8px 14px;
+  background: var(--code-bg);
+  border-bottom: 1px solid var(--border);
 }
 
 .folder-card__header h4 {
@@ -413,7 +474,7 @@ button {
 .folder-card__shares {
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 12px 14px;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -591,16 +652,20 @@ button {
 
 .node-section {
   border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 10px 12px;
-  background: var(--code-bg);
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--bg);
 }
 
+/* Panel-heading strip, matching .folder-card__header / Syncthing's panels. */
 .node-section__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  padding: 8px 12px;
+  background: var(--code-bg);
+  border-bottom: 1px solid var(--border);
 }
 
 .node-section__name {
@@ -612,7 +677,11 @@ button {
 .node-section__type {
   font-size: 12px;
   color: var(--text);
-  margin-top: 2px;
+  padding: 6px 12px;
+}
+
+.node-section .detail-panel__actions {
+  padding: 8px 12px 10px;
 }
 
 .detail-panel__actions {
@@ -793,6 +862,15 @@ button {
   color: var(--text);
 }
 
+.device-node__badge {
+  font-size: 11px;
+}
+
+.device-node__health {
+  font-size: 11px;
+  font-weight: 600;
+}
+
 .folder-node {
   padding: 8px 14px;
   border-radius: 4px;
@@ -805,4 +883,10 @@ button {
 
 .folder-node[data-selected='true'] {
   box-shadow: 0 0 0 2px var(--accent);
+}
+
+.folder-node__label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

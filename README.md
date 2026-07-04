@@ -11,16 +11,19 @@ sync. **clusterfuck** renders the whole cluster as a graph so the shape of your
 sync setup — and its important options — is legible at a glance, and lets you
 manage devices and folders across every node from one place.
 
-<!-- The mark: three interwoven Syncthing-style hub-and-spoke glyphs sharing
-one ring, in Syncthing's own blue — one cluster, many overlapping views of it. -->
+> ⚠️ **100% vibe coded by an amateur, use at your own peril!** This is a
+> hobby project built fast with an AI coding agent. It talks to your
+> Syncthing nodes' REST APIs and can mutate their config. Read the security
+> note below, keep backups, and don't point it at anything you can't afford
+> to break.
 
 ## What it does today
 
 - **Three views** of the live cluster, switchable from the header:
-  - **Graph** — the topology, with two layouts: *Folders as hubs* (folder-hub
-    nodes with folder-type-colored edges) and *Devices only* (a mesh where each
-    folder is a set of parallel, folder-colored edges between the devices that
-    share it). Devices are round, folder hubs are square.
+  - **Graph** — the topology, with two layouts: **Nodes** (default; a mesh of
+    devices only, with parallel folder-colored edges between the devices that
+    share each folder) and **Folders** (folder-hub nodes with folder-type-
+    colored edges to their devices). Devices are round, folder hubs are square.
   - **Overview** — a health dashboard: devices online, folders up to date,
     out-of-sync items, a worst-first "needs attention" list, and per-folder
     cards with completion meters.
@@ -172,6 +175,13 @@ packages/
   shared/   @clusterfuck/shared — normalized ClusterModel + pure logic
   proxy/    Node/TS backend: REST client, aggregation, HTTP + SSE, mutations
   web/      React + TypeScript SPA (Vite, React Flow)
-ROADMAP.md  phased plan; what's done and what's next
-CLAUDE.md   working context / conventions for contributors
+ROADMAP.md   phased plan; what's done and what's next
+CHANGELOG.md dated, version-by-version log (see CLAUDE.md for the versioning policy)
+CLAUDE.md    working context / conventions for contributors
 ```
+
+The running proxy and the web build each know their own version —
+`GET /api/version` on the proxy, shown next to the logo in the header — so a
+stale proxy process (the usual cause of a route the frontend expects
+returning a bare 404) is a glance away from a mismatch warning instead of a
+mystery.

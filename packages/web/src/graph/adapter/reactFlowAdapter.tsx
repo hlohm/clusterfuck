@@ -58,8 +58,8 @@ function deviceNodesFor(
   })
 }
 
-/** hubs: folders as hub nodes, one edge per share, colored by folder type. */
-function hubGraph(cluster: ClusterModel, selection: Selection) {
+/** folders: folders as hub nodes, one edge per share, colored by folder type. */
+function foldersGraph(cluster: ClusterModel, selection: Selection) {
   const folderNodes: Node[] = cluster.folders.map((folder, index) => {
     const isSelected = selection?.kind === 'folder' && selection.folderId === folder.id
     const data: FolderNodeData = { folder, isSelected }
@@ -106,13 +106,13 @@ function hubGraph(cluster: ClusterModel, selection: Selection) {
 const PARALLEL_SPACING = 7
 
 /**
- * mesh: devices only, on a circle. Each folder becomes pairwise edges among
+ * nodes: devices only, on a circle. Each folder becomes pairwise edges among
  * the devices sharing it, colored by folder identity. The k folders a pair
  * shares render as k straight parallel lines (perpendicular offsets centered
  * on the pair's axis, node-center to node-center) so they never overlap and
  * stay countable.
  */
-function meshGraph(cluster: ClusterModel, selection: Selection) {
+function nodesGraph(cluster: ClusterModel, selection: Selection) {
   const count = cluster.devices.length
   const radius = Math.max(220, (count * 240) / (2 * Math.PI))
   const nodes = deviceNodesFor(cluster, selection, (index) => {
@@ -145,14 +145,20 @@ function meshGraph(cluster: ClusterModel, selection: Selection) {
   for (const { a, b, folderIds } of pairFolders.values()) {
     folderIds.forEach((folderId, index) => {
       const color = colors.get(folderId)
+      // A folder selection highlights every pair sharing it; a share
+      // selection names one device's participation, so only pairs that
+      // actually include that device should light up.
       const isSelected =
-        (selection?.kind === 'folder' || selection?.kind === 'share') &&
-        selection.folderId === folderId
+        selection?.kind === 'folder'
+          ? selection.folderId === folderId
+          : selection?.kind === 'share'
+            ? selection.folderId === folderId && (a === selection.deviceId || b === selection.deviceId)
+            : false
       const showLabel = isSelected && !labeledFolders.has(folderId)
       if (showLabel) labeledFolders.add(folderId)
 
       edges.push({
-        id: `mesh:${folderId}:${a}:${b}`,
+        id: `nodes-edge:${folderId}:${a}:${b}`,
         source: deviceNodeId(a),
         target: deviceNodeId(b),
         sourceHandle: 'center-out',
@@ -181,7 +187,7 @@ function ReactFlowAdapterInner({
   onModeChange,
 }: GraphAdapterProps) {
   const { nodes, edges } = useMemo(
-    () => (mode === 'hubs' ? hubGraph(cluster, selection) : meshGraph(cluster, selection)),
+    () => (mode === 'folders' ? foldersGraph(cluster, selection) : nodesGraph(cluster, selection)),
     [cluster, selection, mode],
   )
 
@@ -206,7 +212,7 @@ function ReactFlowAdapterInner({
         }
       }}
       onEdgeClick={(_event, edge) => {
-        if (edge.id.startsWith('mesh:')) {
+        if (edge.id.startsWith('nodes-edge:')) {
           const folderId = edge.id.split(':')[1]!
           onSelect({ kind: 'folder', folderId })
           return
@@ -221,8 +227,8 @@ function ReactFlowAdapterInner({
       <Panel position="top-left" className="graph-mode">
         {(
           [
-            ['hubs', 'Folders as hubs'],
-            ['mesh', 'Devices only'],
+            ['nodes', 'Nodes'],
+            ['folders', 'Folders'],
           ] as [GraphMode, string][]
         ).map(([id, label]) => (
           <button

@@ -29,6 +29,10 @@ Listens on `PORT` (default `4000`). Routes:
 - `GET /api/events` — Server-Sent Events stream; pushes a full snapshot on
   every change.
 - `GET /api/health` — liveness check.
+- `GET /api/version` — `{ "version": "x.y.z" }` from this process's own
+  `package.json`. Compare against the frontend build's version (shown next to
+  its logo) to catch a stale proxy process serving routes an updated frontend
+  expects — the generic 404 that produces is otherwise hard to diagnose.
 
 **Mutations (Phase 3+ — no auth, same trust model as the read routes):**
 

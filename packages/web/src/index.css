@@ -4,18 +4,28 @@
   --bg: #fff;
   --border: #e5e4e7;
   --code-bg: #f4f3ec;
-  /* Accent = Syncthing blue (the logo gradient's anchor colors). */
-  --st-blue: #0882c8;
-  --st-cyan: #26b6db;
-  --accent: #0882c8;
-  --accent-bg: rgba(8, 130, 200, 0.08);
-  --accent-border: rgba(8, 130, 200, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
+  /* --accent below is the UI chrome color, harmonized with the actual
+     Syncthing web GUI's palette (its btn-primary blue) — the logo mark itself
+     keeps its own literal gradient anchors (#0882c8 / #26b6db, see Logo.tsx). */
+  --accent: #217dbb;
+  /* Syncthing's btn-primary hover is this exact blue in both its themes. */
+  --accent-hover: #3498db;
+  --accent-bg: rgba(33, 125, 187, 0.08);
+  --accent-border: rgba(33, 125, 187, 0.5);
+  /* Syncthing's own btn-danger / btn-warning colors, for destructive and
+     cautionary actions (Remove, Pause) — kept separate from the validated
+     data-encoding palette in encoding/colors.ts, which this does not touch. */
+  --danger: #d62c1a;
+  --danger-hover: #e74c3c;
+  --warning-strong: #c29d0b;
+  --warning-strong-hover: #f1c40f;
   --shadow:
     rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
+  /* Same body font stack and Raleway heading face as the Syncthing web GUI. */
+  --sans:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --heading: 'Raleway', var(--sans);
   --mono: ui-monospace, Consolas, monospace;
 
   font: 18px/145% var(--sans);
@@ -40,10 +50,10 @@
     --bg: #16171d;
     --border: #2e303a;
     --code-bg: #1f2028;
-    --accent: #3fc0e0;
-    --accent-bg: rgba(38, 182, 219, 0.14);
-    --accent-border: rgba(38, 182, 219, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
+    /* --accent/--accent-hover are intentionally NOT redefined here — Syncthing
+       keeps its btn-primary blue identical across its light and dark themes. */
+    --accent-bg: rgba(52, 152, 219, 0.14);
+    --accent-border: rgba(52, 152, 219, 0.5);
     --shadow:
       rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
   }

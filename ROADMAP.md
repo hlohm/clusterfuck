@@ -96,11 +96,11 @@ Multiple ways to read the same model, plus a design pass.
       the Graph.
 - [x] **Shape encoding:** device nodes round, folder hubs square — a second
       channel beyond color, mirrored in the legend.
-- [x] **Graph modes:** *Folders as hubs* (two-layer hyperedge; edge color =
-      folder type) and *Devices only* (nodes-only mesh; each folder becomes
-      pairwise edges colored by folder identity from a validated categorical
-      palette; the folders a pair shares render as evenly-offset parallel lines
-      so they stay countable).
+- [x] **Graph modes:** **Nodes** (default; devices-only mesh — each folder
+      becomes pairwise edges colored by folder identity from a validated
+      categorical palette; the folders a pair shares render as evenly-offset
+      parallel lines so they stay countable) and **Folders** (two-layer
+      hyperedge layout; edge color = folder type).
 - [x] **Topology editing:** Add device / Add folder dialogs; `Device.managed`
       distinguishes registered nodes from remote-only peers.
 - [x] **Visual refresh:** Syncthing-blue logo (favicon + header mark), accent

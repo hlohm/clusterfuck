@@ -2,9 +2,8 @@ import type { FolderId } from '@clusterfuck/shared'
 import type { ThemedColor } from './colors'
 
 /**
- * Identity colors for folders in the nodes-only ("mesh") graph mode, where
- * each folder becomes a set of same-colored edges between the devices
- * sharing it.
+ * Identity colors for folders in the "Nodes" graph mode, where each folder
+ * becomes a set of same-colored edges between the devices sharing it.
  *
  * Validated 8-slot categorical palette (light: worst adjacent CVD ΔE 24.2;
  * dark steps validated as a set against the dark surface). Slots are

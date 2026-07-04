@@ -118,6 +118,18 @@ design the model with that in mind even in Phase 1.
   changes, update the README/model docs in the same PR.
 - **Commit messages:** imperative subject, short body explaining *why* and
   noting any decision made or deferred.
+- **Versioning.** One SemVer number for the whole app, kept in lockstep across
+  the root and all three workspace packages' `package.json` (they're private
+  and always move together — never versioned independently). We're pre-1.0:
+  MINOR bumps for a shipped roadmap milestone (see `ROADMAP.md`), PATCH for
+  fixes/polish in between, and 1.0.0 is reserved for when the proxy has auth
+  and the model/API are considered stable enough to promise compatibility.
+  Bump the version in the same PR that ships the milestone/fix, and add an
+  entry to `CHANGELOG.md`. The proxy exposes its own version at
+  `GET /api/version` and the web build shows its own next to the logo — the
+  two are meant to be compared, since a mismatch usually means a stale
+  running proxy process (the failure mode is a generic 404; see the "no
+  route for ..." log line in `packages/proxy/src/server.ts`).
 
 ## Definition of done — Phase 1
 
