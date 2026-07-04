@@ -3,6 +3,11 @@ export interface ThemedColor {
   dark: string
 }
 
+/** CSS light-dark() value so a ThemedColor tracks the active color scheme. */
+export function cssColor(c: ThemedColor): string {
+  return `light-dark(${c.light}, ${c.dark})`
+}
+
 /** Fixed status tokens — never themed per-series, always paired with icon + label. */
 export const STATUS = {
   good: { light: '#0ca30c', dark: '#3dbb3d' } satisfies ThemedColor,

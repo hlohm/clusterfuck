@@ -1,6 +1,11 @@
-# clusterfuck
+# <img src="packages/web/public/logo.svg" width="34" alt="clusterfuck logo — three interwoven Syncthing-style node glyphs"> clusterfuck
 
 A visualization and management app for [Syncthing](https://syncthing.net/) clusters.
+
+The mark is three interwoven Syncthing-style hub-and-spoke glyphs sharing one
+ring, in Syncthing's own blue — one cluster, many overlapping views of it. It
+doubles as the app's favicon and header logo, and the app's accent color is
+drawn from the same gradient.
 
 Syncthing's built-in UI shows folders and devices as flat lists. Once you run
 more than a handful of nodes, it gets hard to reason about the *topology* of
@@ -31,6 +36,7 @@ manage nodes (and eventually the cluster as a whole) from one place.
 | 3+ device folder shares | Hyperedge via a folder-hub node | Rather than pairwise edges between every device pair |
 | Proxy runtime | Node.js + TypeScript | Shares the normalized model with the frontend as one `@clusterfuck/shared` workspace package |
 | Node registration | Static, untracked config file | Read once at proxy startup; see Phase 2 below |
+| Views | Graph, Overview, Table — switchable | Graph is the home view; Overview is the health dashboard; Table is the flat fallback channel |
 | First deliverable | Coded static prototype | Clickable React mockup on fake data, then wire to the real API |
 
 ### Connecting to Syncthing
@@ -145,19 +151,38 @@ Make the graph actionable. Per-node first, then cluster-wide.
     can already read everything). Revisit if this ever becomes multi-user or
     is exposed beyond localhost.
 
-### Phase 4 — ideas (not scoped yet)
+### Phase 4 — Views & visual refresh
 
-Not started, not phase-gated into the roadmap above yet — noted here so they
-aren't lost:
+Multiple ways of reading the same cluster model, plus a design pass.
 
-- **Multiple views**, switchable, beyond the single graph canvas (e.g. a flat
-  list/table view, a dashboard/health-summary view).
-- **Shape encoding refinement:** round nodes for devices, square nodes for
-  folders (currently both use the same rounded-rect style) — a second visual
-  channel alongside color, likely worth doing regardless of which other Phase
-  4 ideas land.
+- **Switchable views**, tabs in the header, all reading the same normalized
+  `ClusterModel`:
+  - **Graph** — the topology canvas from Phases 1–3 (home view; keeps the
+    detail panel, legend, and Phase 3 actions).
+  - **Overview** — the health dashboard: a KPI row (devices online, folders up
+    to date, out-of-sync items, needs-attention count), a worst-first
+    "needs attention" list, and a card per folder with per-device state and
+    sync-completion meters. Backed by a pure, tested `clusterHealth()` rollup
+    in `@clusterfuck/shared`.
+  - **Table** — every share as a flat row with type/state/completion/errors
+    spelled out as text; the dependable fallback channel for everything the
+    graph encodes with color and shape.
+  - Rows in Overview/Table link back to the Graph with that share selected.
+- **Shape encoding:** device nodes are round (pills), folder hubs are square —
+  a second visual channel for the device/folder distinction beyond position
+  and color, mirrored in the legend.
+- **Visual refresh:** the logo is three interwoven Syncthing-style
+  hub-and-spoke glyphs on Syncthing's own blue gradient
+  (`packages/web/public/logo.svg`, also the favicon and header mark), the
+  app's accent color is drawn from that gradient, and the encoding colors are
+  now theme-aware (CSS `light-dark()`) in both modes. The folder-type palette
+  re-validated for color-blind-safe separation and contrast on both surfaces.
 
 ## Status
 
-Phase 0: just getting started. This commit is the outline only — no code yet.
-Major decisions will be raised as we hit them rather than guessed up front.
+Phases 1–4 are implemented: fixture mockup, live read-only visualization via
+the proxy, per-node/per-folder management actions, and the multi-view UI with
+the visual refresh. Phase 3's cluster-wide actions (and their dry-run/preview
+safety design) remain open, as do the Phase 3 auth question and anything not
+listed in a phase. Major decisions continue to be raised as they come up
+rather than guessed up front.

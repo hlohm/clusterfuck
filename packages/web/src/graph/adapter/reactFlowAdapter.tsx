@@ -16,6 +16,7 @@ import { DeviceNode, type DeviceNodeData } from '../nodes/DeviceNode'
 import { FolderNode, type FolderNodeData } from '../nodes/FolderNode'
 import { folderHealthForDevice } from '@clusterfuck/shared'
 import { FOLDER_TYPE_STYLE, type ArrowDirection } from '../../encoding/folderTypeStyle'
+import { cssColor } from '../../encoding/colors'
 
 const nodeTypes = { device: DeviceNode, folder: FolderNode }
 
@@ -72,7 +73,7 @@ function ReactFlowAdapterInner({ cluster, selection, onSelect }: GraphAdapterPro
         source: folderNodeId(share.folderId),
         target: deviceNodeId(share.deviceId),
         style: {
-          stroke: style.color.light,
+          stroke: cssColor(style.color),
           strokeWidth: isSelected ? 3 : 1.5,
           strokeDasharray: style.dash === 'dashed' ? '6 4' : undefined,
         },

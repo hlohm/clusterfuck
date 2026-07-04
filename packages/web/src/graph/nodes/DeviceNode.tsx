@@ -1,6 +1,7 @@
 import { Handle, Position, type NodeProps } from '@xyflow/react'
 import { DEVICE_STATE_STYLE } from '../../encoding/deviceStateStyle'
 import { FOLDER_STATE_STYLE } from '../../encoding/folderStateStyle'
+import { cssColor } from '../../encoding/colors'
 import type { Device, FolderState } from '@clusterfuck/shared'
 
 export interface DeviceNodeData extends Record<string, unknown> {
@@ -20,7 +21,7 @@ export function DeviceNode({ data }: NodeProps & { data: DeviceNodeData }) {
       data-selected={isSelected}
       style={{
         borderStyle: style.outline,
-        borderColor: isSelected ? 'var(--accent)' : style.accent.light,
+        borderColor: isSelected ? 'var(--accent)' : cssColor(style.accent),
       }}
     >
       <Handle type="target" position={Position.Top} style={{ opacity: 0 }} />
@@ -33,7 +34,7 @@ export function DeviceNode({ data }: NodeProps & { data: DeviceNodeData }) {
         {healthStyle && (
           <span
             className="device-node__health"
-            style={{ color: healthStyle.color.light }}
+            style={{ color: cssColor(healthStyle.color) }}
             title={`Worst folder state: ${healthStyle.label}`}
           >
             {healthStyle.label}
