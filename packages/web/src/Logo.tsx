@@ -8,8 +8,25 @@ import { useId } from 'react'
 export function Logo({ size = 28 }: { size?: number }) {
   const gradientId = useId()
 
-  const glyph = (opacity: number, stroke: number, satR: number, hubR: number) => (
-    <g fill="#fff" stroke="#fff" opacity={opacity} strokeWidth={stroke} strokeLinecap="round">
+  // Each layer is its own rotation + slight scale about the center (not a pure
+  // 120° copy), so the nodes and spokes sit at different positions/angles
+  // between layers instead of stacking — the interweaving reads clearly.
+  const layer = (
+    rot: number,
+    scale: number,
+    opacity: number,
+    stroke: number,
+    satR: number,
+    hubR: number,
+  ) => (
+    <g
+      transform={`translate(32 32) rotate(${rot}) scale(${scale}) translate(-32 -32)`}
+      fill="#fff"
+      stroke="#fff"
+      opacity={opacity}
+      strokeWidth={stroke}
+      strokeLinecap="round"
+    >
       <line x1="36.83" y1="35.14" x2="53.26" y2="21.50" />
       <circle cx="53.26" cy="21.50" r={satR} stroke="none" />
       <line x1="36.83" y1="35.14" x2="47.20" y2="50.10" />
@@ -30,9 +47,9 @@ export function Logo({ size = 28 }: { size?: number }) {
       </defs>
       <circle cx="32" cy="32" r="32" fill={`url(#${gradientId})`} />
       <circle cx="32" cy="32" r="23.85" fill="none" stroke="#fff" strokeWidth="3.27" />
-      <g transform="rotate(120 32 32)">{glyph(0.28, 2.2, 3.4, 3.6)}</g>
-      <g transform="rotate(240 32 32)">{glyph(0.5, 2.6, 3.9, 4.1)}</g>
-      {glyph(1.0, 3.27, 5.0, 5.1)}
+      {layer(126, 0.93, 0.62, 2.6, 3.6, 3.8)}
+      {layer(242, 0.97, 0.82, 2.9, 4.2, 4.4)}
+      {layer(2, 1, 1, 3.27, 5.0, 5.1)}
     </svg>
   )
 }
