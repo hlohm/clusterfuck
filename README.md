@@ -1,6 +1,11 @@
-# clusterfuck
+# <img src="packages/web/public/logo.svg" width="34" alt="clusterfuck logo — three interwoven Syncthing-style node glyphs"> clusterfuck
 
 A visualization and management app for [Syncthing](https://syncthing.net/) clusters.
+
+The mark is three interwoven Syncthing-style hub-and-spoke glyphs sharing one
+ring, in Syncthing's own blue — one cluster, many overlapping views of it. It
+doubles as the app's favicon and header logo, and the app's accent color is
+drawn from the same gradient.
 
 Syncthing's built-in UI shows folders and devices as flat lists. Once you run
 more than a handful of nodes, it gets hard to reason about the *topology* of
@@ -31,6 +36,7 @@ manage nodes (and eventually the cluster as a whole) from one place.
 | 3+ device folder shares | Hyperedge via a folder-hub node | Rather than pairwise edges between every device pair |
 | Proxy runtime | Node.js + TypeScript | Shares the normalized model with the frontend as one `@clusterfuck/shared` workspace package |
 | Node registration | Static, untracked config file | Read once at proxy startup; see Phase 2 below |
+| Views | Graph, Overview, Table — switchable | Graph is the home view; Overview is the health dashboard; Table is the flat fallback channel |
 | First deliverable | Coded static prototype | Clickable React mockup on fake data, then wire to the real API |
 
 ### Connecting to Syncthing
@@ -110,20 +116,138 @@ Replace fixtures with real, live cluster state. Read-only — no mutations yet.
 
 Make the graph actionable. Per-node first, then cluster-wide.
 
-- **Per-node / per-folder:** pause/resume device or folder; change folder type;
-  add/remove a share; rescan; accept pending devices/folders.
-- **Cluster-wide (to be designed):** candidate ideas — pause-all / resume-all;
-  introduce a new device to a whole folder group at once; bulk folder-type
-  changes; apply a "policy" (e.g. mark a node receive-encrypted everywhere);
-  templated folder defaults. We'll decide which of these are genuinely useful
-  vs. footguns.
+- **Per-node / per-folder (first slice):** pause/resume device; pause/resume
+  folder; change folder type; add/remove a share; rescan.
+  - **Device pause/resume** fans out to every registered node whose own config
+    lists that device as a peer, and pauses/resumes *that connection* — same
+    as clicking pause in that node's own Syncthing GUI. This works even for a
+    device we don't hold API keys for ourselves, as long as some registered
+    node has a connection to it; if no registered node references it at all,
+    the action has no valid target and fails.
+  - **Folder-scoped actions** (pause/resume folder, change type, add/remove
+    share, rescan) always edit one specific registered node's own folder
+    config — the node identified by the Share's `deviceId`, which by
+    construction of the aggregation is always one of our own registered
+    nodes (Phase 2 only ever produces Share rows from a node's first-hand
+    view of its own folders).
+- **Deferred to a later slice:** accept pending devices/folders (needs new
+  "pending" UI, not just mutation plumbing); cluster-wide actions (pause-all /
+  resume-all, bulk folder-type changes, policy application, templated folder
+  defaults, introducing a device to a whole folder group at once) — candidate
+  ideas, to be designed once single-node mutations are proven safe.
 - Safety: confirmations, dry-run/preview of what a bulk action will change,
-  and clear surfacing of partial failures across nodes.
-- **Open decisions to settle here:** which cluster-wide actions ship (if any);
-  how much we mirror Syncthing's own config model vs. impose our own
-  higher-level concepts; auth/permissions if this is ever multi-user.
+  and clear surfacing of partial failures across nodes (relevant once
+  cluster-wide actions exist).
+- **Decisions made:**
+  - **Scope:** per-node/per-folder actions first; cluster-wide actions are a
+    separate, later decision.
+  - **API shape:** mirrors Syncthing's own config/action model closely (e.g.
+    `POST /rest/system/pause?device=`, element-scoped `GET`/`PUT
+    /rest/config/folders/:id`, `POST /rest/db/scan`) rather than inventing
+    clusterfuck-native higher-level operations. Keeps the proxy thin and the
+    mutation surface auditable.
+  - **Auth/permissions:** none added for mutations specifically — same trust
+    model as Phase 2 (the proxy holds the keys; anyone who can reach the proxy
+    can already read everything). Revisit if this ever becomes multi-user or
+    is exposed beyond localhost.
+
+### Phase 4 — Views & visual refresh
+
+Multiple ways of reading the same cluster model, plus a design pass.
+
+- **Switchable views**, tabs in the header, all reading the same normalized
+  `ClusterModel`:
+  - **Graph** — the topology canvas from Phases 1–3 (home view; keeps the
+    detail panel, legend, and Phase 3 actions).
+  - **Overview** — the health dashboard: a KPI row (devices online, folders up
+    to date, out-of-sync items, needs-attention count), a worst-first
+    "needs attention" list, and a card per folder with per-device state and
+    sync-completion meters. Backed by a pure, tested `clusterHealth()` rollup
+    in `@clusterfuck/shared`.
+  - **Table** — every share as a flat row with type/state/completion/errors
+    spelled out as text; the dependable fallback channel for everything the
+    graph encodes with color and shape.
+  - Rows in Overview/Table link back to the Graph with that share selected.
+- **Shape encoding:** device nodes are round (pills), folder hubs are square —
+  a second visual channel for the device/folder distinction beyond position
+  and color, mirrored in the legend.
+- **Visual refresh:** the logo is three interwoven Syncthing-style
+  hub-and-spoke glyphs on Syncthing's own blue gradient
+  (`packages/web/public/logo.svg`, also the favicon and header mark), the
+  app's accent color is drawn from that gradient, and the encoding colors are
+  now theme-aware (CSS `light-dark()`) in both modes. The folder-type palette
+  re-validated for color-blind-safe separation and contrast on both surfaces.
+- **Graph modes** (added in the follow-up iteration): the graph toggles
+  between *Folders as hubs* (the two-layer hyperedge layout; edge color =
+  folder type) and *Devices only* — a nodes-only mesh where each folder
+  becomes pairwise edges between the devices sharing it, colored by folder
+  identity from a validated categorical palette (8 slots; past 8 the tail
+  goes neutral and the legend/table carry identity). Devices sit on a circle;
+  the k folders a pair shares render as k straight parallel lines (evenly
+  offset around the pair's axis, node-center to node-center) so links never
+  overlap and stay countable per pair.
+- **Topology editing** (same iteration): *Add device* (register a peer on any
+  subset of managed nodes) and *Add folder* (create a folder on ≥2 managed
+  nodes, shared among them) via header dialogs that preview exactly which
+  nodes the change lands on. The model gained `Device.managed` to distinguish
+  our registered nodes from devices only seen as remote peers.
+
+### Phase 5 — Cluster-wide Syncthing GUI parity (roadmap)
+
+The destination: everything the stock Syncthing web GUI can do *for one
+node*, doable here *for the whole cluster* — one pane of glass instead of N
+browser tabs. Mapped from the GUI's actual surface, in rough priority order.
+`✔` = already shipped, `→` = next up, `·` = later.
+
+**Folder management**
+- ✔ Pause/resume, rescan, change type, add/remove share, create shared folder
+- → Remove folder (per node / cluster-wide)
+- → Per-share encryption passwords — first-class `receiveencrypted` setup,
+  the case this app exists to make legible
+- · Versioning config (trashcan/simple/staggered/external) per node
+- · Ignore patterns — view/edit per node, diff across nodes
+- · Advanced folder options (rescan interval, watcher, min disk free);
+  `sendonly` override + `receiveonly` revert buttons
+- · Conflict & failed-item surfacing (per folder, cluster-rolled-up)
+
+**Device management**
+- ✔ Pause/resume (fan-out), add device to chosen nodes
+- → Remove device (from chosen/all nodes)
+- → Accept pending devices & folders — the cluster-wide "inbox" (Syncthing's
+  pending API), so introducing a node becomes: accept once, everywhere
+- · Edit device options: name, addresses, compression, introducer,
+  auto-accept, per-device rate limits
+- · Device identity: show ID/QR for any managed node
+
+**Cluster operations**
+- → Pause all / resume all (devices or folders)
+- · Rescan all; restart/shutdown a node's Syncthing; upgrade orchestration
+  (one node at a time, health-checked)
+- · Config drift detection: same folder configured differently across nodes
+  (label/type/versioning mismatches), asymmetric shares (A shares with B,
+  B doesn't share back), with suggested fixes — the genuinely novel
+  cluster-level feature the single-node GUI cannot have
+- · Bandwidth limits cluster-wide
+
+**Observability**
+- ✔ Live state/completion/errors via events + SSE; overview dashboard
+- · Per-node system status (version, uptime, listeners, discovery, RAM/CPU)
+- · Transfer rates and totals (per link, per node, cluster aggregate)
+- · Recent-changes feed and event log, merged across nodes
+- · Completion history/sparklines on the overview tiles
+
+**Foundations these need**
+- → Node registration UI (add a node's URL + API key at runtime, persisted
+  server-side) — replaces editing `dev-cluster.json` by hand
+- · Auth on the proxy the moment it's exposed beyond localhost
+- · Syncthing 2.x REST support (currently targets 1.x)
 
 ## Status
 
-Phase 0: just getting started. This commit is the outline only — no code yet.
-Major decisions will be raised as we hit them rather than guessed up front.
+Phases 1–4 are implemented: fixture mockup, live read-only visualization via
+the proxy, per-node/per-folder management actions (including creating devices
+and folders), and the multi-view UI — graph (hub and mesh modes), overview
+dashboard, and table — with the visual refresh. Phase 5 is the roadmap above:
+full cluster-wide parity with the Syncthing web GUI, worked through in
+priority order. Major decisions continue to be raised as they come up rather
+than guessed up front.

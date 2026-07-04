@@ -22,7 +22,13 @@ describe('aggregateCluster', () => {
         { deviceId: 'DEVICE-B', name: 'st-b', paused: false },
       ],
       folders: [
-        { id: 'spectrum', label: 'Spectrum', type: 'sendreceive', state: 'idle' },
+        {
+          id: 'spectrum',
+          label: 'Spectrum',
+          type: 'sendreceive',
+          state: 'idle',
+          sharedWith: ['DEVICE-A', 'DEVICE-B'],
+        },
       ],
       connections: { 'DEVICE-B': { connected: true, paused: false } },
     })
@@ -34,7 +40,13 @@ describe('aggregateCluster', () => {
         { deviceId: 'DEVICE-B', name: 'st-b', paused: false },
       ],
       folders: [
-        { id: 'spectrum', label: 'Spectrum', type: 'sendreceive', state: 'syncing' },
+        {
+          id: 'spectrum',
+          label: 'Spectrum',
+          type: 'sendreceive',
+          state: 'syncing',
+          sharedWith: ['DEVICE-A', 'DEVICE-B'],
+        },
       ],
       connections: { 'DEVICE-A': { connected: true, paused: false } },
     })
@@ -75,12 +87,16 @@ describe('aggregateCluster', () => {
       nodeId: 'st-a',
       myID: 'DEVICE-A',
       devices: [{ deviceId: 'DEVICE-C', name: 'st-c (unregistered)', paused: false }],
-      folders: [{ id: 'spectrum', label: 'Spectrum', type: 'sendreceive', state: 'idle' }],
+      folders: [
+        { id: 'spectrum', label: 'Spectrum', type: 'sendreceive', state: 'idle', sharedWith: ['DEVICE-A'] },
+      ],
     })
 
     const model = aggregateCluster([a], 'live', 'Live cluster')
 
     expect(model.devices.map((d) => d.id)).toContain('DEVICE-C')
     expect(model.shares.some((s) => s.deviceId === 'DEVICE-C')).toBe(false)
+    expect(model.devices.find((d) => d.id === 'DEVICE-A')?.managed).toBe(true)
+    expect(model.devices.find((d) => d.id === 'DEVICE-C')?.managed).toBe(false)
   })
 })

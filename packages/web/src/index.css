@@ -4,9 +4,12 @@
   --bg: #fff;
   --border: #e5e4e7;
   --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
+  /* Accent = Syncthing blue (the logo gradient's anchor colors). */
+  --st-blue: #0882c8;
+  --st-cyan: #26b6db;
+  --accent: #0882c8;
+  --accent-bg: rgba(8, 130, 200, 0.08);
+  --accent-border: rgba(8, 130, 200, 0.5);
   --social-bg: rgba(244, 243, 236, 0.5);
   --shadow:
     rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
@@ -37,9 +40,9 @@
     --bg: #16171d;
     --border: #2e303a;
     --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
+    --accent: #3fc0e0;
+    --accent-bg: rgba(38, 182, 219, 0.14);
+    --accent-border: rgba(38, 182, 219, 0.5);
     --social-bg: rgba(47, 48, 58, 0.5);
     --shadow:
       rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;

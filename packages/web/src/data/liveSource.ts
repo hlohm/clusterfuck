@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { ClusterModel } from '@clusterfuck/shared'
+import { PROXY_BASE } from './proxyBase'
 
 export type LiveStatus = 'connecting' | 'live' | 'error'
 
@@ -8,8 +9,6 @@ export interface LiveCluster {
   status: LiveStatus
   error: string | undefined
 }
-
-const PROXY_BASE = import.meta.env.VITE_PROXY_URL ?? ''
 
 /**
  * Subscribes to the proxy's /api/events SSE stream, which pushes a full

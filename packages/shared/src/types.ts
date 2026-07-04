@@ -7,6 +7,12 @@ export interface Device {
   id: DeviceId
   name: string
   state: DeviceState
+  /**
+   * True when this device is one of our registered proxy nodes — the only
+   * devices whose folder config we can read first-hand or edit. A device
+   * seen only as a remote peer in other nodes' configs is unmanaged.
+   */
+  managed: boolean
 }
 
 export type FolderType = 'sendreceive' | 'sendonly' | 'receiveonly' | 'receiveencrypted'
@@ -32,6 +38,8 @@ export interface Share {
   completionPct?: number
   outOfSyncItems?: number
   errorMessage?: string
+  /** Every device `deviceId`'s own config shares this folder with (incl. itself). */
+  sharedWith: DeviceId[]
 }
 
 export interface ClusterModel {

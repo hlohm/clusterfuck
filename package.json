@@ -3,20 +3,17 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "workspaces": [
-    "packages/*"
-  ],
+  "packageManager": "pnpm@11.9.0",
   "scripts": {
-    "dev": "concurrently -n web,proxy -c blue,green \"npm run dev --workspace=@clusterfuck/web\" \"npm run dev --workspace=@clusterfuck/proxy\"",
-    "dev:web": "npm run dev --workspace=@clusterfuck/web",
-    "dev:proxy": "npm run dev --workspace=@clusterfuck/proxy",
-    "build": "npm run build --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present",
+    "dev": "pnpm --parallel --filter \"./packages/*\" dev",
+    "dev:web": "pnpm --filter @clusterfuck/web dev",
+    "dev:proxy": "pnpm --filter @clusterfuck/proxy dev",
+    "build": "pnpm --recursive --if-present build",
+    "typecheck": "pnpm --recursive --if-present typecheck",
     "lint": "oxlint",
-    "test": "npm run test --workspaces --if-present"
+    "test": "pnpm --recursive --if-present test"
   },
   "devDependencies": {
-    "concurrently": "^9.1.2",
     "oxlint": "^1.71.0",
     "typescript": "~6.0.2"
   }

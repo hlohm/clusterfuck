@@ -10,25 +10,35 @@ export const edgeCases: ClusterModel = {
   id: 'edge-cases',
   label: 'Edge cases (paused, error, out-of-sync, encrypted relay)',
   devices: [
-    { id: 'device-origin', name: 'origin', state: 'this-device' },
-    { id: 'device-mirror', name: 'mirror', state: 'connected' },
-    { id: 'device-satellite', name: 'satellite', state: 'disconnected' },
-    { id: 'device-vault', name: 'vault', state: 'paused' },
-    { id: 'device-relay-a', name: 'relay-a', state: 'connected' },
-    { id: 'device-relay-b', name: 'relay-b', state: 'connected' },
+    { id: 'device-origin', name: 'origin', state: 'this-device', managed: true },
+    { id: 'device-mirror', name: 'mirror', state: 'connected', managed: true },
+    { id: 'device-satellite', name: 'satellite', state: 'disconnected', managed: true },
+    { id: 'device-vault', name: 'vault', state: 'paused', managed: true },
+    { id: 'device-relay-a', name: 'relay-a', state: 'connected', managed: true },
+    { id: 'device-relay-b', name: 'relay-b', state: 'connected', managed: true },
+    // Known only from other nodes' configs — appears in the topology but has
+    // no first-hand Share rows and can't be managed directly.
+    { id: 'device-roamer', name: 'roamer (unmanaged)', state: 'disconnected', managed: false },
   ],
   folders: [
     { id: 'ledger', label: 'ledger' },
     { id: 'coldstore', label: 'coldstore' },
   ],
   shares: [
-    { folderId: 'ledger', deviceId: 'device-origin', type: 'sendreceive', state: 'idle' },
+    {
+      folderId: 'ledger',
+      deviceId: 'device-origin',
+      type: 'sendreceive',
+      state: 'idle',
+      sharedWith: ['device-origin', 'device-mirror', 'device-satellite', 'device-vault'],
+    },
     {
       folderId: 'ledger',
       deviceId: 'device-mirror',
       type: 'sendonly',
       state: 'out-of-sync',
       outOfSyncItems: 12,
+      sharedWith: ['device-origin', 'device-mirror', 'device-satellite', 'device-vault'],
     },
     {
       folderId: 'ledger',
@@ -36,8 +46,15 @@ export const edgeCases: ClusterModel = {
       type: 'receiveonly',
       state: 'error',
       errorMessage: 'disk full: no space to write incoming files',
+      sharedWith: ['device-origin', 'device-mirror', 'device-satellite', 'device-vault'],
     },
-    { folderId: 'ledger', deviceId: 'device-vault', type: 'receiveonly', state: 'paused' },
+    {
+      folderId: 'ledger',
+      deviceId: 'device-vault',
+      type: 'receiveonly',
+      state: 'paused',
+      sharedWith: ['device-origin', 'device-mirror', 'device-satellite', 'device-vault'],
+    },
 
     // coldstore: mutual encrypted relay between two untrusted peers
     {
@@ -46,7 +63,14 @@ export const edgeCases: ClusterModel = {
       type: 'receiveencrypted',
       state: 'syncing',
       completionPct: 63,
+      sharedWith: ['device-relay-a', 'device-relay-b'],
     },
-    { folderId: 'coldstore', deviceId: 'device-relay-b', type: 'receiveencrypted', state: 'idle' },
+    {
+      folderId: 'coldstore',
+      deviceId: 'device-relay-b',
+      type: 'receiveencrypted',
+      state: 'idle',
+      sharedWith: ['device-relay-a', 'device-relay-b'],
+    },
   ],
 }

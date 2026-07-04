@@ -1,4 +1,5 @@
 import type {
+  ConfigFolder,
   ConfigResponse,
   ConnectionsResponse,
   DbStatusResponse,
@@ -25,15 +26,39 @@ export class SyncthingClient {
     return this.node.id
   }
 
-  private async get<T>(path: string, signal?: AbortSignal): Promise<T> {
+  private async request(
+    method: 'GET' | 'POST' | 'PUT',
+    path: string,
+    body?: unknown,
+    signal?: AbortSignal,
+  ): Promise<Response> {
     const res = await fetch(new URL(path, this.node.url), {
-      headers: { 'X-API-Key': this.node.apiKey },
+      method,
+      headers: {
+        'X-API-Key': this.node.apiKey,
+        ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+      },
+      body: body !== undefined ? JSON.stringify(body) : undefined,
       signal,
     })
     if (!res.ok) {
-      throw new Error(`${this.node.id}: GET ${path} -> HTTP ${res.status}`)
+      throw new Error(`${this.node.id}: ${method} ${path} -> HTTP ${res.status}`)
     }
+    return res
+  }
+
+  private async get<T>(path: string, signal?: AbortSignal): Promise<T> {
+    const res = await this.request('GET', path, undefined, signal)
     return (await res.json()) as T
+  }
+
+  private async send(
+    method: 'POST' | 'PUT',
+    path: string,
+    body?: unknown,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    await this.request(method, path, body, signal)
   }
 
   systemStatus(signal?: AbortSignal): Promise<SystemStatusResponse> {
@@ -63,5 +88,37 @@ export class SyncthingClient {
    */
   events(since: number, signal?: AbortSignal): Promise<SyncthingEvent[]> {
     return this.get(`/rest/events?since=${since}`, signal)
+  }
+
+  /** Pauses *this node's* connection to the given device. */
+  pauseDevice(deviceId: string, signal?: AbortSignal): Promise<void> {
+    return this.send('POST', `/rest/system/pause?device=${encodeURIComponent(deviceId)}`, undefined, signal)
+  }
+
+  /** Resumes *this node's* connection to the given device. */
+  resumeDevice(deviceId: string, signal?: AbortSignal): Promise<void> {
+    return this.send('POST', `/rest/system/resume?device=${encodeURIComponent(deviceId)}`, undefined, signal)
+  }
+
+  rescanFolder(folderId: string, signal?: AbortSignal): Promise<void> {
+    return this.send('POST', `/rest/db/scan?folder=${encodeURIComponent(folderId)}`, undefined, signal)
+  }
+
+  folderConfig(folderId: string, signal?: AbortSignal): Promise<ConfigFolder> {
+    return this.get(`/rest/config/folders/${encodeURIComponent(folderId)}`, signal)
+  }
+
+  putFolderConfig(folderId: string, folder: ConfigFolder, signal?: AbortSignal): Promise<void> {
+    return this.send('PUT', `/rest/config/folders/${encodeURIComponent(folderId)}`, folder, signal)
+  }
+
+  /** Adds (or replaces) a device entry in this node's config. */
+  postDevice(device: { deviceID: string; name?: string }, signal?: AbortSignal): Promise<void> {
+    return this.send('POST', '/rest/config/devices', device, signal)
+  }
+
+  /** Adds (or replaces) a folder in this node's config. */
+  postFolder(folder: ConfigFolder, signal?: AbortSignal): Promise<void> {
+    return this.send('POST', '/rest/config/folders', folder, signal)
   }
 }

@@ -48,6 +48,7 @@ export async function fetchNodeSnapshot(
           globalFiles > 0 ? Math.round(((globalFiles - needFiles) / globalFiles) * 100) : 100,
         outOfSyncItems: needFiles > 0 ? needFiles : undefined,
         errorMessage: hasErrors ? errors!.errors![0]!.error : undefined,
+        sharedWith: f.devices.map((d) => d.deviceID),
       }
     }),
   )

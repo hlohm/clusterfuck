@@ -18,7 +18,14 @@ export interface ConfigFolderDevice {
   deviceID: string
 }
 
-export type SyncthingFolderType = 'sendreceive' | 'sendonly' | 'receiveonly' | 'receiveencrypted'
+export const SYNCTHING_FOLDER_TYPES = [
+  'sendreceive',
+  'sendonly',
+  'receiveonly',
+  'receiveencrypted',
+] as const
+
+export type SyncthingFolderType = (typeof SYNCTHING_FOLDER_TYPES)[number]
 
 export interface ConfigFolder {
   id: string
@@ -26,6 +33,8 @@ export interface ConfigFolder {
   type: SyncthingFolderType
   paused: boolean
   devices: ConfigFolderDevice[]
+  /** Filesystem path on the owning node. Only set when creating a folder. */
+  path?: string
 }
 
 export interface ConfigResponse {

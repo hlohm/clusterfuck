@@ -9,20 +9,33 @@ export const smallMirror: ClusterModel = {
   id: 'small-mirror',
   label: 'Small mirror (2 trusted, 1 encrypted)',
   devices: [
-    { id: 'device-alpha', name: 'alpha-laptop', state: 'this-device' },
-    { id: 'device-bravo', name: 'bravo-desktop', state: 'connected' },
-    { id: 'device-charlie', name: 'charlie-backup', state: 'connected' },
+    { id: 'device-alpha', name: 'alpha-laptop', state: 'this-device', managed: true },
+    { id: 'device-bravo', name: 'bravo-desktop', state: 'connected', managed: true },
+    { id: 'device-charlie', name: 'charlie-backup', state: 'connected', managed: true },
   ],
   folders: [{ id: 'spectrum', label: 'spectrum' }],
   shares: [
-    { folderId: 'spectrum', deviceId: 'device-alpha', type: 'sendreceive', state: 'idle' },
-    { folderId: 'spectrum', deviceId: 'device-bravo', type: 'sendreceive', state: 'idle' },
+    {
+      folderId: 'spectrum',
+      deviceId: 'device-alpha',
+      type: 'sendreceive',
+      state: 'idle',
+      sharedWith: ['device-alpha', 'device-bravo', 'device-charlie'],
+    },
+    {
+      folderId: 'spectrum',
+      deviceId: 'device-bravo',
+      type: 'sendreceive',
+      state: 'idle',
+      sharedWith: ['device-alpha', 'device-bravo', 'device-charlie'],
+    },
     {
       folderId: 'spectrum',
       deviceId: 'device-charlie',
       type: 'receiveencrypted',
       state: 'syncing',
       completionPct: 87,
+      sharedWith: ['device-alpha', 'device-bravo', 'device-charlie'],
     },
   ],
 }
