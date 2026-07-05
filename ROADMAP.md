@@ -99,8 +99,11 @@ Multiple ways to read the same model, plus a design pass.
 - [x] **Graph modes:** **Nodes** (default; devices-only mesh — each folder
       becomes pairwise edges colored by folder identity from a validated
       categorical palette; the folders a pair shares render as evenly-offset
-      parallel lines so they stay countable) and **Folders** (two-layer
-      hyperedge layout; edge color = folder type).
+      parallel lines so they stay countable; each end independently gets an
+      arrowhead if that device's own share type receives updates, a 🔒 +
+      whole-line dash if either end is receiveencrypted — asymmetric shares
+      read correctly since each end only depends on its own type) and
+      **Folders** (two-layer hyperedge layout; edge color = folder type).
 - [x] **Topology editing:** Add device / Add folder dialogs; `Device.managed`
       distinguishes registered nodes from remote-only peers.
 - [x] **Visual refresh:** Syncthing-blue logo (favicon + header mark), accent

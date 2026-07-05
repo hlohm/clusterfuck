@@ -4,6 +4,20 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.3.1]
+
+- Nodes-mode graph: share mode (send/receive/encrypted) is now visible on the
+  line itself, not just via the folder-identity color. Each end of a line
+  independently gets an arrowhead if that device's own share type receives
+  updates (everything except sendonly) — asymmetric shares (one side
+  sendonly, the other receiveonly) read correctly since each end only
+  depends on its own type. A 🔒 marks whichever end is receiveencrypted, and
+  the whole line dashes when either end is. New "Share mode (line)" legend
+  section explains the encoding. Extracted the pure graph-layout functions
+  (`nodesGraph`/`foldersGraph`) out of `reactFlowAdapter.tsx` into a new
+  `graphLayout.ts` (oxlint's react-refresh rule flags a file exporting both
+  components and plain functions), making them directly unit-testable.
+
 ## [0.3.0]
 
 - Phase 5: **Accept pending devices & folders** — the cluster-wide "inbox".
