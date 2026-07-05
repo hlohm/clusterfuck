@@ -118,8 +118,9 @@ tabs. Mapped from the GUI's actual surface, in priority order.
 - [x] Pause/resume, rescan, change type, add/remove share, create shared folder
 - [x] Remove folder (per node; cluster-wide removal is doing this on each
       sharing node in turn, no bulk action yet — see Cluster operations)
-- [ ] **(next)** Per-share encryption passwords — first-class `receiveencrypted`
-      setup, the case this app exists to make legible
+- [x] Per-share encryption passwords — setting one on an added/existing share
+      makes that peer untrusted/`receiveencrypted` on its own side; write-only,
+      never read back into the model; an empty string explicitly clears it
 - [ ] Versioning config (trashcan/simple/staggered/external) per node
 - [ ] Ignore patterns — view/edit per node, diff across nodes
 - [ ] Advanced folder options (rescan interval, watcher, min disk free);

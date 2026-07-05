@@ -16,6 +16,13 @@ export interface ConfigDevice {
 
 export interface ConfigFolderDevice {
   deviceID: string
+  /**
+   * Set on the trusted sender's own share entry for an untrusted peer — the
+   * peer's own copy of the folder is then `receiveencrypted` and never sees
+   * the plaintext. Write-only from our side: never read back into the
+   * normalized model, which only ever sees `sharedWith` device ids.
+   */
+  encryptionPassword?: string
 }
 
 export const SYNCTHING_FOLDER_TYPES = [

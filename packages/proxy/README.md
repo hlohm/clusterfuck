@@ -61,8 +61,15 @@ Listens on `PORT` (default `4000`). Routes:
 - `PATCH /api/folders/:folderId/devices/:deviceId` body
   `{ "type": "sendonly" }` — changes that folder's type on that node.
 - `POST /api/folders/:folderId/devices/:deviceId/shares` body
-  `{ "deviceId": "..." }` — adds a device to that folder's share list on that
-  node.
+  `{ "deviceId": "...", "encryptionPassword": "..." }` (`encryptionPassword`
+  optional) — adds a device to that folder's share list on that node. Set
+  `encryptionPassword` to make the added peer untrusted/`receiveencrypted` on
+  its own side; omit it for a normal trusted share. Also doubles as "set/change
+  the password on an already-shared device" — calling this again for a device
+  already on the list just updates its entry. An explicit empty string clears
+  a previously-set password; omitting the field leaves it as-is.
+  `encryptionPassword` is write-only — it's never read back into the
+  normalized model or any response.
 - `DELETE /api/folders/:folderId/devices/:deviceId/shares/:targetDeviceId` —
   removes a device from that folder's share list on that node.
 - `DELETE /api/folders/:folderId/devices/:deviceId` — removes the folder from

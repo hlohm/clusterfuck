@@ -63,6 +63,7 @@ const FOLDER_TYPE_OPTIONS = (Object.keys(FOLDER_TYPE_STYLE) as FolderType[]).map
 function ShareActions({ cluster, share }: { cluster: ClusterModel; share: Share }) {
   const { busy, error, run } = useAsyncAction()
   const [addTarget, setAddTarget] = useState('')
+  const [addPassword, setAddPassword] = useState('')
 
   const deviceById = new Map(cluster.devices.map((d) => [d.id, d]))
   const nodeName = deviceById.get(share.deviceId)?.name ?? share.deviceId
@@ -171,16 +172,31 @@ function ShareActions({ cluster, share }: { cluster: ClusterModel; share: Share 
                 </option>
               ))}
             </select>
+            <input
+              type="password"
+              placeholder="Encryption password (optional)"
+              title="Set this to make the added peer untrusted/receiveencrypted — it will hold only ciphertext. Leave blank for a normal trusted share."
+              value={addPassword}
+              disabled={busy}
+              onChange={(event) => setAddPassword(event.target.value)}
+            />
             <button
               className="detail-panel__button--primary"
               disabled={busy || !addTarget}
               onClick={() => {
                 const target = addTarget
+                const password = addPassword
                 const name = deviceById.get(target)?.name ?? target
-                const started = run(`Share "${folderLabel}" with ${name} via ${nodeName}?`, () =>
-                  mutations.addShare(share.deviceId, share.folderId, target),
+                const message = password
+                  ? `Share "${folderLabel}" with ${name} via ${nodeName} as an untrusted (receiveencrypted) peer?`
+                  : `Share "${folderLabel}" with ${name} via ${nodeName}?`
+                const started = run(message, () =>
+                  mutations.addShare(share.deviceId, share.folderId, target, password || undefined),
                 )
-                if (started) setAddTarget('')
+                if (started) {
+                  setAddTarget('')
+                  setAddPassword('')
+                }
               }}
             >
               Add

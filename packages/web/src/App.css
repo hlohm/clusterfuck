@@ -716,7 +716,8 @@ button {
   flex-wrap: wrap;
 }
 
-.detail-panel__action-row select {
+.detail-panel__action-row select,
+.detail-panel__action-row input {
   font: inherit;
   font-size: 12px;
   padding: 2px 6px;
@@ -724,6 +725,11 @@ button {
   border: 1px solid var(--border);
   background: var(--bg);
   color: var(--text-h);
+}
+
+.detail-panel__action-row input {
+  min-width: 0;
+  flex: 1 1 160px;
 }
 
 .detail-panel__shared-with ul {

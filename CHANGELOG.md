@@ -6,6 +6,13 @@ Versioning policy is in `CLAUDE.md`; the phased feature history is in
 
 ## [0.2.0]
 
+- Phase 5: **Per-share encryption passwords** — `POST
+  /api/folders/:folderId/devices/:deviceId/shares` accepts an optional
+  `encryptionPassword`, making the added (or an already-shared) peer
+  untrusted/`receiveencrypted` on its own side. Write-only: never read back
+  into the normalized model or any response. An explicit empty string clears
+  a previously-set password; omitting the field leaves it as-is. Surfaced as
+  an optional password field next to "Add device" in the folder-share panel.
 - Phase 5: **Pause all / resume all** — cluster-wide device and folder
   pause/resume (`POST /api/devices/all/pause`, `.../resume`,
   `POST /api/folders/all/pause`, `.../resume`), one refresh for the whole
