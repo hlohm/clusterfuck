@@ -938,11 +938,17 @@ button {
   box-shadow: 0 0 0 1px var(--accent-border);
 }
 
-/* React Flow renders .react-flow__edgelabel-renderer (what EdgeLabelRenderer
-   portals into) BEFORE the nodes layer in the DOM, and gives every node an
-   explicit inline z-index of its own — so without this, nodes always paint
-   over anything placed in EdgeLabelRenderer, arrows/locks included, no
-   matter how far they're inset from the node center. */
+/* React Flow renders both the edges SVG and .react-flow__edgelabel-renderer
+   (what EdgeLabelRenderer portals into) BEFORE the nodes layer in the DOM,
+   and gives every node an explicit inline z-index of its own — so without
+   this, nodes always paint over edges (the lines themselves, not just
+   arrows/locks/labels) regardless of how the edge's own path is drawn.
+   Edges sit just below the label/arrow/lock layer so those still read
+   clearly over the line they belong to. */
+.react-flow__edges {
+  z-index: 999;
+}
+
 .react-flow__edgelabel-renderer {
   z-index: 1000;
 }

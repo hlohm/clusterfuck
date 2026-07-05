@@ -16,6 +16,10 @@ Versioning policy is in `CLAUDE.md`; the phased feature history is in
   the override nodes would still have painted over it regardless of how far
   the markers were inset. Also increased the insets themselves, since a
   device node's rendered width is much larger than the original guess.
+- Same node-overlap fix, extended to the edge line itself: gave the edges
+  layer its own `z-index` (just below the label/arrow/lock layer) so the
+  line no longer disappears under a device node either. Also sized the
+  arrowheads up a bit for legibility.
 
 ## [0.3.1]
 

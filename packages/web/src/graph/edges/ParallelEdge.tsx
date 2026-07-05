@@ -31,8 +31,8 @@ function Arrowhead({ x, y, angleDeg, color }: { x: number; y: number; angleDeg: 
       className="parallel-edge__arrow"
       style={{ transform: `translate(-50%, -50%) translate(${x}px, ${y}px) rotate(${angleDeg}deg)` }}
     >
-      <svg width="14" height="10" viewBox="-10 -5 20 10">
-        <polygon points="-7,-4.5 0,0 -7,4.5" fill={color ?? 'currentColor'} />
+      <svg width="20" height="14" viewBox="-13 -7 26 14">
+        <polygon points="-10,-6.5 0,0 -10,6.5" fill={color ?? 'currentColor'} />
       </svg>
     </div>
   )
