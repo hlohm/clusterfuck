@@ -13,6 +13,13 @@ Versioning policy is in `CLAUDE.md`; the phased feature history is in
   into the normalized model or any response. An explicit empty string clears
   a previously-set password; omitting the field leaves it as-is. Surfaced as
   an optional password field next to "Add device" in the folder-share panel.
+- Phase 5: **Pause all / resume all** — cluster-wide device and folder
+  pause/resume (`POST /api/devices/all/pause`, `.../resume`,
+  `POST /api/folders/all/pause`, `.../resume`), one refresh for the whole
+  batch rather than one per target. A partial failure still applies to and
+  refreshes the rest, reported by node→target label (capped at 5 shown).
+  Surfaced as a new "Cluster actions" section on the Overview page — the
+  first mutation that isn't scoped to a single device or folder.
 
 ## [0.1.0]
 

@@ -141,7 +141,9 @@ tabs. Mapped from the GUI's actual surface, in priority order.
 
 ### Cluster operations
 
-- [ ] **(next)** Pause all / resume all (devices or folders)
+- [x] Pause all / resume all (devices or folders) — one mutation, one refresh
+      for the whole batch; a partial failure still applies to and refreshes
+      the rest, reported by node→target label (capped)
 - [ ] Rescan all; restart/shutdown a node's Syncthing; upgrade orchestration
       (one node at a time, health-checked)
 - [ ] Config drift detection: same folder configured differently across nodes

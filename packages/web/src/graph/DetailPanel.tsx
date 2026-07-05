@@ -6,6 +6,7 @@ import { FOLDER_TYPE_STYLE } from '../encoding/folderTypeStyle'
 import { FOLDER_STATE_STYLE } from '../encoding/folderStateStyle'
 import { DEVICE_STATE_STYLE } from '../encoding/deviceStateStyle'
 import { StatusBadge } from '../views/StatusBadge'
+import { useAsyncAction } from '../data/useAsyncAction'
 import * as mutations from '../data/mutations'
 
 export interface DetailPanelProps {
@@ -13,26 +14,6 @@ export interface DetailPanelProps {
   selection: Selection
   /** Mutation actions only make sense against the live proxy, never fixtures. */
   isLive: boolean
-}
-
-function useAsyncAction() {
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string>()
-
-  /** CLAUDE.md gates every Phase 3 mutation behind a confirmation. Returns false if declined. */
-  const run = (confirmMessage: string | null, fn: () => Promise<void>): boolean => {
-    if (confirmMessage !== null && !window.confirm(confirmMessage)) return false
-    setBusy(true)
-    setError(undefined)
-    fn()
-      .catch((err: unknown) => {
-        setError(err instanceof Error ? err.message : 'Action failed')
-      })
-      .finally(() => setBusy(false))
-    return true
-  }
-
-  return { busy, error, run }
 }
 
 function DeviceActions({ device }: { device: Device }) {
