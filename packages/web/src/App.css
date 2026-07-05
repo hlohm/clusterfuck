@@ -860,6 +860,12 @@ button {
   font-size: 13px;
 }
 
+.legend__notes li {
+  display: block;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 .legend__swatch {
   width: 20px;
   height: 0;
@@ -941,6 +947,19 @@ button {
   background: var(--bg);
   color: var(--text-h);
   pointer-events: none;
+}
+
+.parallel-edge__lock {
+  position: absolute;
+  font-size: 10px;
+  line-height: 1;
+  pointer-events: none;
+  /* A halo instead of a box: reads at a glance without competing with the
+     line/arrowheads it sits on, even where a couple of parallel lines cross. */
+  text-shadow:
+    0 0 3px var(--bg),
+    0 0 3px var(--bg),
+    0 0 3px var(--bg);
 }
 
 /* ── Graph nodes: devices are round, folders are square ────────────── */

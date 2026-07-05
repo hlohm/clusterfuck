@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { render } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { Legend } from './Legend'
 import { edgeCases } from '../fixtures/edge-cases'
 
@@ -28,5 +28,15 @@ describe('Legend', () => {
       expect(style.borderTopColor).not.toBe('')
       expect(style.backgroundColor).toBe('')
     }
+  })
+
+  it('explains the share-mode arrow/lock/dash encoding only in Nodes mode', () => {
+    render(<Legend cluster={edgeCases} mode="nodes" />)
+    expect(screen.getByText('Share mode (line)')).toBeInTheDocument()
+  })
+
+  it('does not show the Nodes-mode share-mode note in Folders mode', () => {
+    render(<Legend cluster={edgeCases} mode="folders" />)
+    expect(screen.queryByText('Share mode (line)')).not.toBeInTheDocument()
   })
 })

@@ -45,3 +45,13 @@ export const FOLDER_TYPE_STYLE: Record<FolderType, FolderTypeStyle> = {
     icon: 'lock',
   },
 }
+
+/**
+ * Whether a device with this as its own folder participation accepts
+ * incoming changes from peers — everything except sendonly. Used in Nodes
+ * mode to decide which end(s) of a device-pair edge get an arrowhead,
+ * independent of the other end's type (asymmetric shares are expected).
+ */
+export function receivesFromPeers(type: FolderType): boolean {
+  return type !== 'sendonly'
+}

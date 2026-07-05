@@ -78,6 +78,20 @@ export function Legend({ cluster, mode }: LegendProps) {
         </section>
       )}
 
+      {mode === 'nodes' && (
+        <section>
+          <h3>Share mode (line)</h3>
+          <ul className="legend__notes">
+            <li>Arrow points into the device that receives updates for that folder.</li>
+            <li>No arrow at an end — that device only sends (sendonly).</li>
+            <li>
+              🔒 marks the end whose own copy is receiveencrypted (untrusted, ciphertext only) — the
+              whole line dashes when either end is, even though the other end's own type is unchanged.
+            </li>
+          </ul>
+        </section>
+      )}
+
       <section>
         <h3>Folder state (badge)</h3>
         <ul>
