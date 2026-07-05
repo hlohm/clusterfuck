@@ -3,6 +3,28 @@ export type FolderId = string
 
 export type DeviceState = 'this-device' | 'connected' | 'disconnected' | 'paused'
 
+/** A rolled-up service/method health count (listen addresses, discovery methods, ...), with the failing ones named for detail-on-selection. */
+export interface ServiceHealth {
+  total: number
+  ok: number
+  errors: string[]
+}
+
+/**
+ * A registered node's own first-hand system info — only it can report this
+ * about itself, so it's only ever present on a `managed: true` device (never
+ * derivable for a peer known only via another node's config).
+ */
+export interface DeviceSystemStatus {
+  version: string
+  uptimeSeconds: number
+  ramBytes: number
+  /** Listen-address services (TCP, relay, ...). */
+  listeners: ServiceHealth
+  /** Discovery methods (local, global, ...). */
+  discovery: ServiceHealth
+}
+
 export interface Device {
   id: DeviceId
   name: string
@@ -13,6 +35,7 @@ export interface Device {
    * seen only as a remote peer in other nodes' configs is unmanaged.
    */
   managed: boolean
+  systemStatus?: DeviceSystemStatus
 }
 
 export type FolderType = 'sendreceive' | 'sendonly' | 'receiveonly' | 'receiveencrypted'

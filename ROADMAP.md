@@ -166,7 +166,10 @@ tabs. Mapped from the GUI's actual surface, in priority order.
 ### Observability
 
 - [x] Live state/completion/errors via events + SSE; overview dashboard
-- [ ] Per-node system status (version, uptime, listeners, discovery, RAM/CPU)
+- [x] Per-node system status (version, uptime, listeners, discovery, RAM) —
+      CPU deliberately excluded: Syncthing's own REST API documents
+      `cpuPercent` as deprecated and always 0, so surfacing it would just be
+      misleading UI clutter, not real information
 - [ ] Transfer rates and totals (per link, per node, cluster aggregate)
 - [ ] Recent-changes feed and event log, merged across nodes
 - [ ] Completion history/sparklines on the overview tiles

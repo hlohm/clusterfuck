@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { ClusterModel, Device, FolderType, Share } from '@clusterfuck/shared'
+import type { ClusterModel, Device, DeviceSystemStatus, FolderType, ServiceHealth, Share } from '@clusterfuck/shared'
 import type { Selection } from './selection'
 import { sharesByDevice, sharesByFolder } from '@clusterfuck/shared'
 import { FOLDER_TYPE_STYLE } from '../encoding/folderTypeStyle'
@@ -8,6 +8,7 @@ import { DEVICE_STATE_STYLE } from '../encoding/deviceStateStyle'
 import { StatusBadge } from '../views/StatusBadge'
 import { useAsyncAction } from '../data/useAsyncAction'
 import * as mutations from '../data/mutations'
+import { formatBytes, formatDuration } from '../format'
 
 export interface DetailPanelProps {
   cluster: ClusterModel
@@ -15,6 +16,37 @@ export interface DetailPanelProps {
   onSelect: (selection: Selection) => void
   /** Mutation actions only make sense against the live proxy, never fixtures. */
   isLive: boolean
+}
+
+function ServiceHealthLine({ label, health }: { label: string; health: ServiceHealth }) {
+  return (
+    <p>
+      <strong>{label}:</strong> {health.ok}/{health.total} OK
+      {health.errors.length > 0 && (
+        <span className="detail-panel__status-errors"> — {health.errors.join('; ')}</span>
+      )}
+    </p>
+  )
+}
+
+/** Only ever present on a managed device — its own version/uptime/RAM/listener/discovery status, first-hand. */
+function SystemStatusSection({ status }: { status: DeviceSystemStatus }) {
+  return (
+    <div className="detail-panel__system-status">
+      <h4>System status</h4>
+      <p>
+        <strong>Version:</strong> {status.version || 'unknown'}
+      </p>
+      <p>
+        <strong>Uptime:</strong> {formatDuration(status.uptimeSeconds)}
+      </p>
+      <p>
+        <strong>Memory:</strong> {formatBytes(status.ramBytes)}
+      </p>
+      <ServiceHealthLine label="Listeners" health={status.listeners} />
+      <ServiceHealthLine label="Discovery" health={status.discovery} />
+    </div>
+  )
 }
 
 function DeviceActions({ device }: { device: Device }) {
@@ -236,6 +268,7 @@ export function DetailPanel({ cluster, selection, onSelect, isLive }: DetailPane
         <p>
           <strong>Device ID:</strong> <code>{device.id}</code>
         </p>
+        {device.systemStatus && <SystemStatusSection status={device.systemStatus} />}
         {isLive && <DeviceActions device={device} />}
         <h4>Folder shares ({shares.length})</h4>
         <ul className="attention-list">

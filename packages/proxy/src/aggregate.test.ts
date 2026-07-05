@@ -10,6 +10,13 @@ function snapshot(overrides: Partial<NodeSnapshot>): NodeSnapshot {
     connections: {},
     pendingDevices: [],
     pendingFolders: [],
+    systemStatus: {
+      version: 'v1.27.0',
+      uptimeSeconds: 3600,
+      ramBytes: 30_000_000,
+      listeners: { total: 1, ok: 1, errors: [] },
+      discovery: { total: 1, ok: 1, errors: [] },
+    },
     ...overrides,
   }
 }
@@ -60,6 +67,43 @@ describe('aggregateCluster', () => {
     expect(model.shares).toHaveLength(2)
     expect(model.shares.find((s) => s.deviceId === 'DEVICE-A')?.state).toBe('idle')
     expect(model.shares.find((s) => s.deviceId === 'DEVICE-B')?.state).toBe('syncing')
+  })
+
+  it("gives systemStatus only to a snapshot's own myID, never to a peer seen only via its config", () => {
+    const a = snapshot({
+      nodeId: 'st-a',
+      myID: 'DEVICE-A',
+      devices: [
+        { deviceId: 'DEVICE-A', name: 'st-a', paused: false },
+        // DEVICE-ROAMER is only ever seen as a peer here, never registered
+        // as a node of its own — no snapshot in this test has myID ===
+        // 'DEVICE-ROAMER', so it has no first-hand system status to report.
+        { deviceId: 'DEVICE-ROAMER', name: 'roamer', paused: false },
+      ],
+      systemStatus: {
+        version: 'v1.27.0',
+        uptimeSeconds: 111,
+        ramBytes: 1,
+        listeners: { total: 1, ok: 1, errors: [] },
+        discovery: { total: 1, ok: 1, errors: [] },
+      },
+    })
+
+    const model = aggregateCluster([a], 'live', 'Live cluster')
+
+    const self = model.devices.find((d) => d.id === 'DEVICE-A')!
+    expect(self.managed).toBe(true)
+    expect(self.systemStatus).toEqual({
+      version: 'v1.27.0',
+      uptimeSeconds: 111,
+      ramBytes: 1,
+      listeners: { total: 1, ok: 1, errors: [] },
+      discovery: { total: 1, ok: 1, errors: [] },
+    })
+
+    const roamer = model.devices.find((d) => d.id === 'DEVICE-ROAMER')!
+    expect(roamer.managed).toBe(false)
+    expect(roamer.systemStatus).toBeUndefined()
   })
 
   it('reconciles device state: paused beats connected beats disconnected', () => {

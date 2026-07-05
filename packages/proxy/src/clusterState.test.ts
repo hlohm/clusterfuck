@@ -44,7 +44,16 @@ function installFakeCluster(delayMs = 0, failOn?: { host: string; pathname: stri
     }
 
     if (url.pathname === '/rest/system/status') {
-      return jsonResponse({ myID: base.includes('a.test') ? 'DEVICE-A' : 'DEVICE-B' })
+      return jsonResponse({
+        myID: base.includes('a.test') ? 'DEVICE-A' : 'DEVICE-B',
+        uptime: 3600,
+        alloc: 30_000_000,
+        connectionServiceStatus: { 'tcp://0.0.0.0:22000': { error: null } },
+        discoveryStatus: { 'IPv4 local': { error: null } },
+      })
+    }
+    if (url.pathname === '/rest/system/version') {
+      return jsonResponse({ version: 'v1.27.0' })
     }
     if (url.pathname === '/rest/config') {
       return jsonResponse({
@@ -173,7 +182,16 @@ function installAddNodeFakeCluster() {
       return new Response('nope', { status: 500 })
     }
     if (url.pathname === '/rest/system/status') {
-      return jsonResponse({ myID: myIdByHost[url.host] ?? 'UNKNOWN' })
+      return jsonResponse({
+        myID: myIdByHost[url.host] ?? 'UNKNOWN',
+        uptime: 3600,
+        alloc: 30_000_000,
+        connectionServiceStatus: { 'tcp://0.0.0.0:22000': { error: null } },
+        discoveryStatus: { 'IPv4 local': { error: null } },
+      })
+    }
+    if (url.pathname === '/rest/system/version') {
+      return jsonResponse({ version: 'v1.27.0' })
     }
     if (url.pathname === '/rest/config') {
       return jsonResponse({ devices: [], folders: [] })

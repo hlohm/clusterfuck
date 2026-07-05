@@ -4,6 +4,18 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.4.1]
+
+- Per-node system status (ROADMAP.md Phase 5 Observability): a managed
+  device's own version, uptime, memory use, and listener/discovery health
+  now show in its detail panel on selection — version and uptime/RAM come
+  from `/rest/system/status` (now also fetched: `/rest/system/version`);
+  listener/discovery health rolls each up to an "N/M OK" count with the
+  actual failures named, matching the existing folder-health "roll up, keep
+  detail on selection" convention. Only ever present on a `managed: true`
+  device (`Device.systemStatus`) — never derivable for a peer known only via
+  another node's config. Read-only; no new mutations or proxy routes.
+
 ## [0.4.0]
 
 - Node registration UI (ROADMAP.md Phase 5's last "Foundations" item): register

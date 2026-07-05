@@ -3,6 +3,7 @@ import type {
   Device,
   DeviceId,
   DeviceState,
+  DeviceSystemStatus,
   Folder,
   FolderId,
   FolderState,
@@ -46,6 +47,8 @@ export interface NodeSnapshot {
     label: string
     receiveEncrypted: boolean
   }[]
+  /** This node's own version/uptime/RAM/listener/discovery status — first-hand, so it only ever applies to myID. */
+  systemStatus: DeviceSystemStatus
 }
 
 interface DeviceAcc {
@@ -53,6 +56,7 @@ interface DeviceAcc {
   managed: boolean
   connectedViews: boolean[]
   pausedViews: boolean[]
+  systemStatus?: DeviceSystemStatus
 }
 
 /**
@@ -93,6 +97,7 @@ export function aggregateCluster(
   for (const snap of snapshots) {
     upsertDevice(snap.myID, snap.nodeId)
     devices.get(snap.myID)!.managed = true
+    devices.get(snap.myID)!.systemStatus = snap.systemStatus
 
     for (const d of snap.devices) {
       upsertDevice(d.deviceId, d.name)
@@ -155,6 +160,7 @@ export function aggregateCluster(
     name: acc.name || id,
     state: reconcileDeviceState(acc),
     managed: acc.managed,
+    systemStatus: acc.systemStatus,
   }))
 
   const folderList: Folder[] = [...folders].map(([id, folderLabel]) => ({
