@@ -4,6 +4,30 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.3.2]
+
+- Fixed the share-mode arrowheads and lock badges added in 0.3.1 being hidden
+  behind device nodes, exactly where they mattered most: they were drawn as
+  raw SVG in the edge's own path at a fixed inset guess (18-34px), nowhere
+  near enough to clear a ~120px+ wide device-node pill. Moved them into
+  `EdgeLabelRenderer` and now compute the *exact* distance to each device
+  node's own rendered boundary (via React Flow's measured node size —
+  `useInternalNode`, approximating the pill as its bounding rectangle) so the
+  arrow tip lands precisely at the node's edge and the lock sits a bit
+  further out toward the middle — both entirely in the open space between
+  the two nodes, so the node renders on top as normal without hiding either
+  one. Also sized the arrowheads up ~40% and widened the gap between
+  parallel lines so the bigger arrowheads don't crowd each other near a
+  shared endpoint.
+- Fixed that boundary distance being computed from each node's dead center
+  and reused as-is for every parallel line a device pair shares — correct
+  only for the one line that actually passes through the center. Every other
+  line ended up exiting at the same distance along the line regardless of
+  its own perpendicular offset, so anything but the innermost arrow floated
+  off the node's real (non-circular) edge, "lined up" with the innermost one
+  instead of following the boundary. Now computed per line, from its own
+  offset starting point.
+
 ## [0.3.1]
 
 - Nodes-mode graph: share mode (send/receive/encrypted) is now visible on the

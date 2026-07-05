@@ -962,6 +962,12 @@ button {
     0 0 3px var(--bg);
 }
 
+.parallel-edge__arrow {
+  position: absolute;
+  pointer-events: none;
+  display: flex;
+}
+
 /* ── Graph nodes: devices are round, folders are square ────────────── */
 
 .device-node {
