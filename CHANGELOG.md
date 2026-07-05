@@ -4,6 +4,19 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.3.2]
+
+- Fixed the share-mode arrowheads and lock badges added in 0.3.1 being hidden
+  behind device nodes, exactly where they mattered most: they were drawn as
+  raw SVG in the edge's own path, and a device node (a good 120px+ wide pill)
+  easily covers a marker inset only 18-34px from its center. Moved them into
+  `EdgeLabelRenderer` (an HTML overlay meant for exactly this) and gave that
+  layer an explicit `z-index` — React Flow renders it *before* the nodes
+  layer in the DOM and gives every node its own explicit z-index, so without
+  the override nodes would still have painted over it regardless of how far
+  the markers were inset. Also increased the insets themselves, since a
+  device node's rendered width is much larger than the original guess.
+
 ## [0.3.1]
 
 - Nodes-mode graph: share mode (send/receive/encrypted) is now visible on the

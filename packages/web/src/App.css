@@ -938,6 +938,15 @@ button {
   box-shadow: 0 0 0 1px var(--accent-border);
 }
 
+/* React Flow renders .react-flow__edgelabel-renderer (what EdgeLabelRenderer
+   portals into) BEFORE the nodes layer in the DOM, and gives every node an
+   explicit inline z-index of its own — so without this, nodes always paint
+   over anything placed in EdgeLabelRenderer, arrows/locks included, no
+   matter how far they're inset from the node center. */
+.react-flow__edgelabel-renderer {
+  z-index: 1000;
+}
+
 .parallel-edge__label {
   position: absolute;
   font-size: 11px;
@@ -960,6 +969,12 @@ button {
     0 0 3px var(--bg),
     0 0 3px var(--bg),
     0 0 3px var(--bg);
+}
+
+.parallel-edge__arrow {
+  position: absolute;
+  pointer-events: none;
+  display: flex;
 }
 
 /* ── Graph nodes: devices are round, folders are square ────────────── */

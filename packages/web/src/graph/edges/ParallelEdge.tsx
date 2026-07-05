@@ -14,14 +14,27 @@ export interface ParallelEdgeData extends Record<string, unknown> {
   dashed?: boolean
 }
 
-/** Local-frame triangle (points toward +x), rotated/translated onto the line. */
+/**
+ * Local frame: the triangle's tip sits at (0,0) — the exact center of this
+ * symmetric viewBox — so translating the wrapper div to a point and rotating
+ * it (both around its own center, i.e. the tip) lands the tip precisely on
+ * that point pointing in the given direction. Rendered through
+ * EdgeLabelRenderer (an HTML overlay, not the SVG edges layer) because plain
+ * SVG markers drawn in the edge path render *behind* nodes by default — a
+ * device node is a good 120px+ wide pill, easily covering an inset drawn a
+ * few px off the node center, so the arrow/lock must be in the layer that
+ * sits above nodes, not just moved further away and hoped to clear it.
+ */
 function Arrowhead({ x, y, angleDeg, color }: { x: number; y: number; angleDeg: number; color?: string }) {
   return (
-    <polygon
-      points="-7,-4.5 0,0 -7,4.5"
-      fill={color ?? 'currentColor'}
-      transform={`translate(${x} ${y}) rotate(${angleDeg})`}
-    />
+    <div
+      className="parallel-edge__arrow"
+      style={{ transform: `translate(-50%, -50%) translate(${x}px, ${y}px) rotate(${angleDeg}deg)` }}
+    >
+      <svg width="14" height="10" viewBox="-10 -5 20 10">
+        <polygon points="-7,-4.5 0,0 -7,4.5" fill={color ?? 'currentColor'} />
+      </svg>
+    </div>
   )
 }
 
@@ -31,8 +44,8 @@ function Arrowhead({ x, y, angleDeg, color }: { x: number; y: number; angleDeg: 
  * lines — countable at a glance, never overlapping (unlike curvature
  * fan-outs, which still converge at the endpoints). Also carries the
  * per-endpoint share-mode encoding (arrowheads + lock badges + dash), inset
- * from the actual device nodes so they read as attached to an end without
- * touching/overlapping the node shape.
+ * from the actual device nodes and rendered in the above-nodes overlay layer
+ * so they stay visible instead of disappearing under the node shape.
  */
 export function ParallelEdge({
   id,
@@ -66,10 +79,12 @@ export function ParallelEdge({
   const y2 = targetY + oy
 
   // Insets scale with the line's own length so short edges (nearby devices)
-  // never let the arrow/lock pair collide with each other or the far end —
-  // capped so very long edges don't push them implausibly far from the node.
-  const arrowInset = Math.min(18, length * 0.22)
-  const lockInset = Math.min(34, length * 0.4)
+  // never let the arrow/lock pair collide with each other or the far end.
+  // The caps are generous — a device node is a ~120px+ wide pill, so an
+  // inset has to clear roughly its half-width, not just look "not touching
+  // the center point", or it renders on top of the node's own label text.
+  const arrowInset = Math.min(46, length * 0.3)
+  const lockInset = Math.min(72, length * 0.45)
   const angleToTarget = (Math.atan2(dy, dx) * 180) / Math.PI
 
   return (
@@ -79,23 +94,7 @@ export function ParallelEdge({
         path={`M ${x1},${y1} L ${x2},${y2}`}
         style={{ ...style, strokeDasharray: dashed ? '6 4' : style?.strokeDasharray }}
       />
-      {arrowAtSource && (
-        <Arrowhead
-          x={x1 + ux * arrowInset}
-          y={y1 + uy * arrowInset}
-          angleDeg={angleToTarget + 180}
-          color={style?.stroke as string | undefined}
-        />
-      )}
-      {arrowAtTarget && (
-        <Arrowhead
-          x={x2 - ux * arrowInset}
-          y={y2 - uy * arrowInset}
-          angleDeg={angleToTarget}
-          color={style?.stroke as string | undefined}
-        />
-      )}
-      {(label || lockAtSource || lockAtTarget) && (
+      {(label || arrowAtSource || arrowAtTarget || lockAtSource || lockAtTarget) && (
         <EdgeLabelRenderer>
           {label && (
             <div
@@ -106,6 +105,22 @@ export function ParallelEdge({
             >
               {label}
             </div>
+          )}
+          {arrowAtSource && (
+            <Arrowhead
+              x={x1 + ux * arrowInset}
+              y={y1 + uy * arrowInset}
+              angleDeg={angleToTarget + 180}
+              color={style?.stroke as string | undefined}
+            />
+          )}
+          {arrowAtTarget && (
+            <Arrowhead
+              x={x2 - ux * arrowInset}
+              y={y2 - uy * arrowInset}
+              angleDeg={angleToTarget}
+              color={style?.stroke as string | undefined}
+            />
           )}
           {lockAtSource && (
             <div
