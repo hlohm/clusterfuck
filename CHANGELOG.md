@@ -4,6 +4,24 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.4.0]
+
+- Node registration UI (ROADMAP.md Phase 5's last "Foundations" item): register
+  and remove Syncthing nodes from the running app instead of hand-editing the
+  config file. `dev-cluster.json` is renamed to `cluster.json` and reframed as
+  the app's one canonical node registry — it's still read once at startup, but
+  now also written back to (atomically, via a temp-file rename) whenever a
+  node is registered or removed, so it stays the single source of truth
+  either way. New "Register node" dialog (id, URL, API key) and a "Remove
+  node" action per node in the Overview's Nodes section, both gated behind
+  the same confirmation/preview conventions as every other mutation.
+  Registering checks connectivity up front (and rejects a node whose reported
+  device ID is already registered under a different id) so a typo'd URL/key
+  surfaces as an error instead of silently persisting a node that never
+  connects. Removing the very last registered node no longer leaves the
+  proxy unable to start back up — an empty node list is now a valid,
+  supported state, not a startup error.
+
 ## [0.3.2]
 
 - Fixed the share-mode arrowheads and lock badges added in 0.3.1 being hidden

@@ -74,11 +74,11 @@ Node's native type-stripping (no build step).
 pnpm install
 
 # Tell the proxy which nodes to talk to (untracked; never commit real keys)
-cp packages/proxy/dev-cluster.example.json packages/proxy/dev-cluster.json
+cp packages/proxy/cluster.example.json packages/proxy/cluster.json
 # edit it: each node's id, base URL, and X-API-Key
 ```
 
-`dev-cluster.json` looks like:
+`cluster.json` looks like:
 
 ```json
 {
@@ -90,6 +90,9 @@ cp packages/proxy/dev-cluster.example.json packages/proxy/dev-cluster.json
 ```
 
 (An API key is under **Actions → Settings → GUI** in each node's Syncthing UI.)
+This is only needed to get the first node or two registered — once the proxy
+is running, you can register and remove nodes from the app itself (**Register
+node** / **Remove node**), which keeps `cluster.json` in sync automatically.
 
 Then run both halves together:
 
@@ -124,7 +127,7 @@ Proxy environment variables:
 | Var | Default | Purpose |
 |---|---|---|
 | `PORT` | `4000` | HTTP port |
-| `CLUSTERFUCK_CONFIG` | `./dev-cluster.json` | Path to the nodes config (relative to cwd) |
+| `CLUSTERFUCK_CONFIG` | `./cluster.json` | Path to the nodes config (relative to cwd) — the proxy also writes to this file when nodes are registered/removed at runtime |
 | `CLUSTERFUCK_WEB_ORIGIN` | `http://localhost:5173` | CORS allow-origin — the URL the SPA is served from (only needed when the SPA calls the proxy cross-origin) |
 
 **2. Web** — build the static bundle and serve it from any static host/CDN:
@@ -148,8 +151,8 @@ VITE_PROXY_URL=https://proxy.example pnpm --filter @clusterfuck/web build
 > authentication** — anyone who can reach it can read cluster state and perform
 > management actions. Only expose it on a trusted network or behind your own
 > auth (e.g. an authenticating reverse proxy). Proxy auth is a tracked roadmap
-> item. `dev-cluster.json`, `.env.local`, and `*.local.md` are gitignored;
-> never commit real endpoints or keys.
+> item. `cluster.json`, `.env.local`, and `*.local.md` are gitignored; never
+> commit real endpoints or keys.
 
 ## Development
 

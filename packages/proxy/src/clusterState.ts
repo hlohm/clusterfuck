@@ -1,8 +1,14 @@
 import type { ClusterModel } from '@clusterfuck/shared'
 import { aggregateCluster, type NodeSnapshot } from './aggregate.ts'
 import { fetchNodeSnapshot } from './snapshot.ts'
+import { saveNodeConfig } from './config.ts'
 import { SyncthingClient, type NodeConfig } from './syncthing/client.ts'
 import type { ConfigFolder, SyncthingFolderType } from './syncthing/types.ts'
+
+interface ClientEntry {
+  nodeId: string
+  client: SyncthingClient
+}
 
 /** Thrown when a mutation targets a device/node no registered node can act on. */
 export class NotManagedError extends Error {
@@ -44,7 +50,7 @@ export class ClusterStateManager {
   private model: ClusterModel
   private snapshots: NodeSnapshot[] = []
   private readonly subscribers = new Set<(model: ClusterModel) => void>()
-  private readonly clients: { nodeId: string; client: SyncthingClient }[]
+  private clients: ClientEntry[]
   private readonly clusterId: string
   private readonly label: string
   private readonly pollIntervalMs: number
@@ -60,7 +66,11 @@ export class ClusterStateManager {
     this.clusterId = opts.clusterId
     this.label = opts.label
     this.pollIntervalMs = opts.pollIntervalMs ?? 45_000
-    this.model = {
+    this.model = this.emptyModel()
+  }
+
+  private emptyModel(): ClusterModel {
+    return {
       id: this.clusterId,
       label: this.label,
       devices: [],
@@ -82,14 +92,95 @@ export class ClusterStateManager {
 
   async start(): Promise<void> {
     await this.refresh()
-    for (const { nodeId, client } of this.clients) {
-      void this.runEventLoop(nodeId, client)
+    for (const entry of this.clients) {
+      void this.runEventLoop(entry)
     }
     void this.runPollLoop()
   }
 
   stop(): void {
     this.stopped = true
+  }
+
+  /**
+   * Registers a new node at runtime — the Phase 5 registration UI, replacing
+   * hand-editing cluster.json. Starts its own event loop immediately
+   * (mirrors what start() does for every node at boot, since this one didn't
+   * exist yet when start() ran) and persists the full node list back to
+   * disk so the file stays in sync and this node survives a restart.
+   *
+   * Checks connectivity up front: doRefresh()'s per-node fetch failures are
+   * caught and logged, not thrown (so one unreachable node never blanks the
+   * whole model) — which means without this check, a typo'd URL/apiKey
+   * would still persist and report success, and the only symptom would be
+   * the node silently never appearing, with no error surfaced anywhere the
+   * caller (the Register-node dialog) could show it.
+   */
+  addNode(config: NodeConfig): Promise<void> {
+    return this.enqueueMutation(async () => {
+      if (this.clients.some((c) => c.nodeId === config.id)) {
+        throw new InvalidTargetError(`${config.id} is already a registered node`)
+      }
+      const client = new SyncthingClient(config)
+      const status = await client.systemStatus()
+      // A label collision is caught above, but the same physical node could
+      // be registered again under a different label (typo'd/aliased URL) —
+      // check the identity Syncthing itself reports, since two ClientEntry
+      // objects polling the same node would double its snapshot in the
+      // aggregated model (duplicate Share rows per shared folder) and poll
+      // it twice forever.
+      if (this.snapshots.some((s) => s.myID === status.myID)) {
+        throw new InvalidTargetError(`${status.myID} is already registered (as a different node id)`)
+      }
+      const entry: ClientEntry = { nodeId: config.id, client }
+      this.clients.push(entry)
+      void this.runEventLoop(entry)
+      this.persist()
+      await this.refreshAfterMutation()
+    })
+  }
+
+  /**
+   * De-registers a node — splicing it out of this.clients is itself the
+   * stop signal its event loop notices on its next iteration (no forced
+   * abort of an in-flight long-poll, same as how the manager-wide stop()
+   * already works). Only removes it from OUR registry; doesn't touch that
+   * node's own Syncthing config, and doesn't remove it as a peer from any
+   * OTHER registered node (see removeDevice for that — a different,
+   * already-existing action).
+   *
+   * Accepts either the node's own Syncthing device ID (aggregate.ts sets
+   * managed devices' Device.id to snap.myID — what the web UI/every other
+   * mutation route already identifies a device by) or the internal
+   * registration label (NodeConfig.id, e.g. "st-a") directly.
+   */
+  removeNode(id: string): Promise<void> {
+    return this.enqueueMutation(async () => {
+      const nodeId = this.clients.some((c) => c.nodeId === id)
+        ? id
+        : this.snapshots.find((s) => s.myID === id)?.nodeId
+      const index = nodeId !== undefined ? this.clients.findIndex((c) => c.nodeId === nodeId) : -1
+      if (index === -1) throw new NotManagedError(id)
+      this.clients.splice(index, 1)
+      this.persist()
+      await this.refreshAfterMutation()
+    })
+  }
+
+  /**
+   * Best-effort: an in-memory add/remove already succeeded by the time this
+   * runs, so a disk-write failure is logged, not thrown — the running
+   * process keeps working correctly either way, it just won't survive a
+   * restart until the underlying problem (e.g. a read-only filesystem) is
+   * fixed. Never include this in an HTTP response; it round-trips every
+   * registered node's raw apiKey through toConfig().
+   */
+  private persist(): void {
+    try {
+      saveNodeConfig(this.clients.map((c) => c.client.toConfig()))
+    } catch (err) {
+      console.error('[clusterfuck-proxy] failed to persist node config:', (err as Error).message)
+    }
   }
 
   /**
@@ -126,6 +217,28 @@ export class ClusterStateManager {
   }
 
   private async doRefresh(): Promise<void> {
+    if (this.clients.length === 0) {
+      // Genuinely zero registered nodes (e.g. the last one was just removed
+      // via removeNode) — unlike a transient all-nodes-unreachable blip,
+      // there's no "last known good" worth preserving here. Before runtime
+      // removal existed, this branch was unreachable: loadNodeConfig always
+      // required 1+ nodes at startup.
+      //
+      // Skip re-notifying if we're already in this state — this.snapshots
+      // is only ever emptied by this same branch, so seeing it already
+      // empty here means a previous cycle already applied and broadcast
+      // the empty model. Without this, the low-frequency poll backstop
+      // (runPollLoop) would push an identical empty SSE frame to every
+      // connected browser on every tick for as long as zero nodes stay
+      // registered, instead of only once on the actual transition. A
+      // brand-new subscriber still gets the current (already empty) model
+      // immediately on connect regardless — that's a direct write in
+      // server.ts, not this notify path.
+      if (this.snapshots.length === 0) return
+      this.applyModel([], this.emptyModel())
+      return
+    }
+
     const snapshots = await Promise.all(
       this.clients.map(({ nodeId, client }) =>
         fetchNodeSnapshot(client, nodeId).catch((err: unknown) => {
@@ -137,8 +250,12 @@ export class ClusterStateManager {
     const valid = snapshots.filter((s): s is NodeSnapshot => s !== undefined)
     if (valid.length === 0) return // keep last-known-good model rather than blanking it out
 
-    this.snapshots = valid
-    this.model = aggregateCluster(valid, this.clusterId, this.label)
+    this.applyModel(valid, aggregateCluster(valid, this.clusterId, this.label))
+  }
+
+  private applyModel(snapshots: NodeSnapshot[], model: ClusterModel): void {
+    this.snapshots = snapshots
+    this.model = model
     for (const fn of this.subscribers) fn(this.model)
   }
 
@@ -534,12 +651,19 @@ export class ClusterStateManager {
     }
   }
 
-  private async runEventLoop(nodeId: string, client: SyncthingClient): Promise<void> {
+  /**
+   * Runs until either the whole manager stops, or this specific entry is
+   * removed. Checking array membership (rather than a separate per-entry
+   * flag) means there's only one place that can make this loop stop —
+   * removeNode splicing the entry out of this.clients — so a future
+   * removal path can't forget to also flip a second, easy-to-miss flag.
+   */
+  private async runEventLoop(entry: ClientEntry): Promise<void> {
     let since = 0
     let backoffMs = 1000
-    while (!this.stopped) {
+    while (!this.stopped && this.clients.includes(entry)) {
       try {
-        const events = await client.events(since)
+        const events = await entry.client.events(since)
         if (events.length > 0) {
           since = events[events.length - 1]!.id
           if (events.some((e) => RELEVANT_EVENT_TYPES.has(e.type))) {
@@ -549,7 +673,7 @@ export class ClusterStateManager {
         backoffMs = 1000
       } catch (err) {
         console.error(
-          `[clusterfuck-proxy] event stream error for ${nodeId}:`,
+          `[clusterfuck-proxy] event stream error for ${entry.nodeId}:`,
           (err as Error).message,
         )
         await sleep(backoffMs)

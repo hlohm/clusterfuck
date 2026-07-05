@@ -28,6 +28,16 @@ export function setAllFoldersPaused(paused: boolean): Promise<void> {
   return call('POST', `/api/folders/all/${paused ? 'pause' : 'resume'}`)
 }
 
+/** Registers a new node with the proxy, persisted server-side (cluster.json). */
+export function registerNode(id: string, url: string, apiKey: string): Promise<void> {
+  return call('POST', '/api/nodes', { id, url, apiKey })
+}
+
+/** De-registers a node from the proxy. Doesn't touch its own Syncthing config or unlink it as a peer elsewhere. */
+export function removeNode(nodeId: string): Promise<void> {
+  return call('DELETE', `/api/nodes/${encodeURIComponent(nodeId)}`)
+}
+
 /** Adds a device as a peer in each named registered node's config. */
 export function addDevice(deviceId: string, name: string, nodes: string[]): Promise<void> {
   return call('POST', '/api/devices', { deviceId, name: name || undefined, nodes })

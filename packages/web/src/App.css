@@ -563,6 +563,11 @@ button {
   color: var(--text);
 }
 
+.folder-card__footer {
+  padding: 8px 14px 12px;
+  border-top: 1px solid var(--border);
+}
+
 .pending-list {
   list-style: none;
   margin: 0;

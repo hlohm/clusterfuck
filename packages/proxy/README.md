@@ -9,11 +9,14 @@ this design.
 ## Setup
 
 ```sh
-cp dev-cluster.example.json dev-cluster.json
-# edit dev-cluster.json with your nodes' URLs and API keys
+cp cluster.example.json cluster.json
+# edit cluster.json with your nodes' URLs and API keys
 ```
 
-`dev-cluster.json` is gitignored — never commit real endpoints or keys.
+`cluster.json` is gitignored — never commit real endpoints or keys. It's the
+one canonical node registry: read at startup, and kept in sync automatically
+when nodes are registered/removed at runtime (see the `/api/nodes` routes
+below) — you only need to hand-edit it to get the first node or two in.
 
 ## Run
 
@@ -131,7 +134,8 @@ forwards `/api/*` to `http://localhost:4000` in dev, so in normal local dev
 you won't hit CORS at all).
 
 `CLUSTERFUCK_CONFIG` overrides the node-config file path (default
-`./dev-cluster.json`, resolved relative to the process's cwd).
+`./cluster.json`, resolved relative to the process's cwd) — both reads at
+startup and writes from runtime node registration use this same path.
 
 ## Notes
 
