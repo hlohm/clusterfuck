@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { ClusterModel, PendingDevice, Share } from '@clusterfuck/shared'
+import type { ClusterModel, Device, PendingDevice, Share } from '@clusterfuck/shared'
 import { clusterHealth, folderHealth, folderHealthForDevice, sharesByDevice, sharesByFolder } from '@clusterfuck/shared'
 import { FOLDER_TYPE_STYLE } from '../encoding/folderTypeStyle'
 import { DEVICE_STATE_STYLE } from '../encoding/deviceStateStyle'
@@ -283,6 +283,77 @@ function DeviceStatusBadge({ state }: { state: ClusterModel['devices'][number]['
   )
 }
 
+/** Own useAsyncAction instance per card — a shared one would show one row's busy/error state on every other row's button too. */
+function NodeCard({
+  cluster,
+  device,
+  onOpenShare,
+  isLive,
+}: {
+  cluster: ClusterModel
+  device: Device
+  onOpenShare?: (share: Share) => void
+  isLive?: boolean
+}) {
+  const shares = sharesByDevice(cluster, device.id)
+  const worst = folderHealthForDevice(cluster, device.id)
+  const { busy, error, run } = useAsyncAction()
+
+  return (
+    <article className="folder-card">
+      <header className="folder-card__header">
+        <h4>{device.name}</h4>
+        {worst ? <StatusBadge state={worst} /> : <DeviceStatusBadge state={device.state} />}
+      </header>
+      {shares.length > 0 ? (
+        <ul className="folder-card__shares">
+          {shares.map((share) => (
+            <li key={share.folderId}>
+              <button className="folder-card__share-row" onClick={() => onOpenShare?.(share)}>
+                <span className="folder-card__device">
+                  {cluster.folders.find((f) => f.id === share.folderId)?.label ?? share.folderId}
+                </span>
+                <span className="folder-card__type">{FOLDER_TYPE_STYLE[share.type].label}</span>
+                {share.completionPct !== undefined && share.completionPct < 100 ? (
+                  <span className="folder-card__completion">
+                    <CompletionMeter pct={share.completionPct} />
+                    <span className="folder-card__pct">{share.completionPct}%</span>
+                  </span>
+                ) : (
+                  <StatusBadge state={share.state} />
+                )}
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <div className="folder-card__empty">
+          {device.managed ? 'No folders shared here.' : 'Known only from another node’s config.'}
+        </div>
+      )}
+      {isLive && device.managed && (
+        <div className="folder-card__footer">
+          <button
+            className="detail-panel__button--danger"
+            disabled={busy}
+            onClick={() =>
+              run(
+                `Remove ${device.name} as a registered node? This proxy will stop managing and polling it — ` +
+                  `it stays configured as a peer on any other node that already has it, and its own Syncthing ` +
+                  `config is untouched.`,
+                () => mutations.removeNode(device.id),
+              )
+            }
+          >
+            Remove node
+          </button>
+          {error && <p className="dialog__error">{error}</p>}
+        </div>
+      )}
+    </article>
+  )
+}
+
 export function OverviewView({ cluster, onOpenShare, isLive }: OverviewViewProps) {
   const health = clusterHealth(cluster)
   const deviceById = new Map(cluster.devices.map((d) => [d.id, d]))
@@ -348,46 +419,15 @@ export function OverviewView({ cluster, onOpenShare, isLive }: OverviewViewProps
       <section className="overview__section">
         <h3>Nodes</h3>
         <div className="folder-cards">
-          {cluster.devices.map((device) => {
-            const shares = sharesByDevice(cluster, device.id)
-            const worst = folderHealthForDevice(cluster, device.id)
-            return (
-              <article className="folder-card" key={device.id}>
-                <header className="folder-card__header">
-                  <h4>{device.name}</h4>
-                  {worst ? <StatusBadge state={worst} /> : <DeviceStatusBadge state={device.state} />}
-                </header>
-                {shares.length > 0 ? (
-                  <ul className="folder-card__shares">
-                    {shares.map((share) => (
-                      <li key={share.folderId}>
-                        <button className="folder-card__share-row" onClick={() => onOpenShare?.(share)}>
-                          <span className="folder-card__device">
-                            {cluster.folders.find((f) => f.id === share.folderId)?.label ?? share.folderId}
-                          </span>
-                          <span className="folder-card__type">
-                            {FOLDER_TYPE_STYLE[share.type].label}
-                          </span>
-                          {share.completionPct !== undefined && share.completionPct < 100 ? (
-                            <span className="folder-card__completion">
-                              <CompletionMeter pct={share.completionPct} />
-                              <span className="folder-card__pct">{share.completionPct}%</span>
-                            </span>
-                          ) : (
-                            <StatusBadge state={share.state} />
-                          )}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <div className="folder-card__empty">
-                    {device.managed ? 'No folders shared here.' : 'Known only from another node’s config.'}
-                  </div>
-                )}
-              </article>
-            )
-          })}
+          {cluster.devices.map((device) => (
+            <NodeCard
+              key={device.id}
+              cluster={cluster}
+              device={device}
+              onOpenShare={onOpenShare}
+              isLive={isLive}
+            />
+          ))}
         </div>
       </section>
 

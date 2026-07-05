@@ -28,6 +28,15 @@ export class SyncthingClient {
     return this.node.id
   }
 
+  /**
+   * Full config this client holds, including the API key — only for
+   * persisting the node registry back to disk (ClusterStateManager.persist).
+   * Never expose this over HTTP; nothing else should call it.
+   */
+  toConfig(): NodeConfig {
+    return { ...this.node }
+  }
+
   private async request(
     method: 'GET' | 'POST' | 'PUT' | 'DELETE',
     path: string,

@@ -46,7 +46,10 @@ Real, live cluster state via the proxy. Read-only — no mutations.
   24 type-stripping — no bundler/ts-node); shares the model with the frontend
   via the `@clusterfuck/shared` workspace package.
 - **Node registration:** a static, untracked JSON config file
-  (`packages/proxy/dev-cluster.json`, gitignored), read once at proxy startup.
+  (`packages/proxy/cluster.json`, gitignored), read once at proxy startup —
+  extended in Phase 5 with a runtime registration UI that also writes back to
+  this same file, so it's stayed the one canonical registry rather than
+  splitting into a separate runtime store.
 - **Update strategy:** event-stream-first — long-poll each node's
   `/rest/events` and recompute on relevant events, plus a low-frequency
   (default 45s) full re-poll as a backstop. The SPA gets a full `ClusterModel`
@@ -170,7 +173,7 @@ tabs. Mapped from the GUI's actual surface, in priority order.
 
 ### Foundations these need
 
-- [ ] **(next)** Node registration UI (add a node's URL + API key at runtime,
-      persisted server-side) — replaces editing `dev-cluster.json` by hand
+- [x] Node registration UI (add a node's URL + API key at runtime,
+      persisted server-side) — replaces editing `cluster.json` by hand
 - [ ] Auth on the proxy the moment it's exposed beyond localhost
 - [ ] Syncthing 2.x REST support (currently targets 1.x)

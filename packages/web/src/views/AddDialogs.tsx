@@ -27,6 +27,68 @@ export function DialogShell({ title, onClose, children }: DialogShellProps) {
   )
 }
 
+/**
+ * Registers a new Syncthing node with the proxy itself — distinct from
+ * AddDeviceDialog, which adds an existing peer to already-registered nodes'
+ * configs. This is the Phase 5 registration UI: the proxy persists the
+ * result to cluster.json, so this replaces hand-editing that file for
+ * anything beyond the first node or two.
+ */
+export function RegisterNodeDialog({ onClose }: { onClose: () => void }) {
+  const [id, setId] = useState('')
+  const [url, setUrl] = useState('')
+  const [apiKey, setApiKey] = useState('')
+  const { busy, error, submit } = useSubmit(onClose)
+
+  const ready = id.trim() !== '' && url.trim() !== '' && apiKey.trim() !== ''
+
+  return (
+    <DialogShell title="Register node" onClose={onClose}>
+      <label className="dialog__field">
+        Node ID
+        <input
+          value={id}
+          onChange={(e) => setId(e.target.value)}
+          placeholder="st-a"
+          title="An internal label for this node — doesn't need to match anything in Syncthing itself."
+          autoFocus
+        />
+      </label>
+      <label className="dialog__field">
+        URL
+        <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="http://127.0.0.1:8384" />
+      </label>
+      <label className="dialog__field">
+        API key
+        <input
+          type="password"
+          value={apiKey}
+          onChange={(e) => setApiKey(e.target.value)}
+          placeholder="Actions → Settings → GUI in that node's Syncthing UI"
+        />
+      </label>
+      <p className="dialog__preview">
+        {ready
+          ? `Will connect to ${url.trim()} and register it as "${id.trim()}".`
+          : 'Enter an id, URL, and API key for the node to register.'}
+      </p>
+      {error && <p className="dialog__error">{error}</p>}
+      <div className="dialog__actions">
+        <button onClick={onClose} disabled={busy}>
+          Cancel
+        </button>
+        <button
+          className="dialog__primary"
+          disabled={busy || !ready}
+          onClick={() => submit(() => mutations.registerNode(id.trim(), url.trim(), apiKey.trim()))}
+        >
+          Register node
+        </button>
+      </div>
+    </DialogShell>
+  )
+}
+
 export function AddDeviceDialog({ cluster, onClose }: { cluster: ClusterModel; onClose: () => void }) {
   const [deviceId, setDeviceId] = useState('')
   const [name, setName] = useState('')

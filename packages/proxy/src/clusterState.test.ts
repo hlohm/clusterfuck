@@ -1,5 +1,9 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { ClusterStateManager, InvalidTargetError, NotManagedError } from './clusterState.ts'
+import { loadNodeConfig } from './config.ts'
 
 async function refreshed(manager: ClusterStateManager): Promise<void> {
   await (manager as unknown as { refresh(): Promise<void> }).refresh()
@@ -144,6 +148,62 @@ function installFakeCluster(delayMs = 0, failOn?: { host: string; pathname: stri
   )
 
   return { manager, calls }
+}
+
+/**
+ * Minimal one-node fake cluster for addNode/removeNode tests — these care
+ * about node *lifecycle* (does a newly-added client get polled, does a
+ * removed one stop being referenced), not folder/share semantics already
+ * covered by installFakeCluster's own suite above. /rest/events always
+ * resolves to an empty batch so the event loop addNode/start() kick off
+ * doesn't trigger extra refreshes of its own — every test explicitly calls
+ * manager.stop() before returning so that loop doesn't run past the test.
+ */
+function installAddNodeFakeCluster() {
+  const calls: { method: string; url: string; host: string }[] = []
+  const myIdByHost: Record<string, string> = { 'a.test': 'DEVICE-A' }
+  const unreachableHosts = new Set<string>()
+
+  const fetchMock = vi.fn(async (input: string | URL, init?: RequestInit) => {
+    const url = new URL(input)
+    const method = (init?.method ?? 'GET').toUpperCase()
+    calls.push({ method, url: url.pathname + url.search, host: url.host })
+
+    if (unreachableHosts.has(url.host)) {
+      return new Response('nope', { status: 500 })
+    }
+    if (url.pathname === '/rest/system/status') {
+      return jsonResponse({ myID: myIdByHost[url.host] ?? 'UNKNOWN' })
+    }
+    if (url.pathname === '/rest/config') {
+      return jsonResponse({ devices: [], folders: [] })
+    }
+    if (url.pathname === '/rest/system/connections') {
+      return jsonResponse({ connections: {} })
+    }
+    if (url.pathname === '/rest/db/status') {
+      return jsonResponse({ state: 'idle', needFiles: 0, needItems: 0, globalFiles: 0, errors: 0 })
+    }
+    if (url.pathname === '/rest/folder/errors') {
+      return jsonResponse({ folder: '', errors: [] })
+    }
+    if (url.pathname === '/rest/cluster/pending/devices' || url.pathname === '/rest/cluster/pending/folders') {
+      return jsonResponse({})
+    }
+    if (url.pathname === '/rest/events') {
+      return jsonResponse([])
+    }
+    throw new Error(`unexpected fetch in addNode fake cluster: ${method} ${url.href}`)
+  })
+
+  vi.stubGlobal('fetch', fetchMock)
+
+  const manager = new ClusterStateManager(
+    [{ id: 'st-a', url: 'http://a.test', apiKey: 'ka' }],
+    { clusterId: 'live', label: 'Live cluster' },
+  )
+
+  return { manager, calls, myIdByHost, unreachableHosts }
 }
 
 describe('ClusterStateManager mutations', () => {
@@ -544,5 +604,176 @@ describe('ClusterStateManager mutations', () => {
 
     const model = manager.getModel()
     expect(model.shares.find((s) => s.deviceId === 'DEVICE-A')?.type).toBe('sendonly')
+  })
+
+  // addNode/removeNode call persist() unconditionally, which writes to
+  // whatever CLUSTERFUCK_CONFIG resolves to — the real default cluster.json
+  // path if unset. Every test here points it at an isolated temp file so
+  // running the suite can never clobber a real local dev config.
+  describe('addNode / removeNode', () => {
+    let dir: string
+    let prevEnv: string | undefined
+
+    beforeEach(() => {
+      dir = mkdtempSync(join(tmpdir(), 'clusterfuck-clusterstate-test-'))
+      prevEnv = process.env.CLUSTERFUCK_CONFIG
+      process.env.CLUSTERFUCK_CONFIG = join(dir, 'cluster.json')
+    })
+
+    afterEach(() => {
+      if (prevEnv === undefined) delete process.env.CLUSTERFUCK_CONFIG
+      else process.env.CLUSTERFUCK_CONFIG = prevEnv
+      rmSync(dir, { recursive: true, force: true })
+    })
+
+    it('registers a new client and its snapshot appears in the model immediately', async () => {
+      const { manager, calls, myIdByHost } = installAddNodeFakeCluster()
+      await refreshed(manager)
+      calls.length = 0
+      myIdByHost['c.test'] = 'DEVICE-C'
+
+      await manager.addNode({ id: 'st-c', url: 'http://c.test', apiKey: 'kc' })
+
+      expect(calls.some((c) => c.host === 'c.test' && c.url === '/rest/system/status')).toBe(true)
+      expect(manager.getModel().devices.some((d) => d.id === 'DEVICE-C')).toBe(true)
+
+      manager.stop()
+    })
+
+    it('rejects registering a node id that is already registered', async () => {
+      const { manager } = installAddNodeFakeCluster()
+      await refreshed(manager)
+
+      await expect(
+        manager.addNode({ id: 'st-a', url: 'http://other.test', apiKey: 'x' }),
+      ).rejects.toBeInstanceOf(InvalidTargetError)
+
+      manager.stop()
+    })
+
+    // Regression: addNode used to push+persist unconditionally, so a
+    // typo'd URL/apiKey would still resolve successfully — doRefresh's
+    // per-node fetch failures are caught and logged, not thrown, so the
+    // bad registration would silently never surface anywhere. Registering
+    // should fail fast instead.
+    it('rejects registering a node it cannot connect to, and never adds or persists it', async () => {
+      const { manager, calls, unreachableHosts } = installAddNodeFakeCluster()
+      await refreshed(manager)
+      unreachableHosts.add('unreachable.test')
+      calls.length = 0
+
+      await expect(
+        manager.addNode({ id: 'st-bad', url: 'http://unreachable.test', apiKey: 'kbad' }),
+      ).rejects.toThrow()
+
+      expect(manager.getModel().devices.some((d) => d.name === 'st-bad')).toBe(false)
+      await expect(manager.removeNode('st-bad')).rejects.toBeInstanceOf(NotManagedError)
+
+      manager.stop()
+    })
+
+    // Regression: addNode's only uniqueness check used to be on the label
+    // (nodeId), so the same physical node could be registered twice under
+    // two different labels — doubling its polling and (via aggregateCluster,
+    // which doesn't dedup Share rows) duplicating every one of its shares in
+    // the model.
+    it('rejects registering the same physical node again under a different id', async () => {
+      const { manager, myIdByHost } = installAddNodeFakeCluster()
+      await refreshed(manager)
+      // Same myID ("DEVICE-A") as the already-registered st-a, reachable at
+      // a different host/label — simulating an aliased URL or a typo'd retry.
+      myIdByHost['alias-of-a.test'] = 'DEVICE-A'
+
+      await expect(
+        manager.addNode({ id: 'st-a-alias', url: 'http://alias-of-a.test', apiKey: 'ka2' }),
+      ).rejects.toBeInstanceOf(InvalidTargetError)
+
+      expect(manager.getModel().devices.filter((d) => d.id === 'DEVICE-A')).toHaveLength(1)
+
+      manager.stop()
+    })
+
+    it('persists the full node list, including the new apiKey, after addNode', async () => {
+      const { manager, myIdByHost } = installAddNodeFakeCluster()
+      await refreshed(manager)
+      myIdByHost['c.test'] = 'DEVICE-C'
+
+      await manager.addNode({ id: 'st-c', url: 'http://c.test', apiKey: 'kc' })
+
+      const saved = JSON.parse(readFileSync(process.env.CLUSTERFUCK_CONFIG!, 'utf-8')) as {
+        nodes: { id: string; url: string; apiKey: string }[]
+      }
+      expect(saved.nodes.map((n) => n.id).sort()).toEqual(['st-a', 'st-c'])
+      expect(saved.nodes.find((n) => n.id === 'st-c')).toEqual({
+        id: 'st-c',
+        url: 'http://c.test',
+        apiKey: 'kc',
+      })
+
+      manager.stop()
+    })
+
+    it('stops fetching from a removed node on the next refresh', async () => {
+      const { manager, calls } = installAddNodeFakeCluster()
+      await refreshed(manager)
+      calls.length = 0
+
+      await manager.removeNode('st-a')
+      calls.length = 0
+      await refreshed(manager)
+
+      expect(calls.some((c) => c.host === 'a.test')).toBe(false)
+
+      manager.stop()
+    })
+
+    it('removing the last registered node clears the model instead of freezing on stale data', async () => {
+      const { manager } = installAddNodeFakeCluster()
+      await refreshed(manager)
+      expect(manager.getModel().devices.length).toBeGreaterThan(0)
+
+      await manager.removeNode('st-a')
+
+      expect(manager.getModel().devices).toEqual([])
+
+      manager.stop()
+    })
+
+    // End-to-end version of the config.test.ts round-trip: goes through the
+    // actual removeNode -> persist() -> saveNodeConfig() call chain (via
+    // toConfig() on whatever's left in this.clients), not a bare
+    // saveNodeConfig([]) call — this is what would have caught the original
+    // crash-on-restart bug if it had been written before that fix landed.
+    it('a proxy restart after removing the last node loads the persisted (empty) config without throwing', async () => {
+      const { manager } = installAddNodeFakeCluster()
+      await refreshed(manager)
+
+      await manager.removeNode('st-a')
+      manager.stop()
+
+      expect(() => loadNodeConfig()).not.toThrow()
+      expect(loadNodeConfig()).toEqual([])
+    })
+
+    it("removes a node by its own Syncthing device ID (the id the web UI actually has, via Device.id)", async () => {
+      const { manager } = installAddNodeFakeCluster()
+      await refreshed(manager)
+      expect(manager.getModel().devices.some((d) => d.id === 'DEVICE-A')).toBe(true)
+
+      await manager.removeNode('DEVICE-A')
+
+      expect(manager.getModel().devices).toEqual([])
+
+      manager.stop()
+    })
+
+    it('rejects removing a node that was never registered', async () => {
+      const { manager } = installAddNodeFakeCluster()
+      await refreshed(manager)
+
+      await expect(manager.removeNode('st-nonexistent')).rejects.toBeInstanceOf(NotManagedError)
+
+      manager.stop()
+    })
   })
 })

@@ -13,7 +13,7 @@ import { PROXY_BASE } from './data/proxyBase'
 import { Logo } from './Logo'
 import { OverviewView } from './views/OverviewView'
 import { TableView } from './views/TableView'
-import { AddDeviceDialog, AddFolderDialog } from './views/AddDialogs'
+import { AddDeviceDialog, AddFolderDialog, RegisterNodeDialog } from './views/AddDialogs'
 
 const LIVE_SOURCE_ID = '__live__'
 
@@ -30,7 +30,7 @@ function App() {
   const [view, setView] = useState<ViewId>('graph')
   const [graphMode, setGraphMode] = useState<GraphMode>('nodes')
   const [selection, setSelection] = useState<Selection>(null)
-  const [dialog, setDialog] = useState<'device' | 'folder' | null>(null)
+  const [dialog, setDialog] = useState<'device' | 'folder' | 'node' | null>(null)
 
   const isLive = sourceId === LIVE_SOURCE_ID
   const live = useLiveCluster(isLive)
@@ -109,10 +109,11 @@ function App() {
               {live.status === 'connecting' ? 'Connecting to proxy…' : (live.error ?? 'Connection error')}
             </span>
           )}
-          {isLive && cluster && (
+          {isLive && (
             <div className="app__add">
-              <button onClick={() => setDialog('device')}>＋ Device</button>
-              <button onClick={() => setDialog('folder')}>＋ Folder</button>
+              <button onClick={() => setDialog('node')}>＋ Node</button>
+              {cluster && <button onClick={() => setDialog('device')}>＋ Device</button>}
+              {cluster && <button onClick={() => setDialog('folder')}>＋ Folder</button>}
             </div>
           )}
           <label className="app__fixture-picker">
@@ -173,6 +174,7 @@ function App() {
         )}
       </main>
 
+      {dialog === 'node' && <RegisterNodeDialog onClose={() => setDialog(null)} />}
       {cluster && dialog === 'device' && (
         <AddDeviceDialog cluster={cluster} onClose={() => setDialog(null)} />
       )}

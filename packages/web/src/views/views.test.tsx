@@ -188,6 +188,53 @@ describe('OverviewView', () => {
     confirmSpy.mockRestore()
     pauseAll.mockRestore()
   })
+
+  it('offers Remove node only on managed nodes, never on an unmanaged (peer-only) device', () => {
+    render(<OverviewView cluster={edgeCases} isLive />)
+
+    const originCard = screen.getByRole('heading', { name: 'origin' }).closest('.folder-card') as HTMLElement
+    expect(within(originCard).getByText('Remove node')).toBeInTheDocument()
+
+    const roamerCard = screen
+      .getByRole('heading', { name: 'roamer (unmanaged)' })
+      .closest('.folder-card') as HTMLElement
+    expect(within(roamerCard).queryByText('Remove node')).not.toBeInTheDocument()
+  })
+
+  it('does not offer Remove node against a fixture (not live)', () => {
+    render(<OverviewView cluster={edgeCases} />)
+    const originCard = screen.getByRole('heading', { name: 'origin' }).closest('.folder-card') as HTMLElement
+    expect(within(originCard).queryByText('Remove node')).not.toBeInTheDocument()
+  })
+
+  it('removes a node once confirmed, by its device id', () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const removeNode = vi.spyOn(mutations, 'removeNode').mockResolvedValue(undefined)
+
+    render(<OverviewView cluster={edgeCases} isLive />)
+    const mirrorCard = screen.getByRole('heading', { name: 'mirror' }).closest('.folder-card') as HTMLElement
+    within(mirrorCard).getByText('Remove node').click()
+
+    expect(confirmSpy).toHaveBeenCalledWith(expect.stringContaining('Remove mirror as a registered node?'))
+    expect(removeNode).toHaveBeenCalledWith('device-mirror')
+
+    confirmSpy.mockRestore()
+    removeNode.mockRestore()
+  })
+
+  it('does not remove a node when the confirmation is declined', () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    const removeNode = vi.spyOn(mutations, 'removeNode').mockResolvedValue(undefined)
+
+    render(<OverviewView cluster={edgeCases} isLive />)
+    const mirrorCard = screen.getByRole('heading', { name: 'mirror' }).closest('.folder-card') as HTMLElement
+    within(mirrorCard).getByText('Remove node').click()
+
+    expect(removeNode).not.toHaveBeenCalled()
+
+    confirmSpy.mockRestore()
+    removeNode.mockRestore()
+  })
 })
 
 describe('TableView', () => {

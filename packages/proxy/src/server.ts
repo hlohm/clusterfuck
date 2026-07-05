@@ -154,6 +154,38 @@ async function handleRequest(
       return
     }
 
+    // POST /api/nodes — register a new node at runtime (Phase 5's node
+    // registration UI), persisted server-side to cluster.json.
+    if (method === 'POST' && parts.length === 2 && parts[0] === 'api' && parts[1] === 'nodes') {
+      const body = (await readJsonBody(req)) as
+        | { id?: unknown; url?: unknown; apiKey?: unknown }
+        | undefined
+      if (typeof body?.id !== 'string' || body.id === '') {
+        sendJson(res, 400, { error: 'id is required' })
+        return
+      }
+      if (typeof body.url !== 'string' || body.url === '') {
+        sendJson(res, 400, { error: 'url is required' })
+        return
+      }
+      if (typeof body.apiKey !== 'string' || body.apiKey === '') {
+        sendJson(res, 400, { error: 'apiKey is required' })
+        return
+      }
+      await manager.addNode({ id: body.id, url: body.url, apiKey: body.apiKey })
+      sendJson(res, 200, { ok: true })
+      return
+    }
+
+    // DELETE /api/nodes/:id — de-registers a node from this proxy. Doesn't
+    // touch that node's own Syncthing config, and doesn't remove it as a
+    // peer from any other registered node (see DELETE /api/devices/:id).
+    if (method === 'DELETE' && parts.length === 3 && parts[0] === 'api' && parts[1] === 'nodes') {
+      await manager.removeNode(decodeURIComponent(parts[2]!))
+      sendJson(res, 200, { ok: true })
+      return
+    }
+
     // POST /api/devices/:deviceId/pause|resume — ":deviceId" of "all" means
     // every device on every registered node (cluster-wide), not a literal id.
     if (method === 'POST' && parts.length === 4 && parts[0] === 'api' && parts[1] === 'devices') {

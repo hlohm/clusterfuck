@@ -101,11 +101,13 @@ design the model with that in mind even in Phase 1.
   four folder types, each device/folder state including error and paused, a
   folder shared across 3+ devices, and at least one `receiveencrypted` node.
   These fixtures are how you'll know the visual encoding actually works.
-- **Phase 2+:** connection details for a local dev cluster (endpoints + API
-  keys) come from **local, untracked config** — e.g. a `.env.local` or an
-  ignored `dev-cluster.json`. Never hardcode endpoints or keys, never commit
-  them; read them from the environment. Keep such files in `.gitignore` from the
-  first commit that introduces them.
+- **Phase 2+:** connection details (endpoints + API keys) come from **local,
+  untracked config** — a `.env.local`, or the gitignored `cluster.json` (the
+  proxy's one canonical node registry, read at startup and kept in sync with
+  nodes registered/removed at runtime via the app itself — see Phase 5's node
+  registration UI). Never hardcode endpoints or keys, never commit them; read
+  them from the environment or that file. Keep such files in `.gitignore` from
+  the first commit that introduces them.
 
 ## Conventions
 

@@ -1,5 +1,8 @@
 DEV-ENVIRONMENT.local.md
 .env.local
+cluster.json
+cluster.json.tmp
+# Pre-rename filename (see CHANGELOG) — keep ignored in case anyone still has one on disk.
 dev-cluster.json
 *.local.md
 .claude/
