@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { OverviewView } from './OverviewView'
 import { TableView } from './TableView'
 import { edgeCases } from '../fixtures/edge-cases'
@@ -35,6 +35,32 @@ describe('OverviewView', () => {
     expect(screen.getByRole('heading', { name: 'coldstore' })).toBeInTheDocument()
   })
 
+  it('renders a card per device, with a share row per folder it participates in', () => {
+    render(<OverviewView cluster={edgeCases} />)
+    expect(screen.getByRole('heading', { name: 'origin' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'mirror' })).toBeInTheDocument()
+    // relay-a shares exactly one folder (coldstore), receiveencrypted.
+    expect(screen.getAllByText('Receive Encrypted').length).toBeGreaterThan(0)
+  })
+
+  it("shows an unmanaged device's card with no folders instead of an empty list", () => {
+    render(<OverviewView cluster={edgeCases} />)
+    expect(screen.getByRole('heading', { name: 'roamer (unmanaged)' })).toBeInTheDocument()
+    expect(screen.getByText(/Known only from another node/)).toBeInTheDocument()
+  })
+
+  it("opens a device's folder share from its Nodes card", () => {
+    const onOpenShare = vi.fn()
+    render(<OverviewView cluster={edgeCases} onOpenShare={onOpenShare} />)
+
+    const mirrorCard = screen.getByRole('heading', { name: 'mirror' }).closest('.folder-card') as HTMLElement
+    within(mirrorCard).getByText('ledger').click()
+
+    expect(onOpenShare).toHaveBeenCalledWith(
+      expect.objectContaining({ folderId: 'ledger', deviceId: 'device-mirror' }),
+    )
+  })
+
   it('only offers cluster-wide actions against the live source, never a fixture', () => {
     render(<OverviewView cluster={edgeCases} />)
     expect(screen.queryByText('Cluster actions')).not.toBeInTheDocument()
@@ -47,7 +73,8 @@ describe('OverviewView', () => {
     render(<OverviewView cluster={edgeCases} isLive />)
     expect(screen.getByText('Cluster actions')).toBeInTheDocument()
 
-    screen.getByText('Pause all devices').click()
+    const devicesRow = screen.getByText('Devices').closest('.cluster-actions__row') as HTMLElement
+    within(devicesRow).getByText('Pause all').click()
 
     expect(confirmSpy).toHaveBeenCalled()
     expect(pauseAll).toHaveBeenCalledWith(true)

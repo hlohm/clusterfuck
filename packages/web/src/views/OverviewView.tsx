@@ -1,6 +1,7 @@
 import type { ClusterModel, Share } from '@clusterfuck/shared'
-import { clusterHealth, folderHealth, sharesByFolder } from '@clusterfuck/shared'
+import { clusterHealth, folderHealth, folderHealthForDevice, sharesByDevice, sharesByFolder } from '@clusterfuck/shared'
 import { FOLDER_TYPE_STYLE } from '../encoding/folderTypeStyle'
+import { DEVICE_STATE_STYLE } from '../encoding/deviceStateStyle'
 import { STATUS } from '../encoding/colors'
 import { cssColor } from '../encoding/colors'
 import { StatusBadge } from './StatusBadge'
@@ -20,36 +21,66 @@ function ClusterActions() {
 
   return (
     <section className="overview__section">
-      <h3>Cluster actions</h3>
-      <div className="detail-panel__action-row">
-        <button
-          className="detail-panel__button--warning"
-          disabled={busy}
-          onClick={() => run('Pause every device on every registered node?', () => mutations.setAllDevicesPaused(true))}
-        >
-          Pause all devices
-        </button>
-        <button
-          disabled={busy}
-          onClick={() => run('Resume every device on every registered node?', () => mutations.setAllDevicesPaused(false))}
-        >
-          Resume all devices
-        </button>
-        <button
-          className="detail-panel__button--warning"
-          disabled={busy}
-          onClick={() => run('Pause every folder on every registered node?', () => mutations.setAllFoldersPaused(true))}
-        >
-          Pause all folders
-        </button>
-        <button
-          disabled={busy}
-          onClick={() => run('Resume every folder on every registered node?', () => mutations.setAllFoldersPaused(false))}
-        >
-          Resume all folders
-        </button>
-      </div>
-      {error && <div className="detail-panel__error">{error}</div>}
+      <article className="folder-card">
+        <header className="folder-card__header">
+          <h4>Cluster actions</h4>
+        </header>
+        <div className="cluster-actions__body">
+          <div className="cluster-actions__row">
+            <span className="cluster-actions__label">Devices</span>
+            <div className="detail-panel__action-row">
+              <button
+                className="detail-panel__button--warning"
+                disabled={busy}
+                onClick={() =>
+                  run('Pause every device on every registered node?', () =>
+                    mutations.setAllDevicesPaused(true),
+                  )
+                }
+              >
+                Pause all
+              </button>
+              <button
+                disabled={busy}
+                onClick={() =>
+                  run('Resume every device on every registered node?', () =>
+                    mutations.setAllDevicesPaused(false),
+                  )
+                }
+              >
+                Resume all
+              </button>
+            </div>
+          </div>
+          <div className="cluster-actions__row">
+            <span className="cluster-actions__label">Folders</span>
+            <div className="detail-panel__action-row">
+              <button
+                className="detail-panel__button--warning"
+                disabled={busy}
+                onClick={() =>
+                  run('Pause every folder on every registered node?', () =>
+                    mutations.setAllFoldersPaused(true),
+                  )
+                }
+              >
+                Pause all
+              </button>
+              <button
+                disabled={busy}
+                onClick={() =>
+                  run('Resume every folder on every registered node?', () =>
+                    mutations.setAllFoldersPaused(false),
+                  )
+                }
+              >
+                Resume all
+              </button>
+            </div>
+          </div>
+        </div>
+        {error && <div className="detail-panel__error cluster-actions__error">{error}</div>}
+      </article>
     </section>
   )
 }
@@ -68,6 +99,17 @@ function CompletionMeter({ pct }: { pct: number }) {
   return (
     <span className="meter" role="meter" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
       <span className="meter__fill" style={{ width: `${pct}%`, backgroundColor: cssColor(STATUS.activity) }} />
+    </span>
+  )
+}
+
+/** DEVICE_STATE_STYLE uses its own `accent` token, not the folder-state palette StatusBadge expects. */
+function DeviceStatusBadge({ state }: { state: ClusterModel['devices'][number]['state'] }) {
+  const style = DEVICE_STATE_STYLE[state]
+  return (
+    <span className="status-badge">
+      <span className="status-badge__dot" style={{ backgroundColor: cssColor(style.accent) }} />
+      {style.label}
     </span>
   )
 }
@@ -131,6 +173,52 @@ export function OverviewView({ cluster, onOpenShare, isLive }: OverviewViewProps
           </ul>
         </section>
       )}
+
+      <section className="overview__section">
+        <h3>Nodes</h3>
+        <div className="folder-cards">
+          {cluster.devices.map((device) => {
+            const shares = sharesByDevice(cluster, device.id)
+            const worst = folderHealthForDevice(cluster, device.id)
+            return (
+              <article className="folder-card" key={device.id}>
+                <header className="folder-card__header">
+                  <h4>{device.name}</h4>
+                  {worst ? <StatusBadge state={worst} /> : <DeviceStatusBadge state={device.state} />}
+                </header>
+                {shares.length > 0 ? (
+                  <ul className="folder-card__shares">
+                    {shares.map((share) => (
+                      <li key={share.folderId}>
+                        <button className="folder-card__share-row" onClick={() => onOpenShare?.(share)}>
+                          <span className="folder-card__device">
+                            {cluster.folders.find((f) => f.id === share.folderId)?.label ?? share.folderId}
+                          </span>
+                          <span className="folder-card__type">
+                            {FOLDER_TYPE_STYLE[share.type].label}
+                          </span>
+                          {share.completionPct !== undefined && share.completionPct < 100 ? (
+                            <span className="folder-card__completion">
+                              <CompletionMeter pct={share.completionPct} />
+                              <span className="folder-card__pct">{share.completionPct}%</span>
+                            </span>
+                          ) : (
+                            <StatusBadge state={share.state} />
+                          )}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="folder-card__empty">
+                    {device.managed ? 'No folders shared here.' : 'Known only from another node’s config.'}
+                  </div>
+                )}
+              </article>
+            )
+          })}
+        </div>
+      </section>
 
       <section className="overview__section">
         <h3>Folders</h3>
