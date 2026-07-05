@@ -8,6 +8,7 @@ import type {
   PendingFoldersResponse,
   SyncthingEvent,
   SystemStatusResponse,
+  SystemVersionResponse,
 } from './types.ts'
 
 export interface NodeConfig {
@@ -83,6 +84,10 @@ export class SyncthingClient {
 
   systemStatus(signal?: AbortSignal): Promise<SystemStatusResponse> {
     return this.get('/rest/system/status', signal)
+  }
+
+  systemVersion(signal?: AbortSignal): Promise<SystemVersionResponse> {
+    return this.get('/rest/system/version', signal)
   }
 
   config(signal?: AbortSignal): Promise<ConfigResponse> {

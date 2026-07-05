@@ -6,6 +6,24 @@
 
 export interface SystemStatusResponse {
   myID: string
+  uptime: number
+  /** Bytes currently allocated by the Go runtime — the "RAM used" figure Syncthing's own GUI shows. */
+  alloc: number
+  /**
+   * Keyed by listen address (e.g. "tcp://0.0.0.0:22000"); null error means
+   * that listener is up.
+   */
+  connectionServiceStatus: Record<string, { error: string | null }>
+  /**
+   * Keyed by discovery method name; null error means that method is
+   * working. Added in Syncthing 1.18.0 — a node older than that has no such
+   * field, so this can't be assumed present (see systemVersion()).
+   */
+  discoveryStatus?: Record<string, { error: string | null }>
+}
+
+export interface SystemVersionResponse {
+  version: string
 }
 
 export interface ConfigDevice {

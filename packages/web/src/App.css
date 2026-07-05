@@ -748,6 +748,10 @@ button {
   font-size: 14px;
 }
 
+.detail-panel__status-errors {
+  color: light-dark(#d03b3b, #e5615f);
+}
+
 .detail-panel__error {
   color: light-dark(#d03b3b, #e5615f);
   font-size: 12px;

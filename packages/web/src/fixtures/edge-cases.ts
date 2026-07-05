@@ -10,12 +10,38 @@ export const edgeCases: ClusterModel = {
   id: 'edge-cases',
   label: 'Edge cases (paused, error, out-of-sync, encrypted relay)',
   devices: [
-    { id: 'device-origin', name: 'origin', state: 'this-device', managed: true },
+    {
+      id: 'device-origin',
+      name: 'origin',
+      state: 'this-device',
+      managed: true,
+      systemStatus: {
+        version: 'v1.27.3',
+        uptimeSeconds: 254_612,
+        ramBytes: 84_500_000,
+        listeners: { total: 2, ok: 2, errors: [] },
+        discovery: { total: 2, ok: 2, errors: [] },
+      },
+    },
     { id: 'device-mirror', name: 'mirror', state: 'connected', managed: true },
     { id: 'device-satellite', name: 'satellite', state: 'disconnected', managed: true },
     { id: 'device-vault', name: 'vault', state: 'paused', managed: true },
     { id: 'device-relay-a', name: 'relay-a', state: 'connected', managed: true },
-    { id: 'device-relay-b', name: 'relay-b', state: 'connected', managed: true },
+    {
+      id: 'device-relay-b',
+      name: 'relay-b',
+      state: 'connected',
+      managed: true,
+      // A live systemStatus example with a failing listener — exercises the
+      // "not everything is OK" rendering path, not just the all-healthy one.
+      systemStatus: {
+        version: 'v1.23.7',
+        uptimeSeconds: 900,
+        ramBytes: 41_200_000,
+        listeners: { total: 3, ok: 2, errors: ['relay://relays.syncthing.net: dial tcp: connection refused'] },
+        discovery: { total: 2, ok: 2, errors: [] },
+      },
+    },
     // Known only from other nodes' configs — appears in the topology but has
     // no first-hand Share rows and can't be managed directly.
     { id: 'device-roamer', name: 'roamer (unmanaged)', state: 'disconnected', managed: false },

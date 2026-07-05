@@ -1,6 +1,13 @@
-import type { FolderState } from '@clusterfuck/shared'
+import type { FolderState, ServiceHealth } from '@clusterfuck/shared'
 import type { NodeSnapshot } from './aggregate.ts'
 import type { SyncthingClient } from './syncthing/client.ts'
+
+/** connectionServiceStatus/discoveryStatus are both `{ [name]: { error: string | null } }` — roll each up to a count plus the actual failures, matching folder health's "roll up, keep detail on selection" convention. */
+function summarizeServiceStatus(status: Record<string, { error: string | null }> | undefined): ServiceHealth {
+  const entries = Object.values(status ?? {})
+  const errors = entries.flatMap((e) => (e.error ? [e.error] : []))
+  return { total: entries.length, ok: entries.length - errors.length, errors }
+}
 
 function mapFolderState(dbState: string, hasErrors: boolean, needFiles: number): FolderState {
   if (hasErrors) return 'error'
@@ -20,8 +27,18 @@ export async function fetchNodeSnapshot(
   client: SyncthingClient,
   nodeId: string,
 ): Promise<NodeSnapshot> {
-  const [status, config, connectionsRes, pendingDevicesRes, pendingFoldersRes] = await Promise.all([
+  const [status, version, config, connectionsRes, pendingDevicesRes, pendingFoldersRes] = await Promise.all([
     client.systemStatus(),
+    // System status is supplementary detail, not core topology — degrade to
+    // an empty version string rather than failing the whole snapshot. Unlike
+    // pendingDevices/pendingFolders below, there's no known version cutoff
+    // this endpoint predates, so a failure here more likely means a real
+    // problem specific to this one call (still log it, even though the
+    // snapshot as a whole shouldn't fail over it).
+    client.systemVersion().catch((err: unknown) => {
+      console.error(`[clusterfuck-proxy] systemVersion failed for ${nodeId}:`, (err as Error).message)
+      return { version: '' }
+    }),
     client.config(),
     client.connections(),
     // Added in Syncthing 1.13.0 — degrade to "none pending" rather than
@@ -85,5 +102,12 @@ export async function fetchNodeSnapshot(
     connections,
     pendingDevices,
     pendingFolders,
+    systemStatus: {
+      version: version.version,
+      uptimeSeconds: status.uptime,
+      ramBytes: status.alloc,
+      listeners: summarizeServiceStatus(status.connectionServiceStatus),
+      discovery: summarizeServiceStatus(status.discoveryStatus),
+    },
   }
 }
