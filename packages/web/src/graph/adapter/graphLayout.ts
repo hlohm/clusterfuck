@@ -87,8 +87,8 @@ export function foldersGraph(cluster: ClusterModel, selection: Selection) {
   return { nodes: [...folderNodes, ...deviceNodes], edges }
 }
 
-/** Gap between parallel lines of the same device pair. */
-const PARALLEL_SPACING = 7
+/** Gap between parallel lines of the same device pair — wide enough that the (larger) arrowheads on adjacent lines don't crowd each other near a shared endpoint. */
+const PARALLEL_SPACING = 11
 
 /**
  * nodes: devices only, on a circle. Each folder becomes pairwise edges among
