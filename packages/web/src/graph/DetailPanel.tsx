@@ -12,6 +12,7 @@ import * as mutations from '../data/mutations'
 export interface DetailPanelProps {
   cluster: ClusterModel
   selection: Selection
+  onSelect: (selection: Selection) => void
   /** Mutation actions only make sense against the live proxy, never fixtures. */
   isLive: boolean
 }
@@ -210,7 +211,7 @@ function ShareActions({ cluster, share }: { cluster: ClusterModel; share: Share 
   )
 }
 
-export function DetailPanel({ cluster, selection, isLive }: DetailPanelProps) {
+export function DetailPanel({ cluster, selection, onSelect, isLive }: DetailPanelProps) {
   if (!selection) {
     return (
       <aside className="detail-panel detail-panel--empty">
@@ -237,16 +238,27 @@ export function DetailPanel({ cluster, selection, isLive }: DetailPanelProps) {
         </p>
         {isLive && <DeviceActions device={device} />}
         <h4>Folder shares ({shares.length})</h4>
-        <ul>
+        <ul className="attention-list">
           {shares.map((share) => {
             const typeStyle = FOLDER_TYPE_STYLE[share.type]
             const stateStyle = FOLDER_STATE_STYLE[share.state]
             const folder = folderById.get(share.folderId)
             return (
               <li key={share.folderId}>
-                <strong>{folder?.label ?? share.folderId}</strong> — {typeStyle.label},{' '}
-                {stateStyle.label}
-                {share.errorMessage && <div className="detail-panel__error">{share.errorMessage}</div>}
+                <button
+                  className="attention-list__row"
+                  onClick={() =>
+                    onSelect({ kind: 'share', folderId: share.folderId, deviceId: device.id })
+                  }
+                >
+                  <strong>{folder?.label ?? share.folderId}</strong>
+                  <span className="attention-list__device">
+                    {typeStyle.label}, {stateStyle.label}
+                  </span>
+                  {share.errorMessage && (
+                    <span className="attention-list__message">{share.errorMessage}</span>
+                  )}
+                </button>
               </li>
             )
           })}

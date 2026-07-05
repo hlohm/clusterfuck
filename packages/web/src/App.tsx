@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import './App.css'
 import type { Share } from '@clusterfuck/shared'
 import { GraphView } from './graph/GraphView'
+import { GraphErrorBoundary } from './graph/GraphErrorBoundary'
 import { Legend } from './graph/Legend'
 import { DetailPanel } from './graph/DetailPanel'
 import type { Selection } from './graph/selection'
@@ -140,16 +141,24 @@ function App() {
         ) : view === 'graph' ? (
           <>
             <div className="app__graph">
-              <GraphView
+              {/* Keyed on the source so switching data sources always gets a fresh boundary. */}
+              <GraphErrorBoundary key={sourceId}>
+                <GraphView
+                  cluster={cluster}
+                  selection={selection}
+                  onSelect={setSelection}
+                  mode={graphMode}
+                  onModeChange={setGraphMode}
+                />
+              </GraphErrorBoundary>
+            </div>
+            <div className="app__sidebar">
+              <DetailPanel
                 cluster={cluster}
                 selection={selection}
                 onSelect={setSelection}
-                mode={graphMode}
-                onModeChange={setGraphMode}
+                isLive={isLive}
               />
-            </div>
-            <div className="app__sidebar">
-              <DetailPanel cluster={cluster} selection={selection} isLive={isLive} />
               <Legend cluster={cluster} mode={graphMode} />
             </div>
           </>

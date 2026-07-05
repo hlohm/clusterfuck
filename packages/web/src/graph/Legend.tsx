@@ -47,7 +47,7 @@ export function Legend({ cluster, mode }: LegendProps) {
                   <span
                     className="legend__swatch"
                     style={{
-                      backgroundColor: cssColor(style.color),
+                      borderTopColor: cssColor(style.color),
                       borderStyle: style.dash === 'dashed' ? 'dashed' : 'solid',
                     }}
                   />
@@ -68,7 +68,7 @@ export function Legend({ cluster, mode }: LegendProps) {
                 <li key={folder.id}>
                   <span
                     className="legend__swatch"
-                    style={{ backgroundColor: color ? cssColor(color) : undefined }}
+                    style={{ borderTopColor: color ? cssColor(color) : undefined }}
                   />
                   <span>{folder.label}</span>
                 </li>
