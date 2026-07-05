@@ -7,6 +7,8 @@ import type {
   FolderId,
   FolderState,
   FolderType,
+  PendingDevice,
+  PendingFolder,
   Share,
 } from '@clusterfuck/shared'
 
@@ -34,6 +36,16 @@ export interface NodeSnapshot {
   }[]
   /** Per-remote-device connection state, as seen from this node. */
   connections: Record<DeviceId, { connected: boolean; paused: boolean }>
+  /** Remote devices that have tried to connect to this node but aren't configured. */
+  pendingDevices: { deviceId: DeviceId; name?: string; time: string; address?: string }[]
+  /** Folders an already-known peer has offered to this node, not yet joined. */
+  pendingFolders: {
+    folderId: FolderId
+    offeredBy: DeviceId
+    time: string
+    label: string
+    receiveEncrypted: boolean
+  }[]
 }
 
 interface DeviceAcc {
@@ -66,6 +78,8 @@ export function aggregateCluster(
   const devices = new Map<DeviceId, DeviceAcc>()
   const folders = new Map<FolderId, string>()
   const shares: Share[] = []
+  const pendingDevices = new Map<DeviceId, PendingDevice>()
+  const pendingFolders = new Map<FolderId, PendingFolder>()
 
   const upsertDevice = (id: DeviceId, name: string) => {
     const existing = devices.get(id)
@@ -107,6 +121,33 @@ export function aggregateCluster(
         sharedWith: f.sharedWith,
       })
     }
+
+    for (const pd of snap.pendingDevices) {
+      const seen = { nodeId: snap.nodeId, time: pd.time, address: pd.address }
+      const existing = pendingDevices.get(pd.deviceId)
+      if (existing) {
+        existing.seenOn.push(seen)
+        if (pd.name && !existing.name) existing.name = pd.name
+      } else {
+        pendingDevices.set(pd.deviceId, { deviceId: pd.deviceId, name: pd.name, seenOn: [seen] })
+      }
+    }
+
+    for (const pf of snap.pendingFolders) {
+      const offer = {
+        nodeId: snap.nodeId,
+        offeredBy: pf.offeredBy,
+        time: pf.time,
+        label: pf.label,
+        receiveEncrypted: pf.receiveEncrypted,
+      }
+      const existing = pendingFolders.get(pf.folderId)
+      if (existing) {
+        existing.offers.push(offer)
+      } else {
+        pendingFolders.set(pf.folderId, { folderId: pf.folderId, label: pf.label, offers: [offer] })
+      }
+    }
   }
 
   const deviceList: Device[] = [...devices].map(([id, acc]) => ({
@@ -121,7 +162,15 @@ export function aggregateCluster(
     label: folderLabel,
   }))
 
-  return { id: clusterId, label, devices: deviceList, folders: folderList, shares }
+  return {
+    id: clusterId,
+    label,
+    devices: deviceList,
+    folders: folderList,
+    shares,
+    pendingDevices: [...pendingDevices.values()],
+    pendingFolders: [...pendingFolders.values()],
+  }
 }
 
 function reconcileDeviceState(acc: DeviceAcc): DeviceState {

@@ -42,10 +42,44 @@ export interface Share {
   sharedWith: DeviceId[]
 }
 
+/**
+ * A remote device that has tried to connect to one or more registered nodes
+ * but isn't configured anywhere yet. Merged across nodes by device ID — the
+ * cluster-wide "inbox" so the same device showing up on N nodes reads as one
+ * entry, not N.
+ */
+export interface PendingDevice {
+  deviceId: DeviceId
+  /** Name the device itself suggested, if any (not necessarily unique or trustworthy). */
+  name?: string
+  /** Every registered node that has seen this device try to connect. */
+  seenOn: { nodeId: DeviceId; time: string; address?: string }[]
+}
+
+/**
+ * A folder some already-known peer has offered to a registered node, but
+ * that node hasn't joined. Merged across nodes by folder ID — the same
+ * folder can be offered by different peers on different nodes.
+ */
+export interface PendingFolder {
+  folderId: FolderId
+  /** A representative label — offers on different nodes may suggest different ones. */
+  label: string
+  offers: {
+    nodeId: DeviceId
+    offeredBy: DeviceId
+    time: string
+    label: string
+    receiveEncrypted: boolean
+  }[]
+}
+
 export interface ClusterModel {
   id: string
   label: string
   devices: Device[]
   folders: Folder[]
   shares: Share[]
+  pendingDevices: PendingDevice[]
+  pendingFolders: PendingFolder[]
 }

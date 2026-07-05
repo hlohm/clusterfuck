@@ -82,3 +82,22 @@ export interface SyncthingEvent {
   time: string
   data: unknown
 }
+
+/** GET /rest/cluster/pending/devices — keyed by the connecting device's own ID. */
+export interface PendingDevicesResponse {
+  [deviceID: string]: { time: string; name?: string; address?: string }
+}
+
+/** GET /rest/cluster/pending/folders — keyed by folder ID, then by offering device. */
+export interface PendingFoldersResponse {
+  [folderID: string]: {
+    offeredBy: {
+      [deviceID: string]: {
+        time: string
+        label: string
+        receiveEncrypted: boolean
+        remoteEncrypted: boolean
+      }
+    }
+  }
+}

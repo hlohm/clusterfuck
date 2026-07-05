@@ -8,6 +8,8 @@ function snapshot(overrides: Partial<NodeSnapshot>): NodeSnapshot {
     devices: [],
     folders: [],
     connections: {},
+    pendingDevices: [],
+    pendingFolders: [],
     ...overrides,
   }
 }
@@ -98,5 +100,51 @@ describe('aggregateCluster', () => {
     expect(model.shares.some((s) => s.deviceId === 'DEVICE-C')).toBe(false)
     expect(model.devices.find((d) => d.id === 'DEVICE-A')?.managed).toBe(true)
     expect(model.devices.find((d) => d.id === 'DEVICE-C')?.managed).toBe(false)
+  })
+
+  it('merges a pending device seen by multiple nodes into one entry', () => {
+    const a = snapshot({
+      nodeId: 'st-a',
+      myID: 'DEVICE-A',
+      pendingDevices: [{ deviceId: 'DEVICE-NEW', time: '2026-01-01T00:00:00Z', address: '1.2.3.4:22000' }],
+    })
+    const b = snapshot({
+      nodeId: 'st-b',
+      myID: 'DEVICE-B',
+      pendingDevices: [{ deviceId: 'DEVICE-NEW', name: 'suggested-name', time: '2026-01-01T00:05:00Z' }],
+    })
+
+    const model = aggregateCluster([a, b], 'live', 'Live cluster')
+
+    expect(model.pendingDevices).toHaveLength(1)
+    const pending = model.pendingDevices[0]!
+    expect(pending.deviceId).toBe('DEVICE-NEW')
+    expect(pending.name).toBe('suggested-name') // picked up from whichever view offered one
+    expect(pending.seenOn.map((s) => s.nodeId).sort()).toEqual(['st-a', 'st-b'])
+  })
+
+  it('groups pending folder offers from different nodes/peers under one folder entry', () => {
+    const a = snapshot({
+      nodeId: 'st-a',
+      myID: 'DEVICE-A',
+      pendingFolders: [
+        { folderId: 'recipes', offeredBy: 'DEVICE-X', time: '2026-01-01T00:00:00Z', label: 'Recipes', receiveEncrypted: false },
+      ],
+    })
+    const b = snapshot({
+      nodeId: 'st-b',
+      myID: 'DEVICE-B',
+      pendingFolders: [
+        { folderId: 'recipes', offeredBy: 'DEVICE-Y', time: '2026-01-01T00:10:00Z', label: 'Recipes', receiveEncrypted: true },
+      ],
+    })
+
+    const model = aggregateCluster([a, b], 'live', 'Live cluster')
+
+    expect(model.pendingFolders).toHaveLength(1)
+    const pending = model.pendingFolders[0]!
+    expect(pending.folderId).toBe('recipes')
+    expect(pending.offers).toHaveLength(2)
+    expect(pending.offers.map((o) => o.offeredBy).sort()).toEqual(['DEVICE-X', 'DEVICE-Y'])
   })
 })

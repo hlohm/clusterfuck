@@ -68,8 +68,8 @@ Make the graph actionable. Per-node first.
 - [x] Add/remove a share on a folder.
 - [x] Create a device / create a folder (fan-out to selected managed nodes),
       via header dialogs that preview which nodes the change lands on.
-- [ ] Accept pending devices/folders (needs a "pending" inbox UI) — see Phase 5.
-- [ ] Cluster-wide bulk actions — see Phase 5.
+- [x] Accept pending devices/folders — shipped in Phase 5, see below.
+- [x] Cluster-wide bulk actions — shipped in Phase 5, see below.
 
 **Decisions settled:**
 
@@ -132,9 +132,14 @@ tabs. Mapped from the GUI's actual surface, in priority order.
 - [x] Pause/resume (fan-out), add device to chosen nodes
 - [x] Remove device (fan-out to every registered node referencing it — same
       scope as pause; never from the device's own config)
-- [ ] **(next)** Accept pending devices & folders — the cluster-wide "inbox"
-      (Syncthing's pending API), so introducing a node becomes: accept once,
-      everywhere
+- [x] Accept pending devices & folders — the cluster-wide "inbox" (Syncthing's
+      pending API), merged across every registered node that reports the
+      same device/folder. Accepting a device fans out to chosen nodes like
+      Add device; accepting a folder is single-node (the offer was made to
+      one node by one peer). An encrypted offer locks to receiveencrypted,
+      enforced both client- and server-side. Dismissing is non-permanent —
+      it resurfaces if seen again; a permanent per-device/folder ignore list
+      isn't exposed yet.
 - [ ] Edit device options: name, addresses, compression, introducer,
       auto-accept, per-device rate limits
 - [ ] Device identity: show ID/QR for any managed node

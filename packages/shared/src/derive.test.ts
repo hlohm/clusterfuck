@@ -25,6 +25,8 @@ function cluster(): ClusterModel {
       { folderId: 'f2', deviceId: 'a', type: 'sendonly', state: 'error', sharedWith: ['a'] },
       { folderId: 'f1', deviceId: 'b', type: 'sendreceive', state: 'syncing', sharedWith: ['a', 'b'] },
     ],
+    pendingDevices: [],
+    pendingFolders: [],
   }
 }
 

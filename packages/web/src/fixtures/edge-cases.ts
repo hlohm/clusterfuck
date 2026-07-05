@@ -73,4 +73,43 @@ export const edgeCases: ClusterModel = {
       sharedWith: ['device-relay-a', 'device-relay-b'],
     },
   ],
+  pendingDevices: [
+    {
+      deviceId: 'PENDING-DEVICE-1',
+      name: 'new-phone',
+      seenOn: [
+        { nodeId: 'device-origin', time: '2026-07-04T10:00:00Z', address: '192.168.1.42:22000' },
+        { nodeId: 'device-mirror', time: '2026-07-04T10:05:00Z', address: '192.168.1.42:22000' },
+      ],
+    },
+  ],
+  pendingFolders: [
+    {
+      folderId: 'shared-recipes',
+      label: 'Recipes',
+      offers: [
+        {
+          nodeId: 'device-origin',
+          offeredBy: 'device-relay-a',
+          time: '2026-07-04T09:30:00Z',
+          label: 'Recipes',
+          receiveEncrypted: false,
+        },
+      ],
+    },
+    // An encrypted offer — accepting it must lock the type to receiveencrypted, not default to sendreceive.
+    {
+      folderId: 'vault-backup',
+      label: 'Vault backup',
+      offers: [
+        {
+          nodeId: 'device-mirror',
+          offeredBy: 'device-relay-b',
+          time: '2026-07-04T09:45:00Z',
+          label: 'Vault backup',
+          receiveEncrypted: true,
+        },
+      ],
+    },
+  ],
 }

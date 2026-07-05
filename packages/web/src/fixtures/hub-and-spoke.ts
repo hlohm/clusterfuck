@@ -85,4 +85,6 @@ export const hubAndSpoke: ClusterModel = {
       sharedWith: ['device-hub', 'device-kiosk'],
     },
   ],
+  pendingDevices: [],
+  pendingFolders: [],
 }

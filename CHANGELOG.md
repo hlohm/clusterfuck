@@ -4,6 +4,23 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.3.0]
+
+- Phase 5: **Accept pending devices & folders** — the cluster-wide "inbox".
+  `ClusterModel` gains `pendingDevices`/`pendingFolders`, merged across every
+  registered node that reports them (the same device trying two nodes, or a
+  folder offered on two nodes, shows up once). New proxy routes:
+  `POST /api/pending/devices/:deviceId/accept`, `DELETE
+  /api/pending/devices/:deviceId`, `POST
+  /api/pending/folders/:folderId/devices/:nodeId/accept`, `DELETE
+  /api/pending/folders/:folderId/devices/:nodeId`. Accepting a device fans out
+  to chosen nodes (reuses `addDevice`); accepting a folder is single-node,
+  rejected (400) unless the given `offeredBy` is actually currently offering
+  that folder on that node. An offer with `receiveEncrypted: true` locks the
+  accepted type to `receiveencrypted` both in the UI and in the API itself.
+  New "Pending" section on the Overview page with Accept (opens a dialog) and
+  Dismiss (non-permanent) per item.
+
 ## [0.2.2]
 
 - Overview: cluster-wide Pause/Resume-all buttons now pick up the app's
