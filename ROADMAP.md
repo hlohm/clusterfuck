@@ -170,7 +170,13 @@ tabs. Mapped from the GUI's actual surface, in priority order.
       CPU deliberately excluded: Syncthing's own REST API documents
       `cpuPercent` as deprecated and always 0, so surfacing it would just be
       misleading UI clutter, not real information
-- [ ] Transfer rates and totals (per link, per node, cluster aggregate)
+- [x] Transfer totals, per link/device/cluster-aggregate — cumulative bytes
+      in/out since each connection's current session started (resets on
+      disconnect/restart, same as Syncthing's own counters)
+- [ ] Transfer *rates* (a live bytes/sec, not just the cumulative totals
+      above) — deferred: Syncthing's REST API only exposes cumulative
+      counters, so a rate needs stateful sampling across poll cycles, which
+      is a bigger, separate feature from the totals above
 - [ ] Recent-changes feed and event log, merged across nodes
 - [ ] Completion history/sparklines on the overview tiles
 

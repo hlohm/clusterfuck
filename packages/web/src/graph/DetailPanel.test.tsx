@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import { DetailPanel } from './DetailPanel'
 import { edgeCases } from '../fixtures/edge-cases'
+import { formatBytes } from '../format'
 
 describe('DetailPanel device system status', () => {
   it("shows version/uptime/memory/listener/discovery for a managed device with systemStatus", () => {
@@ -61,5 +62,73 @@ describe('DetailPanel device system status', () => {
     )
 
     expect(screen.queryByText('System status')).not.toBeInTheDocument()
+  })
+})
+
+describe('DetailPanel device connections', () => {
+  it("lists a managed device's own reported connections with peer name, state, and per-connection transfer", () => {
+    render(
+      <DetailPanel
+        cluster={edgeCases}
+        selection={{ kind: 'device', deviceId: 'device-origin' }}
+        onSelect={vi.fn()}
+        isLive={false}
+      />,
+    )
+
+    expect(screen.getByText('Connections (3)')).toBeInTheDocument()
+    const mirrorRow = screen.getByText('mirror').closest('.connections-list__row') as HTMLElement
+    expect(within(mirrorRow).getByText(/Connected/)).toBeInTheDocument()
+    expect(within(mirrorRow).getByText(new RegExp(formatBytes(340_200_000)))).toBeInTheDocument()
+    expect(within(mirrorRow).getByText(new RegExp(formatBytes(128_500_000)))).toBeInTheDocument()
+
+    const satelliteRow = screen.getByText('satellite').closest('.connections-list__row') as HTMLElement
+    expect(within(satelliteRow).getByText(/Disconnected/)).toBeInTheDocument()
+  })
+
+  it('shows the total transfer summed across all of a device\'s own connections', () => {
+    render(
+      <DetailPanel
+        cluster={edgeCases}
+        selection={{ kind: 'device', deviceId: 'device-origin' }}
+        onSelect={vi.fn()}
+        isLive={false}
+      />,
+    )
+
+    const totalLine = screen.getByText('Total transfer:').closest('p') as HTMLElement
+    // Sum of all three connections' out/in bytes for device-origin — mirror
+    // is the only one with nonzero bytes (satellite/vault are disconnected,
+    // and a disconnected connection's totals are 0, per Connection's doc
+    // comment), so the sum equals mirror's own numbers exactly.
+    expect(within(totalLine).getByText(new RegExp(formatBytes(340_200_000)))).toBeInTheDocument()
+    expect(within(totalLine).getByText(new RegExp(formatBytes(128_500_000)))).toBeInTheDocument()
+  })
+
+  it('shows "Connections (0)" and no total-transfer line for a managed device with no reported connections', () => {
+    render(
+      <DetailPanel
+        cluster={edgeCases}
+        selection={{ kind: 'device', deviceId: 'device-mirror' }}
+        onSelect={vi.fn()}
+        isLive={false}
+      />,
+    )
+
+    expect(screen.getByText('Connections (0)')).toBeInTheDocument()
+    expect(screen.queryByText('Total transfer:')).not.toBeInTheDocument()
+  })
+
+  it('never shows a Connections section for an unmanaged (peer-only) device', () => {
+    render(
+      <DetailPanel
+        cluster={edgeCases}
+        selection={{ kind: 'device', deviceId: 'device-roamer' }}
+        onSelect={vi.fn()}
+        isLive={false}
+      />,
+    )
+
+    expect(screen.queryByText(/^Connections/)).not.toBeInTheDocument()
   })
 })

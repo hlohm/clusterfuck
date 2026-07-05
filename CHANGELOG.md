@@ -4,6 +4,24 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.4.2]
+
+- Transfer totals (ROADMAP.md Phase 5 Observability): cumulative bytes
+  in/out, per connection, per device, and cluster-aggregate — the "totals"
+  half of "Transfer rates and totals"; live rates are deferred to a follow-up
+  (Syncthing's REST API only exposes cumulative counters, not a rate, so
+  computing one needs stateful sampling across poll cycles, a bigger
+  separate feature). `ClusterModel` gains `connections: Connection[]`
+  (`{deviceId, peerId, connected, inBytesTotal, outBytesTotal}`), first-hand
+  only like `Share` — a link between two managed nodes gets one row per
+  reporting side, summed together (not deduplicated) in the cluster
+  aggregate. These totals reset to 0 on disconnect or a restart (Syncthing
+  itself only tracks them while a connection is live) — surfaced via a
+  tooltip on both new UI pieces: a per-device "Connections" section in the
+  detail panel (peer name, connected/disconnected, in/out bytes, plus a
+  device-wide total) and a cluster-wide "Data transferred" tile on the
+  Overview KPI row.
+
 ## [0.4.1]
 
 - Per-node system status (ROADMAP.md Phase 5 Observability): a managed

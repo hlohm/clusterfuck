@@ -99,6 +99,15 @@ export const edgeCases: ClusterModel = {
       sharedWith: ['device-relay-a', 'device-relay-b'],
     },
   ],
+  connections: [
+    { deviceId: 'device-origin', peerId: 'device-mirror', connected: true, inBytesTotal: 128_500_000, outBytesTotal: 340_200_000 },
+    // A disconnected peer's totals are 0, not stale nonzero data: Syncthing's
+    // own connection stats only populate while a connection is live (see
+    // Connection's doc comment) — a disconnected row keeping old bytes isn't
+    // a state a real node can report.
+    { deviceId: 'device-origin', peerId: 'device-satellite', connected: false, inBytesTotal: 0, outBytesTotal: 0 },
+    { deviceId: 'device-origin', peerId: 'device-vault', connected: false, inBytesTotal: 0, outBytesTotal: 0 },
+  ],
   pendingDevices: [
     {
       deviceId: 'PENDING-DEVICE-1',

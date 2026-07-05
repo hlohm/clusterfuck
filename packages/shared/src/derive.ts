@@ -1,5 +1,6 @@
 import type {
   ClusterModel,
+  Connection,
   DeviceId,
   DeviceState,
   FolderId,
@@ -13,6 +14,44 @@ export function sharesByFolder(cluster: ClusterModel, folderId: FolderId): Share
 
 export function sharesByDevice(cluster: ClusterModel, deviceId: DeviceId): Share[] {
   return cluster.shares.filter((s) => s.deviceId === deviceId)
+}
+
+/** A device's own reported connections — only ever present for a managed device (see Connection's doc comment). */
+export function connectionsByDevice(cluster: ClusterModel, deviceId: DeviceId): Connection[] {
+  return cluster.connections.filter((c) => c.deviceId === deviceId)
+}
+
+export interface TransferTotals {
+  inBytesTotal: number
+  outBytesTotal: number
+}
+
+/** Sums a list of connections directly — for a caller that already has the filtered list in hand (e.g. one it's also rendering) and shouldn't re-filter cluster.connections a second time. */
+export function sumTransfer(connections: Connection[]): TransferTotals {
+  return connections.reduce(
+    (sum, c) => ({
+      inBytesTotal: sum.inBytesTotal + c.inBytesTotal,
+      outBytesTotal: sum.outBytesTotal + c.outBytesTotal,
+    }),
+    { inBytesTotal: 0, outBytesTotal: 0 },
+  )
+}
+
+/**
+ * Cluster-wide sum across every reporting node's own meter. A link between
+ * two managed nodes is counted from both ends (each contributes its own
+ * Connection row — see the type's doc comment) rather than deduplicated
+ * into one, so it's roughly double-counted relative to "bytes that crossed
+ * the wire once" — same "sum each side's own view, don't try to pick one"
+ * principle as the rest of this model, not a bug.
+ */
+export function clusterTransferTotals(cluster: ClusterModel): TransferTotals {
+  return sumTransfer(cluster.connections)
+}
+
+/** One device's own reported transfer total, summed across all its connections. */
+export function deviceTransferTotals(cluster: ClusterModel, deviceId: DeviceId): TransferTotals {
+  return sumTransfer(connectionsByDevice(cluster, deviceId))
 }
 
 /**

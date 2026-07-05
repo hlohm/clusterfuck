@@ -1,6 +1,13 @@
 import { useState } from 'react'
 import type { ClusterModel, Device, PendingDevice, Share } from '@clusterfuck/shared'
-import { clusterHealth, folderHealth, folderHealthForDevice, sharesByDevice, sharesByFolder } from '@clusterfuck/shared'
+import {
+  clusterHealth,
+  clusterTransferTotals,
+  folderHealth,
+  folderHealthForDevice,
+  sharesByDevice,
+  sharesByFolder,
+} from '@clusterfuck/shared'
 import { FOLDER_TYPE_STYLE } from '../encoding/folderTypeStyle'
 import { DEVICE_STATE_STYLE } from '../encoding/deviceStateStyle'
 import { STATUS } from '../encoding/colors'
@@ -9,6 +16,7 @@ import { StatusBadge } from './StatusBadge'
 import { AcceptPendingDeviceDialog, AcceptPendingFolderDialog, type PendingFolderOffer } from './PendingDialogs'
 import { useAsyncAction } from '../data/useAsyncAction'
 import * as mutations from '../data/mutations'
+import { formatBytes } from '../format'
 
 export interface OverviewViewProps {
   cluster: ClusterModel
@@ -254,9 +262,19 @@ function PendingSection({ cluster, isLive }: { cluster: ClusterModel; isLive?: b
   )
 }
 
-function StatTile({ label, value, detail }: { label: string; value: string; detail?: string }) {
+function StatTile({
+  label,
+  value,
+  detail,
+  title,
+}: {
+  label: string
+  value: string
+  detail?: string
+  title?: string
+}) {
   return (
-    <div className="stat-tile">
+    <div className="stat-tile" title={title}>
       <div className="stat-tile__label">{label}</div>
       <div className="stat-tile__value">{value}</div>
       {detail && <div className="stat-tile__detail">{detail}</div>}
@@ -356,6 +374,7 @@ function NodeCard({
 
 export function OverviewView({ cluster, onOpenShare, isLive }: OverviewViewProps) {
   const health = clusterHealth(cluster)
+  const transfer = clusterTransferTotals(cluster)
   const deviceById = new Map(cluster.devices.map((d) => [d.id, d]))
 
   const online = health.deviceCounts.connected + health.deviceCounts['this-device']
@@ -388,6 +407,12 @@ export function OverviewView({ cluster, onOpenShare, isLive }: OverviewViewProps
         />
         <StatTile label="Out-of-sync items" value={String(health.outOfSyncItems)} />
         <StatTile label="Needs attention" value={String(health.attention.length)} />
+        <StatTile
+          label="Data transferred"
+          value={formatBytes(transfer.inBytesTotal + transfer.outBytesTotal)}
+          detail={`↑${formatBytes(transfer.outBytesTotal)} / ↓${formatBytes(transfer.inBytesTotal)}`}
+          title="Cumulative for each connection's current session only — resets to 0 on disconnect or a restart, not a durable all-time total. A link between two managed nodes is counted from both ends."
+        />
       </div>
 
       {isLive && <ClusterActions />}

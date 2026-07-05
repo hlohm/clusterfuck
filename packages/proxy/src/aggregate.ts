@@ -1,5 +1,6 @@
 import type {
   ClusterModel,
+  Connection,
   Device,
   DeviceId,
   DeviceState,
@@ -36,7 +37,7 @@ export interface NodeSnapshot {
     sharedWith: DeviceId[]
   }[]
   /** Per-remote-device connection state, as seen from this node. */
-  connections: Record<DeviceId, { connected: boolean; paused: boolean }>
+  connections: Record<DeviceId, { connected: boolean; paused: boolean; inBytesTotal: number; outBytesTotal: number }>
   /** Remote devices that have tried to connect to this node but aren't configured. */
   pendingDevices: { deviceId: DeviceId; name?: string; time: string; address?: string }[]
   /** Folders an already-known peer has offered to this node, not yet joined. */
@@ -73,6 +74,10 @@ interface DeviceAcc {
  *   (not itself a registered/reachable node) still appears in the graph as a
  *   Device for topology completeness, but gets no Share rows — we have no
  *   first-hand data on its own copy of any folder.
+ * - Connections/transfer totals: like Share, first-hand only — one row per
+ *   (reporting node, peer), never merged/summed across snapshots even when
+ *   the peer is itself a registered node reporting its own reverse-direction
+ *   row for the same link (see the shared Connection type's doc comment).
  */
 export function aggregateCluster(
   snapshots: NodeSnapshot[],
@@ -82,6 +87,7 @@ export function aggregateCluster(
   const devices = new Map<DeviceId, DeviceAcc>()
   const folders = new Map<FolderId, string>()
   const shares: Share[] = []
+  const connections: Connection[] = []
   const pendingDevices = new Map<DeviceId, PendingDevice>()
   const pendingFolders = new Map<FolderId, PendingFolder>()
 
@@ -109,6 +115,13 @@ export function aggregateCluster(
       const acc = devices.get(deviceId)!
       acc.connectedViews.push(conn.connected)
       acc.pausedViews.push(conn.paused)
+      connections.push({
+        deviceId: snap.myID,
+        peerId: deviceId,
+        connected: conn.connected,
+        inBytesTotal: conn.inBytesTotal,
+        outBytesTotal: conn.outBytesTotal,
+      })
     }
 
     for (const f of snap.folders) {
@@ -174,6 +187,7 @@ export function aggregateCluster(
     devices: deviceList,
     folders: folderList,
     shares,
+    connections,
     pendingDevices: [...pendingDevices.values()],
     pendingFolders: [...pendingFolders.values()],
   }
