@@ -4,6 +4,8 @@ import type {
   ConnectionsResponse,
   DbStatusResponse,
   FolderErrorsResponse,
+  PendingDevicesResponse,
+  PendingFoldersResponse,
   SyncthingEvent,
   SystemStatusResponse,
 } from './types.ts'
@@ -139,5 +141,32 @@ export class SyncthingClient {
   /** Removes a folder from this node's config (does not touch the data on disk). */
   deleteFolder(folderId: string, signal?: AbortSignal): Promise<void> {
     return this.send('DELETE', `/rest/config/folders/${encodeURIComponent(folderId)}`, undefined, signal)
+  }
+
+  /** Remote devices that have tried to connect but aren't configured yet. */
+  pendingDevices(signal?: AbortSignal): Promise<PendingDevicesResponse> {
+    return this.get('/rest/cluster/pending/devices', signal)
+  }
+
+  /** Folders already-known peers have offered but this node hasn't joined. */
+  pendingFolders(signal?: AbortSignal): Promise<PendingFoldersResponse> {
+    return this.get('/rest/cluster/pending/folders', signal)
+  }
+
+  /** Dismisses a pending-device notification on this node (doesn't ignore it permanently). */
+  dismissPendingDevice(deviceId: string, signal?: AbortSignal): Promise<void> {
+    return this.send(
+      'DELETE',
+      `/rest/cluster/pending/devices?device=${encodeURIComponent(deviceId)}`,
+      undefined,
+      signal,
+    )
+  }
+
+  /** Dismisses a pending-folder notification on this node; `offeredBy` narrows to one offering device. */
+  dismissPendingFolder(folderId: string, offeredBy?: string, signal?: AbortSignal): Promise<void> {
+    const params = new URLSearchParams({ folder: folderId })
+    if (offeredBy) params.set('device', offeredBy)
+    return this.send('DELETE', `/rest/cluster/pending/folders?${params}`, undefined, signal)
   }
 }

@@ -101,3 +101,38 @@ export function removeFolder(deviceId: string, folderId: string): Promise<void> 
     `/api/folders/${encodeURIComponent(folderId)}/devices/${encodeURIComponent(deviceId)}`,
   )
 }
+
+/** Configures a pending device as a peer on the named nodes — identical effect to addDevice. */
+export function acceptPendingDevice(deviceId: string, name: string, nodes: string[]): Promise<void> {
+  return call('POST', `/api/pending/devices/${encodeURIComponent(deviceId)}/accept`, {
+    name: name || undefined,
+    nodes,
+  })
+}
+
+/** Dismisses a pending device on every registered node currently reporting it. Not permanent. */
+export function dismissPendingDevice(deviceId: string): Promise<void> {
+  return call('DELETE', `/api/pending/devices/${encodeURIComponent(deviceId)}`)
+}
+
+/** Joins a pending folder on one node, shared with the peer that offered it. */
+export function acceptPendingFolder(
+  nodeId: string,
+  folderId: string,
+  spec: { offeredBy: string; label: string; path: string; type: FolderType },
+): Promise<void> {
+  return call(
+    'POST',
+    `/api/pending/folders/${encodeURIComponent(folderId)}/devices/${encodeURIComponent(nodeId)}/accept`,
+    spec,
+  )
+}
+
+/** Dismisses a pending folder offer on one node; `offeredBy` narrows to one offering device. */
+export function dismissPendingFolder(nodeId: string, folderId: string, offeredBy?: string): Promise<void> {
+  const query = offeredBy ? `?offeredBy=${encodeURIComponent(offeredBy)}` : ''
+  return call(
+    'DELETE',
+    `/api/pending/folders/${encodeURIComponent(folderId)}/devices/${encodeURIComponent(nodeId)}${query}`,
+  )
+}

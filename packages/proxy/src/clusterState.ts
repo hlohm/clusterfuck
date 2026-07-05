@@ -25,6 +25,8 @@ const RELEVANT_EVENT_TYPES = new Set([
   'FolderPaused',
   'FolderResumed',
   'FolderCompletion',
+  'PendingDevicesChanged',
+  'PendingFoldersChanged',
 ])
 
 function sleep(ms: number): Promise<void> {
@@ -58,7 +60,15 @@ export class ClusterStateManager {
     this.clusterId = opts.clusterId
     this.label = opts.label
     this.pollIntervalMs = opts.pollIntervalMs ?? 45_000
-    this.model = { id: this.clusterId, label: this.label, devices: [], folders: [], shares: [] }
+    this.model = {
+      id: this.clusterId,
+      label: this.label,
+      devices: [],
+      folders: [],
+      shares: [],
+      pendingDevices: [],
+      pendingFolders: [],
+    }
   }
 
   getModel(): ClusterModel {
@@ -358,6 +368,86 @@ export class ClusterStateManager {
         targets.map(({ client }) => client.postFolder(folder)),
       )
       await this.finishFanOut(`creating folder ${spec.id}`, targets, results)
+    })
+  }
+
+  /**
+   * Accepts a folder a peer has offered to one specific registered node —
+   * the cluster-wide "inbox" from ROADMAP.md Phase 5. Unlike createFolder
+   * (fans the same folder out to 2+ nodes at once), this is inherently
+   * single-node: the offer was made to nodeId by offeredBy, and there's no
+   * multi-node share group to create yet, just this one relationship.
+   * offeredBy doesn't need to be a registered node itself — pending folders
+   * are offered by already-known peers, which is enough. Requires that this
+   * exact (folderId, offeredBy) pair is currently pending on nodeId — same
+   * spirit as addShare's peer-must-be-configured check, so a caller can't
+   * silently create a share with an arbitrary/wrong device.
+   */
+  acceptPendingFolder(
+    nodeId: string,
+    folderId: string,
+    offeredBy: string,
+    spec: { label: string; path: string; type: SyncthingFolderType },
+  ): Promise<void> {
+    return this.enqueueMutation(async () => {
+      const client = this.clientForDevice(nodeId)
+      const snap = this.snapshots.find((s) => s.myID === nodeId)
+      const offer = snap?.pendingFolders.find(
+        (pf) => pf.folderId === folderId && pf.offeredBy === offeredBy,
+      )
+      if (!offer) {
+        throw new InvalidTargetError(
+          `${folderId} is not currently offered by ${offeredBy} on ${nodeId}`,
+        )
+      }
+      // The offer says the sender expects us to hold ciphertext only — any
+      // other type would try to sync it as plaintext against an encrypted
+      // source. Enforced here too, not just in the UI's disabled selector.
+      if (offer.receiveEncrypted && spec.type !== 'receiveencrypted') {
+        throw new InvalidTargetError(
+          `${folderId} was offered encrypted by ${offeredBy}; it can only be accepted as receiveencrypted`,
+        )
+      }
+      const folder: ConfigFolder = {
+        id: folderId,
+        label: spec.label,
+        type: spec.type,
+        paused: false,
+        path: spec.path,
+        devices: [{ deviceID: nodeId }, { deviceID: offeredBy }],
+      }
+      await client.postFolder(folder)
+      await this.refreshAfterMutation()
+    })
+  }
+
+  /**
+   * Dismisses a pending device on every registered node currently reporting
+   * it — doesn't add it anywhere. A no-op (not an error) when it isn't
+   * pending anywhere: unlike setDevicePaused/removeDevice (acting on a device
+   * by identity, which either exists somewhere or doesn't), "dismiss this
+   * suggestion" is idempotent — it having already been dismissed or resolved
+   * elsewhere is the desired end state, not a failure.
+   */
+  dismissPendingDevice(deviceId: string): Promise<void> {
+    return this.enqueueMutation(async () => {
+      const targets = this.clients.filter(({ nodeId }) => {
+        const snap = this.snapshots.find((s) => s.nodeId === nodeId)
+        return snap?.pendingDevices.some((d) => d.deviceId === deviceId) ?? false
+      })
+      if (targets.length === 0) return
+      const results = await Promise.allSettled(
+        targets.map(({ client }) => client.dismissPendingDevice(deviceId)),
+      )
+      await this.finishFanOut(`dismissing pending device ${deviceId}`, targets, results)
+    })
+  }
+
+  /** Dismisses one folder offer on one node; `offeredBy` narrows to a single offering peer, matching Syncthing's own API. */
+  dismissPendingFolder(nodeId: string, folderId: string, offeredBy?: string): Promise<void> {
+    return this.enqueueMutation(async () => {
+      await this.clientForDevice(nodeId).dismissPendingFolder(folderId, offeredBy)
+      await this.refreshAfterMutation()
     })
   }
 

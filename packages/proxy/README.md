@@ -87,6 +87,38 @@ Listens on `PORT` (default `4000`). Routes:
 - `POST /api/folders/all/pause` / `.../resume` — same, but for every folder on
   every registered node that has it.
 
+**Pending devices & folders (the cluster-wide "inbox"):** surfaced as
+`pendingDevices`/`pendingFolders` on the `ClusterModel` itself (merged across
+every registered node that reports them — the same device or folder trying
+more than one node shows up once, not N times), plus these routes:
+
+- `POST /api/pending/devices/:deviceId/accept` body `{ "name": "...", "nodes":
+  ["<node device ID>", ...] }` — configures the device as a peer on the named
+  nodes (identical effect to `POST /api/devices`; this is a thin alias so
+  accepting from the inbox doesn't need a second code path).
+- `DELETE /api/pending/devices/:deviceId` — dismisses the pending-device
+  notification on every registered node currently reporting it. Not
+  permanent: the same device trying to connect again will resurface it. For
+  a permanent ignore, the device should be added to that node's ignore list
+  directly (not exposed here yet).
+- `POST /api/pending/folders/:folderId/devices/:nodeId/accept` body
+  `{ "offeredBy": "<device ID>", "label": "...", "path": "~/...", "type":
+  "sendreceive" }` (`label` optional, defaults to the folder id; `type`
+  optional, defaults to `sendreceive`) — joins the folder on `:nodeId`,
+  shared with the offering device. Single-node only: this is *not* the same
+  as `POST /api/folders`, since the offer was made to one specific node by
+  one specific (possibly unmanaged) peer, not a fan-out across chosen nodes.
+  Rejects (400) unless `offeredBy` is currently offering exactly this folder
+  on `:nodeId`, per the same node's own pending-folders list — a caller can't
+  point this at an arbitrary device. If that offer has `receiveEncrypted:
+  true`, `type` must be `receiveencrypted` (also rejected with 400 otherwise)
+  — the frontend locks the type selector to match, but the API enforces it
+  independently.
+- `DELETE /api/pending/folders/:folderId/devices/:nodeId` query
+  `?offeredBy=<device ID>` (optional) — dismisses the pending-folder
+  notification on that one node; narrows to a single offering device if
+  given, otherwise dismisses every offer of that folder on that node.
+
 `:deviceId` here is always a registered node's own Syncthing device ID — the
 same value as a Share's `deviceId` in the normalized model, since Phase 2's
 aggregation only ever produces Share rows from a node's first-hand view of

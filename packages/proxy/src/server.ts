@@ -260,6 +260,90 @@ async function handleRequest(
         return
       }
     }
+
+    // POST /api/pending/devices/:deviceId/accept — configure it as a peer on the named nodes
+    if (
+      method === 'POST' &&
+      parts.length === 5 &&
+      parts[0] === 'api' &&
+      parts[1] === 'pending' &&
+      parts[2] === 'devices' &&
+      parts[4] === 'accept'
+    ) {
+      const deviceId = decodeURIComponent(parts[3]!)
+      const body = (await readJsonBody(req)) as { name?: unknown; nodes?: unknown } | undefined
+      if (!Array.isArray(body?.nodes) || !body.nodes.every((n) => typeof n === 'string')) {
+        sendJson(res, 400, { error: 'nodes must be an array of registered node device IDs' })
+        return
+      }
+      await manager.addDevice(
+        deviceId,
+        typeof body.name === 'string' && body.name !== '' ? body.name : undefined,
+        body.nodes,
+      )
+      sendJson(res, 200, { ok: true })
+      return
+    }
+
+    // DELETE /api/pending/devices/:deviceId — dismiss on every node currently reporting it
+    if (
+      method === 'DELETE' &&
+      parts.length === 4 &&
+      parts[0] === 'api' &&
+      parts[1] === 'pending' &&
+      parts[2] === 'devices'
+    ) {
+      await manager.dismissPendingDevice(decodeURIComponent(parts[3]!))
+      sendJson(res, 200, { ok: true })
+      return
+    }
+
+    // /api/pending/folders/:folderId/devices/:nodeId[/accept] — :nodeId is
+    // the registered node the offer was made to (parts[4] is the literal
+    // "devices" segment, matching the /api/folders/:id/devices/:id shape).
+    if (
+      parts.length >= 6 &&
+      parts[0] === 'api' &&
+      parts[1] === 'pending' &&
+      parts[2] === 'folders' &&
+      parts[4] === 'devices'
+    ) {
+      const folderId = decodeURIComponent(parts[3]!)
+      const nodeId = decodeURIComponent(parts[5]!)
+
+      if (method === 'POST' && parts.length === 7 && parts[6] === 'accept') {
+        const body = (await readJsonBody(req)) as
+          | { offeredBy?: unknown; label?: unknown; path?: unknown; type?: unknown }
+          | undefined
+        if (typeof body?.offeredBy !== 'string' || body.offeredBy === '') {
+          sendJson(res, 400, { error: 'offeredBy is required' })
+          return
+        }
+        if (typeof body.path !== 'string' || body.path === '') {
+          sendJson(res, 400, { error: 'path is required' })
+          return
+        }
+        const type = body.type ?? 'sendreceive'
+        if (!isFolderType(type)) {
+          sendJson(res, 400, { error: `type must be one of: ${SYNCTHING_FOLDER_TYPES.join(', ')}` })
+          return
+        }
+        await manager.acceptPendingFolder(nodeId, folderId, body.offeredBy, {
+          label: typeof body.label === 'string' && body.label !== '' ? body.label : folderId,
+          path: body.path,
+          type,
+        })
+        sendJson(res, 200, { ok: true })
+        return
+      }
+
+      if (method === 'DELETE' && parts.length === 6) {
+        const offeredBy = url.searchParams.get('offeredBy') ?? undefined
+        await manager.dismissPendingFolder(nodeId, folderId, offeredBy)
+        sendJson(res, 200, { ok: true })
+        return
+      }
+    }
   } catch (err) {
     if (err instanceof BodyParseError || err instanceof InvalidTargetError) {
       sendJson(res, 400, { error: err.message })

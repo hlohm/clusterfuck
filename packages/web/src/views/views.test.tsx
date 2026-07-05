@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, within, fireEvent } from '@testing-library/react'
 import { OverviewView } from './OverviewView'
 import { TableView } from './TableView'
 import { edgeCases } from '../fixtures/edge-cases'
@@ -59,6 +59,112 @@ describe('OverviewView', () => {
     expect(onOpenShare).toHaveBeenCalledWith(
       expect.objectContaining({ folderId: 'ledger', deviceId: 'device-mirror' }),
     )
+  })
+
+  it('shows pending devices and folders even on a fixture, with no accept/dismiss actions', () => {
+    render(<OverviewView cluster={edgeCases} />)
+
+    expect(screen.getByText('Pending')).toBeInTheDocument()
+    expect(screen.getByText('new-phone')).toBeInTheDocument()
+    expect(screen.getByText(/tried to connect on origin, mirror/)).toBeInTheDocument()
+    expect(screen.getByText('Recipes')).toBeInTheDocument()
+    expect(screen.getByText(/offered by relay-a on origin/)).toBeInTheDocument()
+    expect(screen.queryByText('Accept')).not.toBeInTheDocument()
+    expect(screen.queryByText('Dismiss')).not.toBeInTheDocument()
+  })
+
+  it('dismisses a pending device once confirmed, when live', () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const dismiss = vi.spyOn(mutations, 'dismissPendingDevice').mockResolvedValue(undefined)
+
+    render(<OverviewView cluster={edgeCases} isLive />)
+    const row = screen.getByText('new-phone').closest('.pending-row') as HTMLElement
+    within(row).getByText('Dismiss').click()
+
+    expect(confirmSpy).toHaveBeenCalled()
+    expect(dismiss).toHaveBeenCalledWith('PENDING-DEVICE-1')
+
+    confirmSpy.mockRestore()
+    dismiss.mockRestore()
+  })
+
+  it('dismisses one pending folder offer once confirmed, when live', () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const dismiss = vi.spyOn(mutations, 'dismissPendingFolder').mockResolvedValue(undefined)
+
+    render(<OverviewView cluster={edgeCases} isLive />)
+    const row = screen.getByText('Recipes').closest('.pending-row') as HTMLElement
+    within(row).getByText('Dismiss').click()
+
+    expect(confirmSpy).toHaveBeenCalled()
+    expect(dismiss).toHaveBeenCalledWith('device-origin', 'shared-recipes', 'device-relay-a')
+
+    confirmSpy.mockRestore()
+    dismiss.mockRestore()
+  })
+
+  it('opens the accept-pending-device dialog, prefilled, and submits to the right mutation', () => {
+    const accept = vi.spyOn(mutations, 'acceptPendingDevice').mockResolvedValue(undefined)
+
+    render(<OverviewView cluster={edgeCases} isLive />)
+    const row = screen.getByText('new-phone').closest('.pending-row') as HTMLElement
+    fireEvent.click(within(row).getByText('Accept'))
+
+    const dialog = screen.getByRole('dialog', { name: 'Accept pending device' })
+    expect(within(dialog).getByDisplayValue('new-phone')).toBeInTheDocument() // name prefilled from the suggestion
+
+    fireEvent.click(within(dialog).getByText('Accept'))
+
+    expect(accept).toHaveBeenCalledWith('PENDING-DEVICE-1', 'new-phone', expect.any(Array))
+
+    accept.mockRestore()
+  })
+
+  it('opens the accept-pending-folder dialog and submits with the required path', () => {
+    const accept = vi.spyOn(mutations, 'acceptPendingFolder').mockResolvedValue(undefined)
+
+    render(<OverviewView cluster={edgeCases} isLive />)
+    const row = screen.getByText('Recipes').closest('.pending-row') as HTMLElement
+    fireEvent.click(within(row).getByText('Accept'))
+
+    const dialog = screen.getByRole('dialog', { name: 'Accept pending folder' })
+    const pathInput = within(dialog).getByPlaceholderText('~/shared-recipes')
+    fireEvent.change(pathInput, { target: { value: '~/recipes' } })
+
+    fireEvent.click(within(dialog).getByText('Accept'))
+
+    expect(accept).toHaveBeenCalledWith(
+      'device-origin',
+      'shared-recipes',
+      expect.objectContaining({ offeredBy: 'device-relay-a', path: '~/recipes' }),
+    )
+
+    accept.mockRestore()
+  })
+
+  it('locks an encrypted pending-folder offer to the receiveencrypted type', () => {
+    const accept = vi.spyOn(mutations, 'acceptPendingFolder').mockResolvedValue(undefined)
+
+    render(<OverviewView cluster={edgeCases} isLive />)
+    expect(screen.getByText(/offered by relay-b on mirror \(encrypted\)/)).toBeInTheDocument()
+
+    const row = screen.getByText('Vault backup').closest('.pending-row') as HTMLElement
+    fireEvent.click(within(row).getByText('Accept'))
+
+    const dialog = screen.getByRole('dialog', { name: 'Accept pending folder' })
+    const typeSelect = within(dialog).getByTitle(/can only be accepted as receiveencrypted/) as HTMLSelectElement
+    expect(typeSelect.value).toBe('receiveencrypted')
+    expect(typeSelect.disabled).toBe(true)
+
+    fireEvent.click(within(dialog).getByText('Accept'))
+
+    expect(accept).toHaveBeenCalledWith(
+      'device-mirror',
+      'vault-backup',
+      expect.objectContaining({ offeredBy: 'device-relay-b', type: 'receiveencrypted' }),
+    )
+
+    accept.mockRestore()
   })
 
   it('only offers cluster-wide actions against the live source, never a fixture', () => {

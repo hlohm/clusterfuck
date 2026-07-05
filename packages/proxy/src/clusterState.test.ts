@@ -71,6 +71,37 @@ function installFakeCluster(delayMs = 0, failOn?: { host: string; pathname: stri
     if (url.pathname === '/rest/system/pause' || url.pathname === '/rest/system/resume') {
       return jsonResponse({})
     }
+    if (url.pathname === '/rest/cluster/pending/devices' && method === 'GET') {
+      // Seen on both nodes, so aggregation should merge it into one entry.
+      return jsonResponse({
+        'DEVICE-PENDING': { time: '2026-01-01T00:00:00Z', name: 'new-phone', address: '10.0.0.5:22000' },
+      })
+    }
+    if (url.pathname === '/rest/cluster/pending/folders' && method === 'GET') {
+      // Only offered on st-a, by DEVICE-B.
+      return jsonResponse(
+        base.includes('a.test')
+          ? {
+              'f2-pending': {
+                offeredBy: {
+                  'DEVICE-B': { time: '2026-01-01T00:00:00Z', label: 'F2', receiveEncrypted: false },
+                },
+              },
+              'f3-encrypted': {
+                offeredBy: {
+                  'DEVICE-B': { time: '2026-01-01T00:00:00Z', label: 'F3', receiveEncrypted: true },
+                },
+              },
+            }
+          : {},
+      )
+    }
+    if (url.pathname === '/rest/cluster/pending/devices' && method === 'DELETE') {
+      return jsonResponse({})
+    }
+    if (url.pathname === '/rest/cluster/pending/folders' && method === 'DELETE') {
+      return jsonResponse({})
+    }
     if (
       (url.pathname === '/rest/config/devices' || url.pathname === '/rest/config/folders') &&
       method === 'POST'
@@ -375,6 +406,123 @@ describe('ClusterStateManager mutations', () => {
 
     const model = manager.getModel()
     expect(model.shares.find((s) => s.deviceId === 'DEVICE-A')?.type).toBe('sendonly')
+  })
+
+  it('surfaces a pending device merged across nodes, and a pending folder scoped to the node it was offered on', async () => {
+    const { manager } = installFakeCluster()
+    await refreshed(manager)
+
+    const model = manager.getModel()
+    expect(model.pendingDevices).toHaveLength(1)
+    expect(model.pendingDevices[0]!.deviceId).toBe('DEVICE-PENDING')
+    expect(model.pendingDevices[0]!.seenOn.map((s) => s.nodeId).sort()).toEqual(['st-a', 'st-b'])
+
+    expect(model.pendingFolders).toHaveLength(2)
+    const f2 = model.pendingFolders.find((f) => f.folderId === 'f2-pending')!
+    expect(f2.offers).toEqual([
+      { nodeId: 'st-a', offeredBy: 'DEVICE-B', time: '2026-01-01T00:00:00Z', label: 'F2', receiveEncrypted: false },
+    ])
+    const f3 = model.pendingFolders.find((f) => f.folderId === 'f3-encrypted')!
+    expect(f3.offers[0]!.receiveEncrypted).toBe(true)
+  })
+
+  it('dismisses a pending device on every node currently reporting it', async () => {
+    const { manager, calls } = installFakeCluster()
+    await refreshed(manager)
+    calls.length = 0
+
+    await manager.dismissPendingDevice('DEVICE-PENDING')
+
+    const deletes = calls.filter(
+      (c) => c.method === 'DELETE' && c.url === '/rest/cluster/pending/devices?device=DEVICE-PENDING',
+    )
+    expect(deletes.map((d) => d.host).sort()).toEqual(['a.test', 'b.test'])
+  })
+
+  it('accepting a pending folder posts it only to the node it was offered on, sharing with the offering device', async () => {
+    const { manager, calls } = installFakeCluster()
+    await refreshed(manager)
+    calls.length = 0
+
+    await manager.acceptPendingFolder('DEVICE-A', 'f2-pending', 'DEVICE-B', {
+      label: 'F2',
+      path: '~/f2-pending',
+      type: 'sendreceive',
+    })
+
+    const posts = calls.filter((c) => c.method === 'POST' && c.url === '/rest/config/folders')
+    expect(posts).toHaveLength(1)
+    expect(posts[0]!.host).toBe('a.test')
+    const folder = JSON.parse(posts[0]!.body!) as { id: string; devices: { deviceID: string }[] }
+    expect(folder.id).toBe('f2-pending')
+    expect(folder.devices).toEqual([{ deviceID: 'DEVICE-A' }, { deviceID: 'DEVICE-B' }])
+  })
+
+  it('rejects accepting a pending folder with an offeredBy that never actually offered it', async () => {
+    const { manager, calls } = installFakeCluster()
+    await refreshed(manager)
+    calls.length = 0
+
+    await expect(
+      manager.acceptPendingFolder('DEVICE-A', 'f2-pending', 'DEVICE-WRONG', {
+        label: 'F2',
+        path: '~/f2-pending',
+        type: 'sendreceive',
+      }),
+    ).rejects.toBeInstanceOf(InvalidTargetError)
+    expect(calls.some((c) => c.method === 'POST' && c.url === '/rest/config/folders')).toBe(false)
+  })
+
+  it('rejects accepting an encrypted pending folder offer as any type other than receiveencrypted', async () => {
+    const { manager, calls } = installFakeCluster()
+    await refreshed(manager)
+    calls.length = 0
+
+    await expect(
+      manager.acceptPendingFolder('DEVICE-A', 'f3-encrypted', 'DEVICE-B', {
+        label: 'F3',
+        path: '~/f3-encrypted',
+        type: 'sendreceive',
+      }),
+    ).rejects.toBeInstanceOf(InvalidTargetError)
+    expect(calls.some((c) => c.method === 'POST' && c.url === '/rest/config/folders')).toBe(false)
+
+    // The correct type is accepted fine.
+    await manager.acceptPendingFolder('DEVICE-A', 'f3-encrypted', 'DEVICE-B', {
+      label: 'F3',
+      path: '~/f3-encrypted',
+      type: 'receiveencrypted',
+    })
+    expect(calls.some((c) => c.method === 'POST' && c.url === '/rest/config/folders')).toBe(true)
+  })
+
+  it('dismisses a pending folder on one node, optionally scoped to one offering device', async () => {
+    const { manager, calls } = installFakeCluster()
+    await refreshed(manager)
+    calls.length = 0
+
+    await manager.dismissPendingFolder('DEVICE-A', 'f2-pending', 'DEVICE-B')
+
+    const deletes = calls.filter(
+      (c) => c.method === 'DELETE' && c.url.startsWith('/rest/cluster/pending/folders'),
+    )
+    expect(deletes).toHaveLength(1)
+    expect(deletes[0]!.host).toBe('a.test')
+    expect(deletes[0]!.url).toBe('/rest/cluster/pending/folders?folder=f2-pending&device=DEVICE-B')
+  })
+
+  it('dismissing a pending folder with no offeredBy narrows to no single device', async () => {
+    const { manager, calls } = installFakeCluster()
+    await refreshed(manager)
+    calls.length = 0
+
+    await manager.dismissPendingFolder('DEVICE-A', 'f2-pending')
+
+    const deletes = calls.filter(
+      (c) => c.method === 'DELETE' && c.url.startsWith('/rest/cluster/pending/folders'),
+    )
+    expect(deletes).toHaveLength(1)
+    expect(deletes[0]!.url).toBe('/rest/cluster/pending/folders?folder=f2-pending')
   })
 
   it("a mutation's own refresh reflects its write even if a slower refresh cycle was already running", async () => {

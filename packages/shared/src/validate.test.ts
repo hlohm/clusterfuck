@@ -9,6 +9,8 @@ function baseCluster(): ClusterModel {
     devices: [{ id: 'a', name: 'A', state: 'connected', managed: true }],
     folders: [{ id: 'f1', label: 'Folder 1' }],
     shares: [{ folderId: 'f1', deviceId: 'a', type: 'sendreceive', state: 'idle', sharedWith: ['a'] }],
+    pendingDevices: [],
+    pendingFolders: [],
   }
 }
 

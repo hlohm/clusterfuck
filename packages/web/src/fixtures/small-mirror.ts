@@ -38,4 +38,6 @@ export const smallMirror: ClusterModel = {
       sharedWith: ['device-alpha', 'device-bravo', 'device-charlie'],
     },
   ],
+  pendingDevices: [],
+  pendingFolders: [],
 }

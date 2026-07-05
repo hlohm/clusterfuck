@@ -1,10 +1,12 @@
-import type { ClusterModel, Share } from '@clusterfuck/shared'
+import { useState } from 'react'
+import type { ClusterModel, PendingDevice, Share } from '@clusterfuck/shared'
 import { clusterHealth, folderHealth, folderHealthForDevice, sharesByDevice, sharesByFolder } from '@clusterfuck/shared'
 import { FOLDER_TYPE_STYLE } from '../encoding/folderTypeStyle'
 import { DEVICE_STATE_STYLE } from '../encoding/deviceStateStyle'
 import { STATUS } from '../encoding/colors'
 import { cssColor } from '../encoding/colors'
 import { StatusBadge } from './StatusBadge'
+import { AcceptPendingDeviceDialog, AcceptPendingFolderDialog, type PendingFolderOffer } from './PendingDialogs'
 import { useAsyncAction } from '../data/useAsyncAction'
 import * as mutations from '../data/mutations'
 
@@ -81,6 +83,173 @@ function ClusterActions() {
         </div>
         {error && <div className="detail-panel__error cluster-actions__error">{error}</div>}
       </article>
+    </section>
+  )
+}
+
+/** Own busy/error instance per row — sharing one across N+M rows would let one in-flight dismiss disable every other row's buttons. */
+function PendingDeviceRow({
+  pd,
+  nameFor,
+  isLive,
+  onAccept,
+}: {
+  pd: PendingDevice
+  nameFor: (id: string) => string
+  isLive?: boolean
+  onAccept: () => void
+}) {
+  const { busy, error, run } = useAsyncAction()
+  return (
+    <li className="pending-row">
+      <div className="pending-row__info">
+        <strong>{pd.name ?? pd.deviceId}</strong>
+        <span className="pending-row__detail">
+          tried to connect on {pd.seenOn.map((s) => nameFor(s.nodeId)).join(', ')}
+        </span>
+      </div>
+      {isLive && (
+        <div className="detail-panel__action-row">
+          <button className="detail-panel__button--primary" onClick={onAccept}>
+            Accept
+          </button>
+          <button
+            className="detail-panel__button--danger"
+            disabled={busy}
+            onClick={() =>
+              run(`Dismiss ${pd.name ?? pd.deviceId}? It'll resurface if it tries to connect again.`, () =>
+                mutations.dismissPendingDevice(pd.deviceId),
+              )
+            }
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+      {error && <div className="detail-panel__error">{error}</div>}
+    </li>
+  )
+}
+
+function PendingFolderOfferRow({
+  pf,
+  offer,
+  nameFor,
+  isLive,
+  onAccept,
+}: {
+  pf: ClusterModel['pendingFolders'][number]
+  offer: ClusterModel['pendingFolders'][number]['offers'][number]
+  nameFor: (id: string) => string
+  isLive?: boolean
+  onAccept: () => void
+}) {
+  const { busy, error, run } = useAsyncAction()
+  return (
+    <li className="pending-row">
+      <div className="pending-row__info">
+        <strong>{pf.label}</strong>
+        <span className="pending-row__detail">
+          offered by {nameFor(offer.offeredBy)} on {nameFor(offer.nodeId)}
+          {offer.receiveEncrypted && ' (encrypted)'}
+        </span>
+      </div>
+      {isLive && (
+        <div className="detail-panel__action-row">
+          <button className="detail-panel__button--primary" onClick={onAccept}>
+            Accept
+          </button>
+          <button
+            className="detail-panel__button--danger"
+            disabled={busy}
+            onClick={() =>
+              run(
+                `Dismiss "${pf.label}" offered by ${nameFor(offer.offeredBy)} on ${nameFor(offer.nodeId)}?`,
+                () => mutations.dismissPendingFolder(offer.nodeId, pf.folderId, offer.offeredBy),
+              )
+            }
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+      {error && <div className="detail-panel__error">{error}</div>}
+    </li>
+  )
+}
+
+/**
+ * The cluster-wide "inbox": devices that have tried to connect and folders
+ * peers have offered, merged across every registered node that's seen them.
+ * See ROADMAP.md Phase 5. Content shows on fixtures too (so it's part of the
+ * visual language); only the actions are gated to the live source.
+ */
+function PendingSection({ cluster, isLive }: { cluster: ClusterModel; isLive?: boolean }) {
+  const [deviceDialog, setDeviceDialog] = useState<PendingDevice | null>(null)
+  const [folderDialog, setFolderDialog] = useState<{ folderId: string; offer: PendingFolderOffer } | null>(
+    null,
+  )
+
+  if (cluster.pendingDevices.length === 0 && cluster.pendingFolders.length === 0) return null
+
+  const deviceById = new Map(cluster.devices.map((d) => [d.id, d]))
+  const nameFor = (id: string) => deviceById.get(id)?.name ?? id
+
+  return (
+    <section className="overview__section">
+      <article className="folder-card">
+        <header className="folder-card__header">
+          <h4>Pending</h4>
+        </header>
+        <ul className="pending-list">
+          {cluster.pendingDevices.map((pd) => (
+            <PendingDeviceRow
+              key={pd.deviceId}
+              pd={pd}
+              nameFor={nameFor}
+              isLive={isLive}
+              onAccept={() => setDeviceDialog(pd)}
+            />
+          ))}
+          {cluster.pendingFolders.flatMap((pf) =>
+            pf.offers.map((offer) => (
+              <PendingFolderOfferRow
+                key={`${pf.folderId}:${offer.nodeId}:${offer.offeredBy}`}
+                pf={pf}
+                offer={offer}
+                nameFor={nameFor}
+                isLive={isLive}
+                onAccept={() =>
+                  setFolderDialog({
+                    folderId: pf.folderId,
+                    offer: {
+                      nodeId: offer.nodeId,
+                      offeredBy: offer.offeredBy,
+                      label: offer.label,
+                      receiveEncrypted: offer.receiveEncrypted,
+                    },
+                  })
+                }
+              />
+            )),
+          )}
+        </ul>
+      </article>
+
+      {deviceDialog && (
+        <AcceptPendingDeviceDialog
+          cluster={cluster}
+          pending={deviceDialog}
+          onClose={() => setDeviceDialog(null)}
+        />
+      )}
+      {folderDialog && (
+        <AcceptPendingFolderDialog
+          folderId={folderDialog.folderId}
+          offer={folderDialog.offer}
+          onClose={() => setFolderDialog(null)}
+        />
+      )}
     </section>
   )
 }
@@ -173,6 +342,8 @@ export function OverviewView({ cluster, onOpenShare, isLive }: OverviewViewProps
           </ul>
         </section>
       )}
+
+      <PendingSection cluster={cluster} isLive={isLive} />
 
       <section className="overview__section">
         <h3>Nodes</h3>

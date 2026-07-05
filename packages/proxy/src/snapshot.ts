@@ -20,10 +20,14 @@ export async function fetchNodeSnapshot(
   client: SyncthingClient,
   nodeId: string,
 ): Promise<NodeSnapshot> {
-  const [status, config, connectionsRes] = await Promise.all([
+  const [status, config, connectionsRes, pendingDevicesRes, pendingFoldersRes] = await Promise.all([
     client.systemStatus(),
     client.config(),
     client.connections(),
+    // Added in Syncthing 1.13.0 — degrade to "none pending" rather than
+    // failing the whole snapshot on an older or momentarily flaky node.
+    client.pendingDevices().catch(() => ({})),
+    client.pendingFolders().catch(() => ({})),
   ])
 
   const myID = status.myID
@@ -58,11 +62,28 @@ export async function fetchNodeSnapshot(
     connections[deviceId] = { connected: info.connected, paused: info.paused }
   }
 
+  const pendingDevices: NodeSnapshot['pendingDevices'] = Object.entries(pendingDevicesRes).map(
+    ([deviceId, info]) => ({ deviceId, name: info.name, time: info.time, address: info.address }),
+  )
+
+  const pendingFolders: NodeSnapshot['pendingFolders'] = Object.entries(pendingFoldersRes).flatMap(
+    ([folderId, folder]) =>
+      Object.entries(folder.offeredBy).map(([offeredBy, offer]) => ({
+        folderId,
+        offeredBy,
+        time: offer.time,
+        label: offer.label,
+        receiveEncrypted: offer.receiveEncrypted,
+      })),
+  )
+
   return {
     nodeId,
     myID,
     devices: config.devices.map((d) => ({ deviceId: d.deviceID, name: d.name, paused: d.paused })),
     folders,
     connections,
+    pendingDevices,
+    pendingFolders,
   }
 }
