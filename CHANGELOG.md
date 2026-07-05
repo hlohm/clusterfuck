@@ -4,6 +4,18 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.2.2]
+
+- Overview: cluster-wide Pause/Resume-all buttons now pick up the app's
+  shared button styling (they were missing it entirely — only the color
+  modifier classes were scoped to apply outside `.detail-panel`, so they
+  rendered as unstyled browser-default buttons) and live in a proper
+  "Cluster actions" card instead of a bare row under a heading.
+- Overview: new "Nodes" section — a card per device (mirroring the existing
+  Folders section, but folder-per-device instead of device-per-folder), with
+  a connection-state badge and a clickable row per folder share that jumps
+  straight to that share's detail.
+
 ## [0.2.1]
 
 - Fixed the graph view unmounting to a blank screen with no visible error on

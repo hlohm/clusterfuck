@@ -305,6 +305,7 @@ button {
 }
 
 .detail-panel button,
+.overview button,
 .attention-list__row {
   font-size: 12px;
   padding: 3px 10px;
@@ -315,11 +316,13 @@ button {
   cursor: pointer;
 }
 
-.detail-panel button:hover:not(:disabled) {
+.detail-panel button:hover:not(:disabled),
+.overview button:hover:not(:disabled) {
   border-color: var(--accent-border);
 }
 
-.detail-panel button:disabled {
+.detail-panel button:disabled,
+.overview button:disabled {
   opacity: 0.5;
   cursor: default;
 }
@@ -425,6 +428,31 @@ button {
   margin: 0 0 10px;
 }
 
+.cluster-actions__body {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cluster-actions__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.cluster-actions__label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  min-width: 56px;
+}
+
+.cluster-actions__error {
+  margin: 0 14px 12px;
+}
+
 .attention-list {
   list-style: none;
   margin: 0;
@@ -505,6 +533,34 @@ button {
   align-items: center;
   gap: 8px;
   font-size: 13px;
+}
+
+/* Clickable variant used by the Nodes cards (jumps to that share's detail) —
+   a hover highlight signals interactivity without the boxy default-button
+   look the plain, non-interactive Folders-section rows don't have. */
+.folder-card__shares .folder-card__share-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  font-size: 13px;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 3px 4px;
+  margin: -3px -4px;
+  border-radius: 4px;
+  color: inherit;
+}
+
+.folder-card__shares .folder-card__share-row:hover {
+  background: var(--code-bg);
+}
+
+.folder-card__empty {
+  padding: 12px 14px;
+  font-size: 13px;
+  color: var(--text);
 }
 
 .folder-card__device {
