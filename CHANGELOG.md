@@ -4,6 +4,25 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.2.1]
+
+- Fixed the graph view unmounting to a blank screen with no visible error on
+  a render-time exception (e.g. cluster data that doesn't match an expected
+  shape) — the app had no error boundary anywhere, so any thrown error while
+  rendering silently blanked the whole page. Added `GraphErrorBoundary`
+  around the graph pane: shows the error message and a "Try again" button
+  instead.
+- Fixed the legend showing every folder-identity and folder-type swatch as
+  gray regardless of its actual color. `.legend__swatch` is a height:0 box
+  rendered via `border-top` (so dashed vs. solid edges are distinguishable),
+  but the color was being set as `backgroundColor` — with zero height that
+  never has visible area, so it silently fell back to a default border
+  color. Now set as `borderTopColor`.
+- The device detail view's folder-shares list is now clickable — selecting a
+  row jumps to that share's full detail (stats, completion, and all the
+  folder controls), instead of only being reachable via the folder-selection
+  view.
+
 ## [0.2.0]
 
 - Phase 5: **Per-share encryption passwords** — `POST

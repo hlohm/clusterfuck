@@ -263,6 +263,26 @@
   min-width: 0;
 }
 
+.graph-error {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--text);
+  text-align: center;
+  padding: 24px;
+}
+
+.graph-error__detail {
+  font-size: 12px;
+  font-family: monospace;
+  color: var(--text);
+  opacity: 0.8;
+  max-width: 480px;
+}
+
 .app__scroll {
   flex: 1 1 auto;
   min-width: 0;
