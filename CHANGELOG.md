@@ -19,6 +19,14 @@ Versioning policy is in `CLAUDE.md`; the phased feature history is in
   one. Also sized the arrowheads up ~40% and widened the gap between
   parallel lines so the bigger arrowheads don't crowd each other near a
   shared endpoint.
+- Fixed that boundary distance being computed from each node's dead center
+  and reused as-is for every parallel line a device pair shares — correct
+  only for the one line that actually passes through the center. Every other
+  line ended up exiting at the same distance along the line regardless of
+  its own perpendicular offset, so anything but the innermost arrow floated
+  off the node's real (non-circular) edge, "lined up" with the innermost one
+  instead of following the boundary. Now computed per line, from its own
+  offset starting point.
 
 ## [0.3.1]
 

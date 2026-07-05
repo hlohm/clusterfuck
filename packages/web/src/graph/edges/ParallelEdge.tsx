@@ -1,4 +1,5 @@
 import { BaseEdge, EdgeLabelRenderer, useInternalNode, type EdgeProps } from '@xyflow/react'
+import { exitDistance, FALLBACK_NODE_HEIGHT, FALLBACK_NODE_WIDTH } from './edgeGeometry'
 
 export interface ParallelEdgeData extends Record<string, unknown> {
   /** Perpendicular offset in px from the pair's centerline. */
@@ -12,22 +13,6 @@ export interface ParallelEdgeData extends Record<string, unknown> {
   lockAtTarget?: boolean
   /** At least one end is receiveencrypted — dashed, matching the Folders-mode encoding for the same type. */
   dashed?: boolean
-}
-
-/** Device node's measured size before its first paint isn't available yet — this roughly matches .device-node's min-width/typical two-line height. */
-const FALLBACK_NODE_WIDTH = 120
-const FALLBACK_NODE_HEIGHT = 44
-
-/**
- * Distance from a rectangle's center to its own boundary along a ray in
- * direction (ux, uy) — an axis-aligned-box approximation of the device
- * node's actual (pill-shaped, rounded) footprint. Good enough: the rounding
- * only shaves a couple of px off the corners, imperceptible at this scale.
- */
-function rectBoundaryDistance(halfWidth: number, halfHeight: number, ux: number, uy: number): number {
-  const tx = ux !== 0 ? halfWidth / Math.abs(ux) : Infinity
-  const ty = uy !== 0 ? halfHeight / Math.abs(uy) : Infinity
-  return Math.min(tx, ty)
 }
 
 /**
@@ -100,22 +85,31 @@ export function ParallelEdge({
   // (nearby devices) the two ends' arrows/locks can't overshoot past each
   // other or the opposite node.
   const cap = length * 0.45
+  // (ox, oy) is this specific parallel line's start point relative to each
+  // node's own center — the same for both ends, since the offset is applied
+  // uniformly. From the target's side, the line arrives travelling in
+  // (ux, uy), so its own exit point (looking backwards, out of the node) is
+  // computed with the direction reversed.
   const sourceBoundary = Math.min(
     cap,
-    rectBoundaryDistance(
-      (sourceNode?.measured.width ?? FALLBACK_NODE_WIDTH) / 2,
-      (sourceNode?.measured.height ?? FALLBACK_NODE_HEIGHT) / 2,
+    exitDistance(
+      ox,
+      oy,
       ux,
       uy,
+      (sourceNode?.measured.width ?? FALLBACK_NODE_WIDTH) / 2,
+      (sourceNode?.measured.height ?? FALLBACK_NODE_HEIGHT) / 2,
     ),
   )
   const targetBoundary = Math.min(
     cap,
-    rectBoundaryDistance(
+    exitDistance(
+      ox,
+      oy,
+      -ux,
+      -uy,
       (targetNode?.measured.width ?? FALLBACK_NODE_WIDTH) / 2,
       (targetNode?.measured.height ?? FALLBACK_NODE_HEIGHT) / 2,
-      ux,
-      uy,
     ),
   )
   const lockGap = 22
