@@ -9,8 +9,11 @@ function jsonResponse(body: unknown): Response {
   })
 }
 
-/** Minimal fetch mock covering exactly what fetchNodeSnapshot needs, with a hook to override /rest/system/status. */
-function installClient(statusOverrides: Record<string, unknown> = {}) {
+/** Minimal fetch mock covering exactly what fetchNodeSnapshot needs, with hooks to override /rest/system/status and /rest/system/connections. */
+function installClient(
+  statusOverrides: Record<string, unknown> = {},
+  connections: Record<string, unknown> = {},
+) {
   const fetchMock = vi.fn(async (input: string | URL) => {
     const url = new URL(input)
     if (url.pathname === '/rest/system/status') {
@@ -30,7 +33,7 @@ function installClient(statusOverrides: Record<string, unknown> = {}) {
       return jsonResponse({ devices: [], folders: [] })
     }
     if (url.pathname === '/rest/system/connections') {
-      return jsonResponse({ connections: {} })
+      return jsonResponse({ connections })
     }
     if (url.pathname === '/rest/cluster/pending/devices' || url.pathname === '/rest/cluster/pending/folders') {
       return jsonResponse({})
@@ -107,5 +110,25 @@ describe('fetchNodeSnapshot systemStatus derivation', () => {
 
     expect(snap.systemStatus.version).toBe('')
     expect(snap.myID).toBe('DEVICE-A')
+  })
+})
+
+describe('fetchNodeSnapshot connections', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('copies inBytesTotal/outBytesTotal through alongside connected/paused', async () => {
+    const client = installClient(undefined, {
+      'DEVICE-B': { connected: true, paused: false, inBytesTotal: 1000, outBytesTotal: 2000 },
+    })
+    const snap = await fetchNodeSnapshot(client, 'st-a')
+
+    expect(snap.connections['DEVICE-B']).toEqual({
+      connected: true,
+      paused: false,
+      inBytesTotal: 1000,
+      outBytesTotal: 2000,
+    })
   })
 })

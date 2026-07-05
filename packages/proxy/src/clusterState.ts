@@ -76,6 +76,7 @@ export class ClusterStateManager {
       devices: [],
       folders: [],
       shares: [],
+      connections: [],
       pendingDevices: [],
       pendingFolders: [],
     }

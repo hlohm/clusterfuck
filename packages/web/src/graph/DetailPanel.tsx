@@ -1,7 +1,16 @@
 import { useState } from 'react'
-import type { ClusterModel, Device, DeviceSystemStatus, FolderType, ServiceHealth, Share } from '@clusterfuck/shared'
+import type {
+  ClusterModel,
+  Connection,
+  Device,
+  DeviceSystemStatus,
+  FolderType,
+  ServiceHealth,
+  Share,
+  TransferTotals,
+} from '@clusterfuck/shared'
 import type { Selection } from './selection'
-import { sharesByDevice, sharesByFolder } from '@clusterfuck/shared'
+import { connectionsByDevice, sharesByDevice, sharesByFolder, sumTransfer } from '@clusterfuck/shared'
 import { FOLDER_TYPE_STYLE } from '../encoding/folderTypeStyle'
 import { FOLDER_STATE_STYLE } from '../encoding/folderStateStyle'
 import { DEVICE_STATE_STYLE } from '../encoding/deviceStateStyle'
@@ -46,6 +55,48 @@ function SystemStatusSection({ status }: { status: DeviceSystemStatus }) {
       <ServiceHealthLine label="Listeners" health={status.listeners} />
       <ServiceHealthLine label="Discovery" health={status.discovery} />
     </div>
+  )
+}
+
+/**
+ * A device's own reported connections — like Folder shares, only ever
+ * present for a managed device (connectionsByDevice is naturally empty for
+ * a peer known only via another node's config, same as sharesByDevice).
+ * Sums `connections` directly (the caller already filtered it) rather than
+ * taking a separately-computed totals prop, so there's only one filter of
+ * cluster.connections per render, not two.
+ */
+function ConnectionsSection({
+  connections,
+  deviceById,
+}: {
+  connections: Connection[]
+  deviceById: Map<string, Device>
+}) {
+  const totals: TransferTotals = sumTransfer(connections)
+  return (
+    <>
+      <h4>Connections ({connections.length})</h4>
+      {connections.length > 0 && (
+        <p
+          title="Cumulative for each connection's current session only — resets to 0 on disconnect or a restart, not a durable all-time total."
+        >
+          <strong>Total transfer:</strong> ↑{formatBytes(totals.outBytesTotal)} / ↓
+          {formatBytes(totals.inBytesTotal)}
+        </p>
+      )}
+      <ul className="connections-list">
+        {connections.map((c) => (
+          <li key={c.peerId} className="connections-list__row">
+            <strong>{deviceById.get(c.peerId)?.name ?? c.peerId}</strong>
+            <span className="connections-list__detail">
+              {c.connected ? 'Connected' : 'Disconnected'} — ↑{formatBytes(c.outBytesTotal)} / ↓
+              {formatBytes(c.inBytesTotal)}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </>
   )
 }
 
@@ -258,6 +309,8 @@ export function DetailPanel({ cluster, selection, onSelect, isLive }: DetailPane
     const style = DEVICE_STATE_STYLE[device.state]
     const shares = sharesByDevice(cluster, device.id)
     const folderById = new Map(cluster.folders.map((f) => [f.id, f]))
+    const connections = connectionsByDevice(cluster, device.id)
+    const deviceById = new Map(cluster.devices.map((d) => [d.id, d]))
 
     return (
       <aside className="detail-panel">
@@ -270,6 +323,7 @@ export function DetailPanel({ cluster, selection, onSelect, isLive }: DetailPane
         </p>
         {device.systemStatus && <SystemStatusSection status={device.systemStatus} />}
         {isLive && <DeviceActions device={device} />}
+        {device.managed && <ConnectionsSection connections={connections} deviceById={deviceById} />}
         <h4>Folder shares ({shares.length})</h4>
         <ul className="attention-list">
           {shares.map((share) => {

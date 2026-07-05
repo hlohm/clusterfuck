@@ -70,6 +70,9 @@ export interface ConfigResponse {
 export interface ConnectionInfo {
   connected: boolean
   paused: boolean
+  /** Cumulative for the current connection only — resets to 0 on disconnect, not a durable all-time total or a live rate. */
+  inBytesTotal: number
+  outBytesTotal: number
 }
 
 export interface ConnectionsResponse {

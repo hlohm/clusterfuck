@@ -46,6 +46,28 @@ export function validateCluster(cluster: ClusterModel): ValidationError[] {
     seenPairs.add(pairKey)
   }
 
+  const seenConnectionPairs = new Set<string>()
+
+  for (const connection of cluster.connections) {
+    if (!deviceIds.has(connection.deviceId)) {
+      errors.push({ message: `Connection references unknown device "${connection.deviceId}"` })
+    } else if (!managedIds.has(connection.deviceId)) {
+      // Connections are first-hand views; only a registered (managed) node has one.
+      errors.push({ message: `Connection references unmanaged device "${connection.deviceId}"` })
+    }
+    if (!deviceIds.has(connection.peerId)) {
+      errors.push({ message: `Connection references unknown peer "${connection.peerId}"` })
+    }
+
+    const connectionPairKey = `${connection.deviceId}::${connection.peerId}`
+    if (seenConnectionPairs.has(connectionPairKey)) {
+      errors.push({
+        message: `Duplicate connection for device "${connection.deviceId}" and peer "${connection.peerId}"`,
+      })
+    }
+    seenConnectionPairs.add(connectionPairKey)
+  }
+
   return errors
 }
 

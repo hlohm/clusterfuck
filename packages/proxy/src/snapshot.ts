@@ -76,7 +76,12 @@ export async function fetchNodeSnapshot(
 
   const connections: NodeSnapshot['connections'] = {}
   for (const [deviceId, info] of Object.entries(connectionsRes.connections)) {
-    connections[deviceId] = { connected: info.connected, paused: info.paused }
+    connections[deviceId] = {
+      connected: info.connected,
+      paused: info.paused,
+      inBytesTotal: info.inBytesTotal,
+      outBytesTotal: info.outBytesTotal,
+    }
   }
 
   const pendingDevices: NodeSnapshot['pendingDevices'] = Object.entries(pendingDevicesRes).map(

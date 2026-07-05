@@ -39,7 +39,9 @@ describe('aggregateCluster', () => {
           sharedWith: ['DEVICE-A', 'DEVICE-B'],
         },
       ],
-      connections: { 'DEVICE-B': { connected: true, paused: false } },
+      connections: {
+        'DEVICE-B': { connected: true, paused: false, inBytesTotal: 1000, outBytesTotal: 2000 },
+      },
     })
     const b = snapshot({
       nodeId: 'st-b',
@@ -57,7 +59,9 @@ describe('aggregateCluster', () => {
           sharedWith: ['DEVICE-A', 'DEVICE-B'],
         },
       ],
-      connections: { 'DEVICE-A': { connected: true, paused: false } },
+      connections: {
+        'DEVICE-A': { connected: true, paused: false, inBytesTotal: 500, outBytesTotal: 250 },
+      },
     })
 
     const model = aggregateCluster([a, b], 'live', 'Live cluster')
@@ -67,6 +71,12 @@ describe('aggregateCluster', () => {
     expect(model.shares).toHaveLength(2)
     expect(model.shares.find((s) => s.deviceId === 'DEVICE-A')?.state).toBe('idle')
     expect(model.shares.find((s) => s.deviceId === 'DEVICE-B')?.state).toBe('syncing')
+    // One Connection row per (reporting node, peer) — not merged, even
+    // though both rows describe the same physical A<->B link.
+    expect(model.connections).toEqual([
+      { deviceId: 'DEVICE-A', peerId: 'DEVICE-B', connected: true, inBytesTotal: 1000, outBytesTotal: 2000 },
+      { deviceId: 'DEVICE-B', peerId: 'DEVICE-A', connected: true, inBytesTotal: 500, outBytesTotal: 250 },
+    ])
   })
 
   it("gives systemStatus only to a snapshot's own myID, never to a peer seen only via its config", () => {
@@ -111,8 +121,8 @@ describe('aggregateCluster', () => {
       nodeId: 'st-a',
       myID: 'DEVICE-A',
       connections: {
-        'DEVICE-B': { connected: true, paused: false },
-        'DEVICE-C': { connected: false, paused: false },
+        'DEVICE-B': { connected: true, paused: false, inBytesTotal: 0, outBytesTotal: 0 },
+        'DEVICE-C': { connected: false, paused: false, inBytesTotal: 0, outBytesTotal: 0 },
       },
     })
     const b = snapshot({

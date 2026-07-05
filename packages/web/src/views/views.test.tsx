@@ -4,6 +4,7 @@ import { OverviewView } from './OverviewView'
 import { TableView } from './TableView'
 import { edgeCases } from '../fixtures/edge-cases'
 import * as mutations from '../data/mutations'
+import { formatBytes } from '../format'
 
 describe('OverviewView', () => {
   it('renders the KPI row from cluster health', () => {
@@ -14,6 +15,23 @@ describe('OverviewView', () => {
     expect(screen.getByText('4/7')).toBeInTheDocument()
     expect(screen.getByText('Out-of-sync items')).toBeInTheDocument()
     expect(screen.getByText('12')).toBeInTheDocument()
+  })
+
+  it('renders a cluster-wide data-transferred tile, summed across every reported connection', () => {
+    render(<OverviewView cluster={edgeCases} />)
+
+    // edge-cases: device-origin reports 3 connections, but only the
+    // connected one (mirror) has nonzero bytes — a disconnected connection's
+    // totals are 0, per Connection's doc comment — and no other device
+    // reports any, so mirror's own numbers are also the cluster totals.
+    const totalIn = 128_500_000
+    const totalOut = 340_200_000
+
+    expect(screen.getByText('Data transferred')).toBeInTheDocument()
+    const tile = screen.getByText('Data transferred').closest('.stat-tile') as HTMLElement
+    expect(within(tile).getByText(formatBytes(totalIn + totalOut))).toBeInTheDocument()
+    expect(within(tile).getByText(new RegExp(formatBytes(totalOut)))).toBeInTheDocument()
+    expect(within(tile).getByText(new RegExp(formatBytes(totalIn)))).toBeInTheDocument()
   })
 
   it('lists attention shares and opens them on click', () => {

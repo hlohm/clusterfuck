@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
   clusterHealth,
+  clusterTransferTotals,
+  connectionsByDevice,
+  deviceTransferTotals,
   folderHealth,
   folderHealthForDevice,
   sharesByDevice,
@@ -24,6 +27,10 @@ function cluster(): ClusterModel {
       { folderId: 'f1', deviceId: 'a', type: 'sendreceive', state: 'idle', sharedWith: ['a', 'b'] },
       { folderId: 'f2', deviceId: 'a', type: 'sendonly', state: 'error', sharedWith: ['a'] },
       { folderId: 'f1', deviceId: 'b', type: 'sendreceive', state: 'syncing', sharedWith: ['a', 'b'] },
+    ],
+    connections: [
+      { deviceId: 'a', peerId: 'b', connected: true, inBytesTotal: 1000, outBytesTotal: 2000 },
+      { deviceId: 'b', peerId: 'a', connected: true, inBytesTotal: 500, outBytesTotal: 250 },
     ],
     pendingDevices: [],
     pendingFolders: [],
@@ -99,5 +106,48 @@ describe('folderHealthForDevice', () => {
     const c = cluster()
     c.devices.push({ id: 'c', name: 'C', state: 'disconnected', managed: false })
     expect(folderHealthForDevice(c, 'c')).toBeUndefined()
+  })
+})
+
+describe('connectionsByDevice', () => {
+  it("returns only the given device's own reported connections, not the peer's separate row for the same link", () => {
+    const connections = connectionsByDevice(cluster(), 'a')
+    expect(connections).toHaveLength(1)
+    expect(connections[0]).toEqual({
+      deviceId: 'a',
+      peerId: 'b',
+      connected: true,
+      inBytesTotal: 1000,
+      outBytesTotal: 2000,
+    })
+  })
+
+  it('returns an empty array for a device that reports no connections', () => {
+    const c = cluster()
+    c.devices.push({ id: 'c', name: 'C', state: 'disconnected', managed: false })
+    expect(connectionsByDevice(c, 'c')).toEqual([])
+  })
+})
+
+describe('deviceTransferTotals', () => {
+  it("sums one device's own connections, not the peer's separate row for the same link", () => {
+    expect(deviceTransferTotals(cluster(), 'a')).toEqual({ inBytesTotal: 1000, outBytesTotal: 2000 })
+    expect(deviceTransferTotals(cluster(), 'b')).toEqual({ inBytesTotal: 500, outBytesTotal: 250 })
+  })
+
+  it('returns zero totals for a device with no reported connections', () => {
+    const c = cluster()
+    c.devices.push({ id: 'c', name: 'C', state: 'disconnected', managed: false })
+    expect(deviceTransferTotals(c, 'c')).toEqual({ inBytesTotal: 0, outBytesTotal: 0 })
+  })
+})
+
+describe('clusterTransferTotals', () => {
+  it("sums every connection's own reported bytes, counting a link between two managed nodes from both ends", () => {
+    // a→b reports 1000 in / 2000 out; b→a (the SAME physical link, from the
+    // other side) reports 500 in / 250 out — both rows count, by design
+    // (see Connection's doc comment), so the cluster total isn't halved or
+    // deduplicated down to "one link's worth".
+    expect(clusterTransferTotals(cluster())).toEqual({ inBytesTotal: 1500, outBytesTotal: 2250 })
   })
 })

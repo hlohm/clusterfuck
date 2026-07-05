@@ -66,6 +66,31 @@ export interface Share {
 }
 
 /**
+ * One registered node's own first-hand view of its connection to a peer —
+ * like Share, only ever reported by the node whose own connection this is.
+ * If the peer is *also* a registered node, it reports its own separate row
+ * for the same link (its own in/out are the reverse direction, and its own
+ * sample may land at a slightly different moment) — not merged into one row,
+ * same "each side's own view, views can disagree" principle as the rest of
+ * this model.
+ *
+ * inBytesTotal/outBytesTotal are cumulative for the *current* connection,
+ * not a live rate — but also not a durable all-time total: Syncthing itself
+ * only tracks these while a connection is live, so they reset to 0 the
+ * moment a peer disconnects (a reconnect, or a Syncthing/proxy restart,
+ * starts back at 0, not from where it left off).
+ */
+export interface Connection {
+  /** The registered node reporting this connection. */
+  deviceId: DeviceId
+  /** The peer it's connected (or has been connected) to. */
+  peerId: DeviceId
+  connected: boolean
+  inBytesTotal: number
+  outBytesTotal: number
+}
+
+/**
  * A remote device that has tried to connect to one or more registered nodes
  * but isn't configured anywhere yet. Merged across nodes by device ID — the
  * cluster-wide "inbox" so the same device showing up on N nodes reads as one
@@ -103,6 +128,7 @@ export interface ClusterModel {
   devices: Device[]
   folders: Folder[]
   shares: Share[]
+  connections: Connection[]
   pendingDevices: PendingDevice[]
   pendingFolders: PendingFolder[]
 }
