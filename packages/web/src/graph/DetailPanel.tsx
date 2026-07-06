@@ -510,6 +510,23 @@ function IgnorePatternsSection({ cluster, folderId }: { cluster: ClusterModel; f
   )
 }
 
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false)
+  return (
+    <button
+      className="copy-button"
+      onClick={() => {
+        void navigator.clipboard.writeText(text).then(() => {
+          setCopied(true)
+          setTimeout(() => setCopied(false), 1500)
+        })
+      }}
+    >
+      {copied ? 'Copied' : 'Copy'}
+    </button>
+  )
+}
+
 export function DetailPanel({ cluster, selection, onSelect, isLive }: DetailPanelProps) {
   if (!selection) {
     return (
@@ -535,7 +552,8 @@ export function DetailPanel({ cluster, selection, onSelect, isLive }: DetailPane
           <strong>State:</strong> {style.label}
         </p>
         <p>
-          <strong>Device ID:</strong> <code>{device.id}</code>
+          <strong>Device ID:</strong> <code>{device.id}</code>{' '}
+          <CopyButton text={device.id} />
         </p>
         {device.systemStatus && <SystemStatusSection status={device.systemStatus} />}
         {isLive && <DeviceActions device={device} />}
