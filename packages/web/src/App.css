@@ -920,6 +920,20 @@ button {
   color: var(--text);
 }
 
+.drift-badge {
+  flex: 0 0 auto;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.drift-badge--warning {
+  color: light-dark(#b45309, #fbbf24);
+}
+
+.drift-badge--info {
+  color: var(--accent);
+}
+
 .device-qr__image {
   display: block;
   margin-top: 6px;

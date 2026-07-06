@@ -25,8 +25,11 @@ manage devices and folders across every node from one place.
     share each folder) and **Folders** (folder-hub nodes with folder-type-
     colored edges to their devices). Devices are round, folder hubs are square.
   - **Overview** — a health dashboard: devices online, folders up to date,
-    out-of-sync items, a worst-first "needs attention" list, and per-folder
-    cards with completion meters.
+    out-of-sync items, a worst-first "needs attention" list, a **config
+    drift** section (same folder labeled/versioned differently across nodes,
+    asymmetric shares, all-sendonly/all-receiveonly folders — each with a
+    suggested fix; the cluster-level check a single-node GUI can't do), and
+    per-folder cards with completion meters.
   - **Table** — every share as a flat, text-only row (the accessible fallback).
 - **Live, read-only cluster state** aggregated from every node and pushed to the
   browser over Server-Sent Events.

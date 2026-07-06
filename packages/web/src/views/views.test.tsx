@@ -53,6 +53,20 @@ describe('OverviewView', () => {
     expect(screen.getByRole('heading', { name: 'coldstore' })).toBeInTheDocument()
   })
 
+  it("surfaces the fixture's deliberate config drift with suggested fixes, deep-linking on click", () => {
+    const onOpenShare = vi.fn()
+    render(<OverviewView cluster={edgeCases} onOpenShare={onOpenShare} />)
+
+    expect(screen.getByRole('heading', { name: 'Config drift' })).toBeInTheDocument()
+    // The asymmetric-share warnings (vault doesn't share back) and the label drift.
+    expect(screen.getAllByText(/doesn't share it back/).length).toBeGreaterThanOrEqual(2)
+    expect(screen.getByText(/labeled differently/)).toBeInTheDocument()
+    expect(screen.getAllByText(/^Fix: /).length).toBeGreaterThanOrEqual(3)
+
+    screen.getAllByText(/doesn't share it back/)[0]!.closest('button')!.click()
+    expect(onOpenShare).toHaveBeenCalledWith(expect.objectContaining({ folderId: 'ledger' }))
+  })
+
   it('renders a card per device, with a share row per folder it participates in', () => {
     render(<OverviewView cluster={edgeCases} />)
     expect(screen.getByRole('heading', { name: 'origin' })).toBeInTheDocument()

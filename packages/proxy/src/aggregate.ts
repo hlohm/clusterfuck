@@ -138,6 +138,7 @@ export function aggregateCluster(
       shares.push({
         folderId: f.id,
         deviceId: snap.myID,
+        label: f.label,
         type: f.type,
         state: f.state,
         completionPct: f.completionPct,

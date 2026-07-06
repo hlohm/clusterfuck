@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { validateCluster } from '@clusterfuck/shared'
+import { detectDrift, validateCluster } from '@clusterfuck/shared'
 import type { DeviceState, FolderState, FolderType } from '@clusterfuck/shared'
 import { FIXTURE_CLUSTERS } from './index'
 
@@ -67,6 +67,12 @@ describe('fixture clusters', () => {
   it('include at least one share with failed items', () => {
     const hasFailed = FIXTURE_CLUSTERS.some((c) => c.shares.some((s) => (s.failedItems ?? 0) > 0))
     expect(hasFailed).toBe(true)
+  })
+
+  it('include config drift at both severities, so the drift section is explorable', () => {
+    const findings = FIXTURE_CLUSTERS.flatMap(detectDrift)
+    expect(findings.some((f) => f.severity === 'warning')).toBe(true)
+    expect(findings.some((f) => f.severity === 'info')).toBe(true)
   })
 
   it('include at least one receiveencrypted share', () => {

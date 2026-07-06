@@ -181,10 +181,16 @@ tabs. Mapped from the GUI's actual surface, in priority order.
       response gets out)
 - [ ] Upgrade orchestration (one node at a time, health-checked) — split out
       of the line above; a longer-running stateful workflow, not a fan-out
-- [ ] Config drift detection: same folder configured differently across nodes
+- [x] Config drift detection: same folder configured differently across nodes
       (label/type/versioning mismatches), asymmetric shares (A shares with B,
       B doesn't share back), with suggested fixes — the genuinely novel
-      cluster-level feature a single-node GUI cannot have
+      cluster-level feature a single-node GUI cannot have. Pure logic in
+      `@clusterfuck/shared` (`detectDrift()`), surfaced as an Overview
+      section; works on fixtures too. Suggested fixes are advisory text —
+      one-click apply is a possible follow-up. Type checks flag only the
+      genuinely broken all-sendonly / all-receiveonly cases, since pairwise
+      type differences are normal topology; `Share` gained `label` (each
+      node's own label) to make label drift detectable at all
 - [ ] Bandwidth limits cluster-wide
 
 ### Observability

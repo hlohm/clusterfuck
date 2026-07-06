@@ -4,6 +4,22 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.4.13]
+
+- **Config drift detection** (ROADMAP.md Phase 5 Cluster operations) — the
+  cluster-level check a single-node GUI can't do. New pure `detectDrift()`
+  in `@clusterfuck/shared`, surfaced as a "Config drift" section on the
+  Overview (fixtures included): differing folder labels across nodes (with
+  a rename-to-majority suggestion), differing file-versioning configs
+  (info-level — per-node versioning is legal), all-sendonly ("no reader")
+  and all-receiveonly ("no writer") folders, and asymmetric shares — A
+  shares with managed B but B doesn't share back, or doesn't have the
+  folder at all. Each finding carries a concrete suggested fix (advisory
+  text). `Share` gains `label` (each node's own label for the folder),
+  which aggregation previously discarded — without it label drift is
+  undetectable. Encrypted relays are excluded from type checks; pairwise
+  type differences are deliberately not flagged (normal topology).
+
 ## [0.4.12]
 
 - **Rescan all + node restart/shutdown** (ROADMAP.md Phase 5 Cluster

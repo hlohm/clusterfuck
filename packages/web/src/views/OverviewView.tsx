@@ -3,6 +3,7 @@ import type { ClusterModel, Device, PendingDevice, Share } from '@clusterfuck/sh
 import {
   clusterHealth,
   clusterTransferTotals,
+  detectDrift,
   folderHealth,
   folderHealthForDevice,
   sharesByDevice,
@@ -385,6 +386,7 @@ function NodeCard({
 export function OverviewView({ cluster, onOpenShare, isLive }: OverviewViewProps) {
   const health = clusterHealth(cluster)
   const transfer = clusterTransferTotals(cluster)
+  const drift = detectDrift(cluster)
   const deviceById = new Map(cluster.devices.map((d) => [d.id, d]))
 
   const online = health.deviceCounts.connected + health.deviceCounts['this-device']
@@ -449,6 +451,36 @@ export function OverviewView({ cluster, onOpenShare, isLive }: OverviewViewProps
                 </button>
               </li>
             ))}
+          </ul>
+        </section>
+      )}
+
+      {drift.length > 0 && (
+        <section className="overview__section">
+          <h3>Config drift</h3>
+          <ul className="attention-list">
+            {drift.map((finding, i) => {
+              const folderLabel =
+                cluster.folders.find((f) => f.id === finding.folderId)?.label ?? finding.folderId
+              const target = cluster.shares.find(
+                (s) => s.folderId === finding.folderId && finding.deviceIds.includes(s.deviceId),
+              )
+              return (
+                <li key={`${finding.kind}:${finding.folderId}:${i}`}>
+                  <button className="attention-list__row" onClick={() => target && onOpenShare?.(target)}>
+                    <span
+                      className={`drift-badge drift-badge--${finding.severity}`}
+                      title={finding.severity === 'warning' ? 'Probably broken' : 'Legal, but worth knowing'}
+                    >
+                      {finding.severity === 'warning' ? '⚠' : 'ℹ'}
+                    </span>
+                    <strong>{folderLabel}</strong>
+                    <span className="attention-list__device">{finding.message}</span>
+                    <span className="attention-list__message">Fix: {finding.suggestion}</span>
+                  </button>
+                </li>
+              )
+            })}
           </ul>
         </section>
       )}
