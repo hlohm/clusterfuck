@@ -4,6 +4,12 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.4.6]
+
+- **Copy button next to the device ID** in the detail panel — copies the full
+  ID to the clipboard with brief "Copied" feedback. First slice of the
+  roadmap's "device identity" item; the QR code view is still open.
+
 ## [0.4.5]
 
 Project-wide review pass: bug fixes and documentation refresh, no new features.

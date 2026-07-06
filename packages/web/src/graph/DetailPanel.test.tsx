@@ -179,3 +179,27 @@ describe('DetailPanel ignore patterns across folder switches', () => {
     expect(screen.queryByDisplayValue('*.tmp')).not.toBeInTheDocument()
   })
 })
+
+describe('DetailPanel device ID copy', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('copies the device ID to the clipboard and shows transient feedback', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.assign(navigator, { clipboard: { writeText } })
+
+    render(
+      <DetailPanel
+        cluster={edgeCases}
+        selection={{ kind: 'device', deviceId: 'device-origin' }}
+        onSelect={vi.fn()}
+        isLive={false}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('Copy'))
+    expect(writeText).toHaveBeenCalledWith('device-origin')
+    expect(await screen.findByText('Copied')).toBeInTheDocument()
+  })
+})

@@ -327,6 +327,12 @@ button {
   cursor: default;
 }
 
+.detail-panel button.copy-button {
+  font-size: 11px;
+  padding: 1px 6px;
+  vertical-align: middle;
+}
+
 /* Button semantics harmonized with Syncthing's own GUI: destructive actions
    are its btn-danger red, the "Add" confirm is its btn-primary blue — every
    other action (Pause/Resume/Rescan/Type) stays the neutral default button,
