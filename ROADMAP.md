@@ -130,7 +130,9 @@ tabs. Mapped from the GUI's actual surface, in priority order.
 - [x] Versioning config (trashcan/simple/staggered/external) per node — view +
       edit each node's own copy, since a folder can be versioned differently per
       node (params surfaced verbatim; staggered's `maxAge` shown in days)
-- [ ] Ignore patterns — view/edit per node, diff across nodes
+- [x] Ignore patterns — view/edit per node, diff across nodes (fetched on
+      demand per folder, not baked into the model; a per-node `.stignore` editor
+      plus a cluster-level "patterns differ / identical" indicator)
 - [ ] Advanced folder options (rescan interval, watcher, min disk free);
       `sendonly` override + `receiveonly` revert
 - [ ] Conflict & failed-item surfacing (per folder, cluster-rolled-up)

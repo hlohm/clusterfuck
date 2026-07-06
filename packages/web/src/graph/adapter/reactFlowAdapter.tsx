@@ -44,8 +44,8 @@ function ReactFlowAdapterInner({
         }
       }}
       onEdgeClick={(_event, edge) => {
-        if (edge.id.startsWith('nodes-edge:')) {
-          const folderId = edge.id.split(':')[1]!
+        const folderId = (edge.data as { folderId?: string } | undefined)?.folderId
+        if (folderId !== undefined) {
           onSelect({ kind: 'folder', folderId })
           return
         }

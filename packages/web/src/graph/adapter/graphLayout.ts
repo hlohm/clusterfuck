@@ -157,6 +157,9 @@ export function nodesGraph(cluster: ClusterModel, selection: Selection) {
         targetHandle: 'center-in',
         type: 'parallel',
         data: {
+          // Carried in data (not only the edge id) so click handling doesn't
+          // have to parse the id — a folder id containing ':' would truncate.
+          folderId,
           offset: (index - (folderIds.length - 1) / 2) * PARALLEL_SPACING,
           label: showLabel ? folderLabelById.get(folderId) : undefined,
           arrowAtSource: shareA ? receivesFromPeers(shareA.type) : false,

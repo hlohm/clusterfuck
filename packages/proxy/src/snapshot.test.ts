@@ -177,6 +177,77 @@ describe('fetchNodeSnapshot versioning', () => {
   })
 })
 
+describe('fetchNodeSnapshot folder state', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  function installWithDbStatus(dbStatus: Record<string, unknown>, folderErrors: unknown[] = []) {
+    const fetchMock = vi.fn(async (input: string | URL) => {
+      const url = new URL(input)
+      if (url.pathname === '/rest/system/status') {
+        return jsonResponse({ myID: 'DEVICE-A', uptime: 1, alloc: 1, connectionServiceStatus: {}, discoveryStatus: {} })
+      }
+      if (url.pathname === '/rest/system/version') return jsonResponse({ version: 'v1' })
+      if (url.pathname === '/rest/config') {
+        return jsonResponse({
+          devices: [],
+          folders: [{ id: 'f1', label: 'F1', type: 'sendreceive', paused: false, devices: [{ deviceID: 'DEVICE-A' }] }],
+        })
+      }
+      if (url.pathname === '/rest/system/connections') return jsonResponse({ connections: {} })
+      if (url.pathname === '/rest/db/status') {
+        return jsonResponse({ needFiles: 0, needItems: 0, globalFiles: 10, errors: 0, ...dbStatus })
+      }
+      if (url.pathname === '/rest/folder/errors') return jsonResponse({ folder: 'f1', errors: folderErrors })
+      if (url.pathname === '/rest/cluster/pending/devices' || url.pathname === '/rest/cluster/pending/folders') {
+        return jsonResponse({})
+      }
+      throw new Error(`unexpected fetch in snapshot test: ${url.href}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    return new SyncthingClient({ id: 'st-a', url: 'http://a.test', apiKey: 'ka' })
+  }
+
+  it("maps a folder-level 'stopped' state (e.g. missing marker) to error, surfacing db/status' own error string", async () => {
+    const client = installWithDbStatus({ state: 'stopped', error: 'folder marker missing' })
+    const snap = await fetchNodeSnapshot(client, 'st-a')
+
+    expect(snap.folders[0]!.state).toBe('error')
+    expect(snap.folders[0]!.errorMessage).toBe('folder marker missing')
+  })
+
+  it("maps db/status state 'error' to error even when /rest/folder/errors lists no pull failures", async () => {
+    const client = installWithDbStatus({ state: 'error' })
+    const snap = await fetchNodeSnapshot(client, 'st-a')
+
+    expect(snap.folders[0]!.state).toBe('error')
+  })
+
+  it('prefers the folder-level error message over a per-file pull error when both exist', async () => {
+    const client = installWithDbStatus({ state: 'stopped', error: 'folder path missing' }, [
+      { path: 'a.txt', error: 'permission denied' },
+    ])
+    const snap = await fetchNodeSnapshot(client, 'st-a')
+
+    expect(snap.folders[0]!.errorMessage).toBe('folder path missing')
+  })
+
+  it('still reports a pull-error-only folder as error with the first pull error as its message', async () => {
+    const client = installWithDbStatus({ state: 'idle' }, [{ path: 'a.txt', error: 'permission denied' }])
+    const snap = await fetchNodeSnapshot(client, 'st-a')
+
+    expect(snap.folders[0]!.state).toBe('error')
+    expect(snap.folders[0]!.errorMessage).toBe('permission denied')
+  })
+
+  it("maps the '-waiting' queue states to their active counterparts, not idle", async () => {
+    expect((await fetchNodeSnapshot(installWithDbStatus({ state: 'scan-waiting' }), 'st-a')).folders[0]!.state).toBe('scanning')
+    vi.unstubAllGlobals()
+    expect((await fetchNodeSnapshot(installWithDbStatus({ state: 'sync-waiting' }), 'st-a')).folders[0]!.state).toBe('syncing')
+  })
+})
+
 describe('fetchNodeSnapshot connections', () => {
   afterEach(() => {
     vi.unstubAllGlobals()

@@ -15,17 +15,20 @@ the API keys; the browser never sees a key.
 
 ## Current state
 
-Greenfield. The repo is the README outline plus this file — **no code yet**.
-The immediate work is **Phase 1 (Mockup)**: a clickable static prototype on
-hand-authored fake data, to settle the visual language before touching a real
-API. Do not skip ahead — see "Operating principles."
+Phases 1–4 are **shipped** (fixtures → live read-only → per-node management →
+multi-view visual refresh); Phase 5 (cluster-wide Syncthing-GUI parity) is in
+progress. `ROADMAP.md` is the authoritative, itemized status — check it (and
+the current version in the root `package.json`) before assuming what exists.
+The monorepo is three workspace packages: `packages/shared` (the normalized
+model + pure logic), `packages/proxy` (Node/TS backend), `packages/web`
+(React SPA).
 
 ## Operating principles (read before you build)
 
-- **Respect the phase gates.** Phase 1 is fake data only. Phase 2 (live,
-  read-only) does not begin until the visualization reads cleanly on fixtures.
-  Phase 3 (management/mutations) does not begin until live read-only is solid.
-  Don't introduce real-API code or mutations "while you're in there."
+- **Respect the phase gates.** Work through `ROADMAP.md` in its priority
+  order, one coherent item per PR. Don't pull a later phase's feature into an
+  unrelated change "while you're in there" — a new capability (e.g. anything
+  needing auth, or Syncthing 2.x support) lands as its own deliberate step.
 - **Raise flagged decisions; don't silently guess them.** The README marks
   specific *open decisions* per phase (graph library, the visual encoding for
   the four folder types, hyperedge vs. pairwise edges, proxy language, node
@@ -47,17 +50,21 @@ API. Do not skip ahead — see "Operating principles."
 
 ## Architecture guardrails
 
-- **The normalized cluster model is the contract.** Define it first and treat it
-  as the seam between proxy and frontend: the proxy produces it, the frontend
-  consumes it, and fixtures conform to it. Devices, folders, shares (folder↔device
-  with a type), and states all live in this model. Get it right early — most of
-  the app hangs off its shape. Keep it as shared TypeScript types.
+- **The normalized cluster model is the contract.** It lives in
+  `packages/shared` (`ClusterModel` + pure logic) and is the seam between
+  proxy and frontend: the proxy produces it, the frontend consumes it, and
+  fixtures conform to it. Devices, folders, shares (folder↔device with a
+  type), connections, and pending items all live in this model — changes to
+  its shape ripple everywhere, so treat them as significant.
 - **Keys stay server-side.** The frontend talks only to the proxy and never
   holds a Syncthing API key. This is why a browser-only build isn't an option
   (CORS + key handling).
-- **Read before write.** Phases 1–2 are strictly read-only. No endpoint that
-  mutates cluster state exists until Phase 3, and even then behind confirmation
-  / preview.
+- **Every mutation is gated.** All mutation routes (Phase 3+) sit behind a
+  confirmation or preview dialog in the UI, mirror Syncthing's own config/
+  action model rather than inventing higher-level operations, fan out with
+  `allSettled` and report exactly which nodes failed. The proxy still has no
+  auth — never expose it beyond a trusted network until that ships (tracked
+  in ROADMAP.md's foundations).
 
 ## Syncthing domain primer (you'll need this constantly)
 
@@ -96,12 +103,15 @@ design the model with that in mind even in Phase 1.
 
 ## Dev data
 
-- **Phase 1:** hand-author a few representative fixture clusters as data
-  conforming to the normalized model. Cover the full matrix deliberately: all
-  four folder types, each device/folder state including error and paused, a
-  folder shared across 3+ devices, and at least one `receiveencrypted` node.
-  These fixtures are how you'll know the visual encoding actually works.
-- **Phase 2+:** connection details (endpoints + API keys) come from **local,
+- **Fixtures** (`packages/web/src/fixtures/`) are hand-authored clusters
+  conforming to the normalized model, selectable from the app's Source
+  dropdown. They deliberately cover the full matrix — all four folder types,
+  each device/folder state including error and paused, a folder shared across
+  3+ devices, a `receiveencrypted` node, pending devices/folders — and a
+  coverage test enforces it. When the model grows a feature, extend the
+  fixtures (and the coverage test) in the same PR so the UI stays explorable
+  without a live cluster.
+- **Live clusters:** connection details (endpoints + API keys) come from **local,
   untracked config** — a `.env.local`, or the gitignored `cluster.json` (the
   proxy's one canonical node registry, read at startup and kept in sync with
   nodes registered/removed at runtime via the app itself — see Phase 5's node
@@ -114,8 +124,9 @@ design the model with that in mind even in Phase 1.
 - **TypeScript strict.** Prefer explicit types on the cluster model and public
   module boundaries.
 - **Test the logic that isn't visual** — the normalized model, fixture
-  validity, and (Phase 2) the multi-node aggregation/reconciliation. Visual
-  components can lean on lighter tests.
+  validity, the multi-node aggregation/reconciliation, snapshot mapping, and
+  the pure view helpers (versioning/ignores). Visual components can lean on
+  lighter tests.
 - **Keep the model documented.** When the normalized model or a flagged decision
   changes, update the README/model docs in the same PR.
 - **Commit messages:** imperative subject, short body explaining *why* and
@@ -133,16 +144,15 @@ design the model with that in mind even in Phase 1.
   running proxy process (the failure mode is a generic 404; see the "no
   route for ..." log line in `packages/proxy/src/server.ts`).
 
-## Definition of done — Phase 1
+## Definition of done — every PR
 
-- [ ] Normalized cluster data model defined as shared TypeScript types.
-- [ ] Fixture clusters authored covering all four folder types and the
-      device/folder states (incl. error, paused, a 3+ device share, an
-      encrypted node).
-- [ ] Graph view renders the fixtures with a legible topology layout.
-- [ ] Visual encoding distinguishes the four folder types and the key states;
-      legend present; node/edge detail panel on selection.
-- [ ] Graph-library choice and the folder-type encoding raised as decisions and
-      agreed (not silently locked).
-- [ ] Typecheck / build / lint / tests green; changes landed via PR, not on
-      `main`.
+- [ ] Typecheck / build / lint / tests green (`pnpm typecheck && pnpm lint &&
+      pnpm test && pnpm build` from the root); landed via a topic-branch PR,
+      never on `main`.
+- [ ] New logic that isn't purely visual has tests; fixtures/coverage test
+      extended if the model grew.
+- [ ] Docs updated in the same PR: `ROADMAP.md` checkboxes for shipped items,
+      `CHANGELOG.md` entry + lockstep version bump per the policy above,
+      README/proxy README if routes or user-facing behavior changed.
+- [ ] Flagged decisions raised, not silently locked; reversible local choices
+      noted in the PR description.

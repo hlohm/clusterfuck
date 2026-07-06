@@ -4,6 +4,7 @@ import type {
   Connection,
   Device,
   DeviceSystemStatus,
+  FolderIgnores,
   FolderType,
   ServiceHealth,
   Share,
@@ -33,6 +34,7 @@ import {
   VERSIONING_FIELDS,
   VERSIONING_TYPE_LABELS,
 } from '../views/versioning'
+import { ignoresDiffer, patternsToText, textToPatterns } from '../views/ignores'
 
 export interface DetailPanelProps {
   cluster: ClusterModel
@@ -389,6 +391,125 @@ function ShareActions({ cluster, share }: { cluster: ClusterModel; share: Share 
   )
 }
 
+/**
+ * View/edit each sharing node's `.stignore` patterns for a folder, plus a
+ * cluster-level diff indicator. Loaded on demand (a button, not on mount) —
+ * patterns aren't part of the model and can be large, so we only fetch them
+ * when the user asks. Editing is per node; the diff banner is the novel
+ * cluster-level bit a single-node GUI can't show.
+ */
+function IgnorePatternsSection({ cluster, folderId }: { cluster: ClusterModel; folderId: string }) {
+  const { busy, error, run } = useAsyncAction()
+  const [data, setData] = useState<FolderIgnores>()
+  const [loading, setLoading] = useState(false)
+  const [loadError, setLoadError] = useState<string>()
+  const [drafts, setDrafts] = useState<Record<string, string>>({})
+
+  const deviceById = new Map(cluster.devices.map((d) => [d.id, d]))
+  const folderLabel = cluster.folders.find((f) => f.id === folderId)?.label ?? folderId
+
+  const load = () => {
+    setLoading(true)
+    setLoadError(undefined)
+    mutations
+      .getFolderIgnores(folderId)
+      .then((result) => {
+        setData(result)
+        setDrafts(Object.fromEntries(result.nodes.map((n) => [n.deviceId, patternsToText(n.patterns)])))
+      })
+      .catch((err: unknown) => setLoadError(err instanceof Error ? err.message : 'Failed to load'))
+      .finally(() => setLoading(false))
+  }
+
+  if (!data) {
+    return (
+      <div className="detail-panel__group">
+        <div className="detail-panel__group-label">Ignore patterns</div>
+        <div className="detail-panel__action-row">
+          <button disabled={loading} onClick={load}>
+            {loading ? 'Loading…' : 'Load ignore patterns'}
+          </button>
+        </div>
+        {loadError && <div className="detail-panel__error">{loadError}</div>}
+      </div>
+    )
+  }
+
+  const differ = ignoresDiffer(data.nodes)
+  const readable = data.nodes.filter((n) => n.error === undefined).length
+
+  return (
+    <div className="detail-panel__group">
+      <div className="detail-panel__group-label">Ignore patterns</div>
+      <p className={differ ? 'detail-panel__status-errors' : undefined}>
+        {differ
+          ? '⚠ Patterns differ across nodes'
+          : readable > 1
+            ? `✓ Identical across ${readable} nodes`
+            : 'One node sharing this folder'}
+        <button className="detail-panel__link-button" disabled={loading || busy} onClick={load}>
+          {loading ? 'Reloading…' : 'Reload'}
+        </button>
+      </p>
+      {data.nodes.length === 0 && <p>No nodes reported patterns for this folder.</p>}
+      {data.nodes.map((node) => {
+        const name = deviceById.get(node.deviceId)?.name ?? node.deviceId
+        const draft = drafts[node.deviceId] ?? ''
+        const dirty = JSON.stringify(textToPatterns(draft)) !== JSON.stringify(node.patterns)
+        return (
+          <div className="ignore-node" key={node.deviceId}>
+            <div className="ignore-node__name">{name}</div>
+            {node.error ? (
+              <div className="detail-panel__error">{node.error}</div>
+            ) : (
+              <>
+                <textarea
+                  className="ignore-node__textarea"
+                  rows={5}
+                  spellCheck={false}
+                  placeholder="# one pattern per line, e.g. *.tmp"
+                  value={draft}
+                  disabled={busy}
+                  onChange={(event) =>
+                    setDrafts((prev) => ({ ...prev, [node.deviceId]: event.target.value }))
+                  }
+                />
+                <div className="detail-panel__action-row">
+                  <button
+                    className="detail-panel__button--primary"
+                    disabled={busy || !dirty}
+                    onClick={() => {
+                      const patterns = textToPatterns(draft)
+                      run(`Replace ignore patterns for "${folderLabel}" on ${name}?`, () =>
+                        mutations.setFolderIgnores(node.deviceId, folderId, patterns).then(() => {
+                          setData((prev) =>
+                            prev
+                              ? {
+                                  ...prev,
+                                  nodes: prev.nodes.map((n) =>
+                                    n.deviceId === node.deviceId ? { ...n, patterns } : n,
+                                  ),
+                                }
+                              : prev,
+                          )
+                        }),
+                      )
+                    }}
+                  >
+                    Save
+                  </button>
+                  {dirty && <span className="ignore-node__dirty">unsaved changes</span>}
+                </div>
+              </>
+            )}
+          </div>
+        )
+      })}
+      {error && <div className="detail-panel__error">{error}</div>}
+    </div>
+  )
+}
+
 export function DetailPanel({ cluster, selection, onSelect, isLive }: DetailPanelProps) {
   if (!selection) {
     return (
@@ -473,11 +594,23 @@ export function DetailPanel({ cluster, selection, onSelect, isLive }: DetailPane
                   <StatusBadge state={share.state} />
                 </header>
                 <div className="node-section__type">{typeStyle.label}</div>
-                {isLive && <ShareActions cluster={cluster} share={share} />}
+                {/* Keyed by the share so switching the selected folder remounts the
+                    editor instead of carrying the previous folder's drafts over. */}
+                {isLive && (
+                  <ShareActions
+                    key={`${share.folderId}:${share.deviceId}`}
+                    cluster={cluster}
+                    share={share}
+                  />
+                )}
               </section>
             )
           })}
         </div>
+        {/* Keyed by folder: without it React reuses the instance across folder
+            switches and the previous folder's loaded patterns/drafts would be
+            shown — and saved — under the new folder's id. */}
+        {isLive && <IgnorePatternsSection key={folder.id} cluster={cluster} folderId={folder.id} />}
       </aside>
     )
   }
@@ -524,7 +657,13 @@ export function DetailPanel({ cluster, selection, onSelect, isLive }: DetailPane
           <strong>Error:</strong> {share.errorMessage}
         </p>
       )}
-      {isLive && <ShareActions cluster={cluster} share={share} />}
+      {isLive && (
+        <ShareActions
+          key={`${share.folderId}:${share.deviceId}`}
+          cluster={cluster}
+          share={share}
+        />
+      )}
     </aside>
   )
 }

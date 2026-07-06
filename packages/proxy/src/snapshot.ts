@@ -24,10 +24,17 @@ function mapVersioning(v: ConfigFolderVersioning | undefined): FolderVersioning 
 function mapFolderState(dbState: string, hasErrors: boolean, needFiles: number): FolderState {
   if (hasErrors) return 'error'
   switch (dbState) {
+    // 'stopped' is Syncthing halting the folder over a folder-level problem
+    // (missing marker/path), not a pause — both are error states here.
+    case 'error':
+    case 'stopped':
+      return 'error'
     case 'scanning':
+    case 'scan-waiting':
       return 'scanning'
     case 'syncing':
     case 'sync-preparing':
+    case 'sync-waiting':
       return 'syncing'
     default:
       return needFiles > 0 ? 'out-of-sync' : 'idle'
@@ -68,7 +75,13 @@ export async function fetchNodeSnapshot(
         client.dbStatus(f.id).catch(() => undefined),
         client.folderErrors(f.id).catch(() => undefined),
       ])
-      const hasErrors = Boolean(errors?.errors?.length)
+      // Two distinct error channels: /rest/db/status' `error` is folder-level
+      // (missing marker/path — the folder is stopped), /rest/folder/errors are
+      // per-file pull failures. Either one makes the share an error; the
+      // folder-level message wins since it explains why nothing syncs at all.
+      const folderError = dbStatus?.error || undefined
+      const pullError = errors?.errors?.[0]?.error
+      const errorMessage = folderError ?? pullError
       const needFiles = dbStatus?.needFiles ?? 0
       const globalFiles = dbStatus?.globalFiles ?? 0
 
@@ -76,11 +89,13 @@ export async function fetchNodeSnapshot(
         id: f.id,
         label: f.label,
         type: f.type,
-        state: f.paused ? ('paused' as const) : mapFolderState(dbStatus?.state ?? 'idle', hasErrors, needFiles),
+        state: f.paused
+          ? ('paused' as const)
+          : mapFolderState(dbStatus?.state ?? 'idle', errorMessage !== undefined, needFiles),
         completionPct:
           globalFiles > 0 ? Math.round(((globalFiles - needFiles) / globalFiles) * 100) : 100,
         outOfSyncItems: needFiles > 0 ? needFiles : undefined,
-        errorMessage: hasErrors ? errors!.errors![0]!.error : undefined,
+        errorMessage,
         versioning: mapVersioning(f.versioning),
         sharedWith: f.devices.map((d) => d.deviceID),
       }

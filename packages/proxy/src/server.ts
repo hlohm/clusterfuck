@@ -237,6 +237,21 @@ async function handleRequest(
       return
     }
 
+    // GET /api/folders/:folderId/ignores — every sharing node's .stignore
+    // patterns for the folder (on-demand; not part of the model), for the
+    // view/edit-per-node + diff-across-nodes UI.
+    if (
+      method === 'GET' &&
+      parts.length === 4 &&
+      parts[0] === 'api' &&
+      parts[1] === 'folders' &&
+      parts[3] === 'ignores'
+    ) {
+      const folderId = decodeURIComponent(parts[2]!)
+      sendJson(res, 200, await manager.getFolderIgnores(folderId))
+      return
+    }
+
     // /api/folders/:folderId/devices/:deviceId[/...] — :deviceId is the
     // registered node's own Syncthing device ID (same value as a Share's
     // deviceId), identifying whose folder config we're editing.
@@ -293,6 +308,19 @@ async function handleRequest(
           params: body.params ?? {},
           cleanupIntervalS: body.cleanupIntervalS,
         })
+        sendJson(res, 200, { ok: true })
+        return
+      }
+
+      // PUT .../ignores body { patterns: [...] } — replace this folder's
+      // .stignore patterns on this node.
+      if (method === 'PUT' && parts.length === 6 && parts[5] === 'ignores') {
+        const body = (await readJsonBody(req)) as { patterns?: unknown } | undefined
+        if (!Array.isArray(body?.patterns) || !body.patterns.every((p) => typeof p === 'string')) {
+          sendJson(res, 400, { error: 'patterns must be an array of strings' })
+          return
+        }
+        await manager.setFolderIgnores(deviceId, folderId, body.patterns)
         sendJson(res, 200, { ok: true })
         return
       }

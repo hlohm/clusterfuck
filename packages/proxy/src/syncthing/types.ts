@@ -95,11 +95,29 @@ export interface ConnectionsResponse {
 }
 
 export interface DbStatusResponse {
-  state: 'idle' | 'scanning' | 'syncing' | 'sync-preparing' | 'error'
+  /**
+   * Folder service state. Known values include 'idle', 'scanning',
+   * 'scan-waiting', 'syncing', 'sync-waiting', 'sync-preparing', 'cleaning',
+   * 'clean-waiting', 'error', and 'stopped' — kept as string since the set
+   * varies across Syncthing versions; unrecognized values fall back to idle
+   * in mapFolderState.
+   */
+  state: string
+  /** Folder-level error (e.g. "folder marker missing") — distinct from /rest/folder/errors' per-file pull errors. */
+  error?: string
   needFiles: number
   needItems: number
   globalFiles: number
   errors: number
+}
+
+/**
+ * GET/POST /rest/db/ignores. `ignore` are the raw `.stignore` lines; `expanded`
+ * is the fully-resolved list. Both are null when the folder has no `.stignore`.
+ */
+export interface DbIgnoresResponse {
+  ignore: string[] | null
+  expanded: string[] | null
 }
 
 export interface FolderError {

@@ -2,6 +2,7 @@ import type {
   ConfigFolder,
   ConfigResponse,
   ConnectionsResponse,
+  DbIgnoresResponse,
   DbStatusResponse,
   FolderErrorsResponse,
   PendingDevicesResponse,
@@ -127,6 +128,16 @@ export class SyncthingClient {
 
   rescanFolder(folderId: string, signal?: AbortSignal): Promise<void> {
     return this.send('POST', `/rest/db/scan?folder=${encodeURIComponent(folderId)}`, undefined, signal)
+  }
+
+  /** This folder's `.stignore` patterns on this node (raw lines + expanded form). */
+  folderIgnores(folderId: string, signal?: AbortSignal): Promise<DbIgnoresResponse> {
+    return this.get(`/rest/db/ignores?folder=${encodeURIComponent(folderId)}`, signal)
+  }
+
+  /** Replaces this folder's `.stignore` patterns on this node. */
+  setFolderIgnores(folderId: string, patterns: string[], signal?: AbortSignal): Promise<void> {
+    return this.send('POST', `/rest/db/ignores?folder=${encodeURIComponent(folderId)}`, { ignore: patterns }, signal)
   }
 
   folderConfig(folderId: string, signal?: AbortSignal): Promise<ConfigFolder> {

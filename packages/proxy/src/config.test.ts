@@ -52,6 +52,19 @@ describe('loadNodeConfig / saveNodeConfig', () => {
     expect(() => loadNodeConfig(configFile)).toThrow(/every node needs id, url, and apiKey/)
   })
 
+  it('rejects duplicate node ids — they would silently collide in runtime lookups keyed by id', () => {
+    writeFileSync(
+      configFile,
+      JSON.stringify({
+        nodes: [
+          { id: 'st-a', url: 'http://a', apiKey: 'ka' },
+          { id: 'st-a', url: 'http://b', apiKey: 'kb' },
+        ],
+      }),
+    )
+    expect(() => loadNodeConfig(configFile)).toThrow(/duplicate node id "st-a"/)
+  })
+
   it('saveNodeConfig writes a file loadNodeConfig can read back unchanged (round-trip)', () => {
     const nodes = [
       { id: 'st-a', url: 'http://127.0.0.1:8384', apiKey: 'key-a' },

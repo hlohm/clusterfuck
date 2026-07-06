@@ -32,8 +32,10 @@ manage devices and folders across every node from one place.
   browser over Server-Sent Events.
 - **Management actions** (against a live cluster): pause/resume devices and
   folders, change folder type, set file-versioning (trashcan/simple/staggered/
-  external) per node, rescan, add/remove shares, and create new devices and
-  folders across a chosen set of nodes — each behind a confirmation or preview.
+  external) per node, view/edit each node's ignore patterns (with a
+  diff-across-nodes indicator), rescan, add/remove shares, and create new
+  devices and folders across a chosen set of nodes — each behind a confirmation
+  or preview.
 
 See **[ROADMAP.md](ROADMAP.md)** for what's shipped and what's planned (the goal
 is cluster-wide parity with the Syncthing web GUI).
