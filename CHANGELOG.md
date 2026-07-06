@@ -4,6 +4,15 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.4.7]
+
+- **`sendonly` override + `receiveonly` revert** — confirmation-gated buttons
+  on the share detail panel, shown only for the matching folder type. New
+  proxy routes `POST /api/folders/:folderId/devices/:deviceId/override` and
+  `.../revert` (Syncthing's `/rest/db/override` / `/rest/db/revert`); the
+  folder-type check is left to Syncthing, whose error passes through. The
+  rest of the "advanced folder options" roadmap item is still open.
+
 ## [0.4.6]
 
 - **Copy button next to the device ID** in the detail panel — copies the full

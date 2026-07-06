@@ -81,6 +81,22 @@ export function rescanFolder(deviceId: string, folderId: string): Promise<void> 
   )
 }
 
+/** On a `sendonly` folder: push this node's local version out, overriding remote changes. */
+export function overrideFolder(deviceId: string, folderId: string): Promise<void> {
+  return call(
+    'POST',
+    `/api/folders/${encodeURIComponent(folderId)}/devices/${encodeURIComponent(deviceId)}/override`,
+  )
+}
+
+/** On a `receiveonly` folder: discard this node's local-only changes. */
+export function revertFolder(deviceId: string, folderId: string): Promise<void> {
+  return call(
+    'POST',
+    `/api/folders/${encodeURIComponent(folderId)}/devices/${encodeURIComponent(deviceId)}/revert`,
+  )
+}
+
 export function setFolderType(deviceId: string, folderId: string, type: FolderType): Promise<void> {
   return call(
     'PATCH',

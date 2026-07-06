@@ -130,6 +130,16 @@ export class SyncthingClient {
     return this.send('POST', `/rest/db/scan?folder=${encodeURIComponent(folderId)}`, undefined, signal)
   }
 
+  /** On a `sendonly` folder: push this node's local version out, overriding remote changes. */
+  overrideFolder(folderId: string, signal?: AbortSignal): Promise<void> {
+    return this.send('POST', `/rest/db/override?folder=${encodeURIComponent(folderId)}`, undefined, signal)
+  }
+
+  /** On a `receiveonly` folder: discard this node's local-only changes, reverting to the cluster's version. */
+  revertFolder(folderId: string, signal?: AbortSignal): Promise<void> {
+    return this.send('POST', `/rest/db/revert?folder=${encodeURIComponent(folderId)}`, undefined, signal)
+  }
+
   /** This folder's `.stignore` patterns on this node (raw lines + expanded form). */
   folderIgnores(folderId: string, signal?: AbortSignal): Promise<DbIgnoresResponse> {
     return this.get(`/rest/db/ignores?folder=${encodeURIComponent(folderId)}`, signal)

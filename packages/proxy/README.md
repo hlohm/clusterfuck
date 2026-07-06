@@ -61,6 +61,12 @@ Listens on `PORT` (default `4000`). Routes:
   pauses/resumes that folder on that specific registered node.
 - `POST /api/folders/:folderId/devices/:deviceId/rescan` — triggers an
   immediate rescan of that folder on that node.
+- `POST /api/folders/:folderId/devices/:deviceId/override` — on a `sendonly`
+  folder: pushes that node's local version out, overriding remote changes.
+- `POST /api/folders/:folderId/devices/:deviceId/revert` — on a `receiveonly`
+  folder: discards that node's local-only changes in favor of the cluster's
+  version. Both pass Syncthing's own error through if the folder type doesn't
+  match.
 - `PATCH /api/folders/:folderId/devices/:deviceId` body
   `{ "type": "sendonly" }` — changes that folder's type on that node.
 - `PUT /api/folders/:folderId/devices/:deviceId/versioning` body
