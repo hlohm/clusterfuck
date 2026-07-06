@@ -191,3 +191,18 @@ tabs. Mapped from the GUI's actual surface, in priority order.
       persisted server-side) — replaces editing `cluster.json` by hand
 - [ ] Auth on the proxy the moment it's exposed beyond localhost
 - [ ] Syncthing 2.x REST support (currently targets 1.x)
+
+## Phase 6 — Multi-cluster (parked)
+
+One proxy managing several independent clusters. Workable today by running
+one proxy process (own port + `cluster.json`) per cluster; the feature folds
+that into one instance:
+
+- [ ] Proxy: multiple named node registries, one ClusterStateManager each;
+      routes namespaced `/api/clusters/:id/...`; SSE per cluster
+- [ ] Web: cluster switcher alongside the existing Source dropdown
+- [ ] Registry file grows a cluster dimension (migration for existing
+      single-cluster `cluster.json`)
+
+The normalized model already carries a cluster id/label, so `shared` is
+untouched. See `docs/HOW-IT-WORKS.md` for the architectural context.
