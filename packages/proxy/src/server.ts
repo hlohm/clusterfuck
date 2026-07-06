@@ -265,6 +265,22 @@ async function handleRequest(
         return
       }
 
+      // override (sendonly: push local version out) / revert (receiveonly:
+      // discard local-only changes). Syncthing itself rejects the call on a
+      // folder of the wrong type; we pass that error through rather than
+      // duplicating the type check here.
+      if (method === 'POST' && parts.length === 6 && parts[5] === 'override') {
+        await manager.overrideFolder(deviceId, folderId)
+        sendJson(res, 200, { ok: true })
+        return
+      }
+
+      if (method === 'POST' && parts.length === 6 && parts[5] === 'revert') {
+        await manager.revertFolder(deviceId, folderId)
+        sendJson(res, 200, { ok: true })
+        return
+      }
+
       if (method === 'POST' && parts.length === 6 && (parts[5] === 'pause' || parts[5] === 'resume')) {
         await manager.setFolderPaused(deviceId, folderId, parts[5] === 'pause')
         sendJson(res, 200, { ok: true })

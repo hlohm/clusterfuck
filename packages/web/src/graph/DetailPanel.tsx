@@ -275,6 +275,34 @@ function ShareActions({ cluster, share }: { cluster: ClusterModel; share: Share 
           >
             Rescan
           </button>
+          {share.type === 'sendonly' && (
+            <button
+              className="detail-panel__button--warning"
+              disabled={busy}
+              onClick={() =>
+                run(
+                  `Override remote changes to "${folderLabel}"? ${nodeName}'s local version becomes the cluster's version — changes made on other devices are overwritten.`,
+                  () => mutations.overrideFolder(share.deviceId, share.folderId),
+                )
+              }
+            >
+              Override changes
+            </button>
+          )}
+          {share.type === 'receiveonly' && (
+            <button
+              className="detail-panel__button--danger"
+              disabled={busy}
+              onClick={() =>
+                run(
+                  `Revert local changes to "${folderLabel}" on ${nodeName}? Files changed or added locally are replaced with (or deleted in favor of) the cluster's version. This can't be undone.`,
+                  () => mutations.revertFolder(share.deviceId, share.folderId),
+                )
+              }
+            >
+              Revert local changes
+            </button>
+          )}
           <button
             className="detail-panel__button--danger"
             disabled={busy}

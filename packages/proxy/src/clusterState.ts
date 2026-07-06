@@ -386,6 +386,20 @@ export class ClusterStateManager {
     })
   }
 
+  overrideFolder(deviceId: string, folderId: string): Promise<void> {
+    return this.enqueueMutation(async () => {
+      await this.clientForDevice(deviceId).overrideFolder(folderId)
+      await this.refreshAfterMutation()
+    })
+  }
+
+  revertFolder(deviceId: string, folderId: string): Promise<void> {
+    return this.enqueueMutation(async () => {
+      await this.clientForDevice(deviceId).revertFolder(folderId)
+      await this.refreshAfterMutation()
+    })
+  }
+
   /**
    * Reads every registered node's `.stignore` patterns for one folder — an
    * on-demand fan-out (not part of the aggregated model; see FolderIgnores).

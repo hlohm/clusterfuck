@@ -151,6 +151,9 @@ function installFakeCluster(delayMs = 0, failOn?: { host: string; pathname: stri
     if (url.pathname === '/rest/db/ignores' && method === 'POST') {
       return jsonResponse({ ignore: [], expanded: [] })
     }
+    if ((url.pathname === '/rest/db/override' || url.pathname === '/rest/db/revert') && method === 'POST') {
+      return jsonResponse({})
+    }
     throw new Error(`unexpected fetch: ${method} ${url.href}`)
   })
 
@@ -352,6 +355,32 @@ describe('ClusterStateManager mutations', () => {
     await refreshed(manager)
 
     await expect(manager.removeDevice('DEVICE-UNKNOWN')).rejects.toBeInstanceOf(NotManagedError)
+  })
+
+  it('overrides a sendonly folder on the one node addressed, not cluster-wide', async () => {
+    const { manager, calls } = installFakeCluster()
+    await (manager as unknown as { refresh(): Promise<void> }).refresh()
+    calls.length = 0
+
+    await manager.overrideFolder('DEVICE-A', 'f1')
+
+    const overrideCalls = calls.filter((c) => c.url.startsWith('/rest/db/override'))
+    expect(overrideCalls).toHaveLength(1)
+    expect(overrideCalls[0]!.url).toBe('/rest/db/override?folder=f1')
+    expect(overrideCalls[0]!.host).toBe('a.test')
+  })
+
+  it('reverts a receiveonly folder on the one node addressed', async () => {
+    const { manager, calls } = installFakeCluster()
+    await (manager as unknown as { refresh(): Promise<void> }).refresh()
+    calls.length = 0
+
+    await manager.revertFolder('DEVICE-B', 'f1')
+
+    const revertCalls = calls.filter((c) => c.url.startsWith('/rest/db/revert'))
+    expect(revertCalls).toHaveLength(1)
+    expect(revertCalls[0]!.url).toBe('/rest/db/revert?folder=f1')
+    expect(revertCalls[0]!.host).toBe('b.test')
   })
 
   it('removes a folder from one node only, not cluster-wide', async () => {

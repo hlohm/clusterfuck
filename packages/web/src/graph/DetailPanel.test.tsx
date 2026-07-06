@@ -3,6 +3,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react'
 import { DetailPanel } from './DetailPanel'
 import { edgeCases } from '../fixtures/edge-cases'
 import { formatBytes } from '../format'
+import * as mutations from '../data/mutations'
 
 describe('DetailPanel device system status', () => {
   it("shows version/uptime/memory/listener/discovery for a managed device with systemStatus", () => {
@@ -201,5 +202,61 @@ describe('DetailPanel device ID copy', () => {
     fireEvent.click(screen.getByText('Copy'))
     expect(writeText).toHaveBeenCalledWith('device-origin')
     expect(await screen.findByText('Copied')).toBeInTheDocument()
+  })
+})
+
+describe('DetailPanel sendonly override / receiveonly revert', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('offers Override on a sendonly share and calls the mutation once confirmed', () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const override = vi.spyOn(mutations, 'overrideFolder').mockResolvedValue(undefined)
+
+    render(
+      <DetailPanel
+        cluster={edgeCases}
+        selection={{ kind: 'share', folderId: 'ledger', deviceId: 'device-mirror' }}
+        onSelect={vi.fn()}
+        isLive={true}
+      />,
+    )
+
+    expect(screen.queryByText('Revert local changes')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByText('Override changes'))
+    expect(confirmSpy).toHaveBeenCalled()
+    expect(override).toHaveBeenCalledWith('device-mirror', 'ledger')
+  })
+
+  it('offers Revert on a receiveonly share and calls the mutation once confirmed', () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const revert = vi.spyOn(mutations, 'revertFolder').mockResolvedValue(undefined)
+
+    render(
+      <DetailPanel
+        cluster={edgeCases}
+        selection={{ kind: 'share', folderId: 'ledger', deviceId: 'device-satellite' }}
+        onSelect={vi.fn()}
+        isLive={true}
+      />,
+    )
+
+    expect(screen.queryByText('Override changes')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByText('Revert local changes'))
+    expect(revert).toHaveBeenCalledWith('device-satellite', 'ledger')
+  })
+
+  it('offers neither on a sendreceive share, and none of it when not live', () => {
+    render(
+      <DetailPanel
+        cluster={edgeCases}
+        selection={{ kind: 'share', folderId: 'ledger', deviceId: 'device-origin' }}
+        onSelect={vi.fn()}
+        isLive={true}
+      />,
+    )
+    expect(screen.queryByText('Override changes')).not.toBeInTheDocument()
+    expect(screen.queryByText('Revert local changes')).not.toBeInTheDocument()
   })
 })
