@@ -4,6 +4,21 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.4.8]
+
+- **Advanced folder options** (ROADMAP.md Phase 5 Folder management): view and
+  edit each node's rescan interval, filesystem-watcher toggle + delay, and
+  minimum-free-disk-space threshold for a folder. `Share` gains
+  `advanced?: FolderAdvancedOptions` (populated by live aggregation, with
+  Syncthing's own defaults filling any field a node omits); new mutation
+  route `PUT /api/folders/:folderId/devices/:deviceId/options` (whole-object
+  PUT, validated server-side, everything unmodeled preserved via the usual
+  GET-modify-PUT). The share detail gains a read-only `Scanning:` summary and
+  the folder view's per-node actions gain an Advanced editor. The
+  `minDiskFree` unit is kept verbatim on read but restricted to Syncthing's
+  known units (`%`, `kB`, `MB`, `GB`, `TB`) on write. Completes the
+  "advanced folder options" roadmap item.
+
 ## [0.4.7]
 
 - **`sendonly` override + `receiveonly` revert** — confirmation-gated buttons

@@ -56,6 +56,13 @@ export const edgeCases: ClusterModel = {
       deviceId: 'device-origin',
       type: 'sendreceive',
       state: 'idle',
+      // Syncthing's stock defaults — the common case the editor starts from.
+      advanced: {
+        rescanIntervalS: 3600,
+        fsWatcherEnabled: true,
+        fsWatcherDelayS: 10,
+        minDiskFree: { value: 1, unit: '%' },
+      },
       sharedWith: ['device-origin', 'device-mirror', 'device-satellite', 'device-vault'],
     },
     {
@@ -64,6 +71,14 @@ export const edgeCases: ClusterModel = {
       type: 'sendonly',
       state: 'out-of-sync',
       outOfSyncItems: 12,
+      // Watcher off + periodic rescan off + a sized (non-%) free-space floor —
+      // the fully-manual configuration every field of the editor must render.
+      advanced: {
+        rescanIntervalS: 0,
+        fsWatcherEnabled: false,
+        fsWatcherDelayS: 10,
+        minDiskFree: { value: 500, unit: 'MB' },
+      },
       sharedWith: ['device-origin', 'device-mirror', 'device-satellite', 'device-vault'],
     },
     {

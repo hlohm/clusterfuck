@@ -6,6 +6,7 @@ import type {
   DeviceState,
   DeviceSystemStatus,
   Folder,
+  FolderAdvancedOptions,
   FolderId,
   FolderState,
   FolderType,
@@ -36,6 +37,8 @@ export interface NodeSnapshot {
     errorMessage?: string
     /** This node's own file-versioning config for the folder (normalized; see snapshot.ts). */
     versioning?: FolderVersioning
+    /** This node's own advanced options for the folder (rescan/watcher/min disk free). */
+    advanced?: FolderAdvancedOptions
     /** Every device this node's own config shares this folder with (incl. itself). */
     sharedWith: DeviceId[]
   }[]
@@ -140,6 +143,7 @@ export function aggregateCluster(
         outOfSyncItems: f.outOfSyncItems,
         errorMessage: f.errorMessage,
         versioning: f.versioning,
+        advanced: f.advanced,
         sharedWith: f.sharedWith,
       })
     }

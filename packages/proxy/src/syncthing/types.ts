@@ -75,6 +75,13 @@ export interface ConfigFolder {
   versioning?: ConfigFolderVersioning
   /** Filesystem path on the owning node. Only set when creating a folder. */
   path?: string
+  /** Full-rescan interval in seconds; 0 disables periodic rescans. */
+  rescanIntervalS?: number
+  fsWatcherEnabled?: boolean
+  /** Watcher batching delay in seconds. */
+  fsWatcherDelayS?: number
+  /** Free-space floor for accepting sync writes; value 0 disables the check. */
+  minDiskFree?: { value: number; unit: string }
 }
 
 export interface ConfigResponse {

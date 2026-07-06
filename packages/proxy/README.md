@@ -78,6 +78,15 @@ Listens on `PORT` (default `4000`). Routes:
   `cleanoutDays`, `maxAge` in *seconds* for staggered, `command` for external).
   `fsPath`/`fsType` and other fields we don't model are preserved on the
   round-trip.
+- `PUT /api/folders/:folderId/devices/:deviceId/options` body
+  `{ "rescanIntervalS": 3600, "fsWatcherEnabled": true, "fsWatcherDelayS": 10,
+  "minDiskFree": { "value": 1, "unit": "%" } }` — sets that folder's advanced
+  options on that node. All four fields are required (send the current values
+  back for the ones you're not changing — the UI's editor does). Constraints:
+  `rescanIntervalS >= 0` (0 disables periodic rescans), `fsWatcherDelayS > 0`,
+  `minDiskFree.value >= 0` (0 disables the free-space check) with `unit` one
+  of `%`, `kB`, `MB`, `GB`, `TB`. Everything else on the folder config is
+  preserved on the round-trip.
 - `GET /api/folders/:folderId/ignores` — every registered node that shares the
   folder, each with its own `.stignore` patterns (raw lines):
   `{ "folderId": "...", "nodes": [{ "deviceId": "...", "patterns": ["*.tmp"] }] }`.
