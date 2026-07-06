@@ -30,6 +30,7 @@ import { DEVICE_STATE_STYLE } from '../encoding/deviceStateStyle'
 import { StatusBadge } from '../views/StatusBadge'
 import { useAsyncAction } from '../data/useAsyncAction'
 import * as mutations from '../data/mutations'
+import { PROXY_BASE } from '../data/proxyBase'
 import { formatBytes, formatDuration } from '../format'
 import {
   describeVersioning,
@@ -911,6 +912,41 @@ function ProblemsSection({ cluster, folderId }: { cluster: ClusterModel; folderI
   )
 }
 
+/**
+ * Toggleable QR code of a device ID — the proxy relays the PNG from a
+ * registered node's own /qr/ endpoint, so this is live-only (no QR library
+ * in the frontend either).
+ */
+function DeviceQr({ deviceId }: { deviceId: string }) {
+  const [shown, setShown] = useState(false)
+  const [failed, setFailed] = useState(false)
+
+  return (
+    <div className="device-qr">
+      <button
+        className="detail-panel__link-button"
+        onClick={() => {
+          setShown((prev) => !prev)
+          setFailed(false)
+        }}
+      >
+        {shown ? 'Hide QR' : 'Show QR'}
+      </button>
+      {shown &&
+        (failed ? (
+          <div className="detail-panel__error">Couldn't load the QR code from any registered node.</div>
+        ) : (
+          <img
+            className="device-qr__image"
+            src={`${PROXY_BASE}/api/devices/${encodeURIComponent(deviceId)}/qr`}
+            alt={`QR code for device ID ${deviceId}`}
+            onError={() => setFailed(true)}
+          />
+        ))}
+    </div>
+  )
+}
+
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false)
   return (
@@ -956,6 +992,7 @@ export function DetailPanel({ cluster, selection, onSelect, isLive }: DetailPane
           <strong>Device ID:</strong> <code>{device.id}</code>{' '}
           <CopyButton text={device.id} />
         </p>
+        {isLive && <DeviceQr key={device.id} deviceId={device.id} />}
         {device.systemStatus && <SystemStatusSection status={device.systemStatus} />}
         {isLive && <DeviceActions device={device} />}
         {/* Keyed by device so switching selection remounts the editor instead

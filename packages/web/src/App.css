@@ -920,6 +920,18 @@ button {
   color: var(--text);
 }
 
+.device-qr__image {
+  display: block;
+  margin-top: 6px;
+  width: 180px;
+  max-width: 100%;
+  /* The PNG is black-on-white with its own quiet zone; keep it on white so it
+     stays scannable on the dark theme. */
+  background: #fff;
+  padding: 6px;
+  border-radius: 6px;
+}
+
 .problems-list {
   margin: 0;
   padding-left: 16px;

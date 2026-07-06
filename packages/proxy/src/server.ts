@@ -204,6 +204,21 @@ async function handleRequest(
       return
     }
 
+    // GET /api/devices/:deviceId/qr — PNG QR of the device ID, relayed from
+    // a registered node's own /qr/ endpoint (no QR library in the proxy).
+    if (
+      method === 'GET' &&
+      parts.length === 4 &&
+      parts[0] === 'api' &&
+      parts[1] === 'devices' &&
+      parts[3] === 'qr'
+    ) {
+      const png = await manager.getDeviceQr(decodeURIComponent(parts[2]!))
+      res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'no-cache' })
+      res.end(png)
+      return
+    }
+
     // GET/PUT /api/devices/:deviceId/options — how every referencing
     // registered node has this device configured / apply the same options on
     // all of them (same fan-out scope as pause/remove; never the device's
