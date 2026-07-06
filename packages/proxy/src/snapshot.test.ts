@@ -113,6 +113,70 @@ describe('fetchNodeSnapshot systemStatus derivation', () => {
   })
 })
 
+describe('fetchNodeSnapshot versioning', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  function installWithFolder(versioning: unknown) {
+    const fetchMock = vi.fn(async (input: string | URL) => {
+      const url = new URL(input)
+      if (url.pathname === '/rest/system/status') {
+        return jsonResponse({ myID: 'DEVICE-A', uptime: 1, alloc: 1, connectionServiceStatus: {}, discoveryStatus: {} })
+      }
+      if (url.pathname === '/rest/system/version') return jsonResponse({ version: 'v1' })
+      if (url.pathname === '/rest/config') {
+        return jsonResponse({
+          devices: [],
+          folders: [
+            { id: 'f1', label: 'F1', type: 'sendreceive', paused: false, devices: [{ deviceID: 'DEVICE-A' }], versioning },
+          ],
+        })
+      }
+      if (url.pathname === '/rest/system/connections') return jsonResponse({ connections: {} })
+      if (url.pathname === '/rest/db/status') {
+        return jsonResponse({ state: 'idle', needFiles: 0, needItems: 0, globalFiles: 10, errors: 0 })
+      }
+      if (url.pathname === '/rest/folder/errors') return jsonResponse({ folder: 'f1', errors: [] })
+      if (url.pathname === '/rest/cluster/pending/devices' || url.pathname === '/rest/cluster/pending/folders') {
+        return jsonResponse({})
+      }
+      throw new Error(`unexpected fetch in snapshot test: ${url.href}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    return new SyncthingClient({ id: 'st-a', url: 'http://a.test', apiKey: 'ka' })
+  }
+
+  it('normalizes a configured versioning block, dropping fields we do not model', async () => {
+    const client = installWithFolder({
+      type: 'staggered',
+      params: { maxAge: '2592000' },
+      cleanupIntervalS: 3600,
+      fsPath: '',
+      fsType: 'basic',
+    })
+    const snap = await fetchNodeSnapshot(client, 'st-a')
+
+    expect(snap.folders[0]!.versioning).toEqual({
+      type: 'staggered',
+      params: { maxAge: '2592000' },
+      cleanupIntervalS: 3600,
+    })
+  })
+
+  it("maps Syncthing's empty-string type (versioning off), and an absent block, to none", async () => {
+    expect((await fetchNodeSnapshot(installWithFolder({ type: '', params: {} }), 'st-a')).folders[0]!.versioning).toEqual({
+      type: 'none',
+      params: {},
+    })
+    vi.unstubAllGlobals()
+    expect((await fetchNodeSnapshot(installWithFolder(undefined), 'st-a')).folders[0]!.versioning).toEqual({
+      type: 'none',
+      params: {},
+    })
+  })
+})
+
 describe('fetchNodeSnapshot connections', () => {
   afterEach(() => {
     vi.unstubAllGlobals()

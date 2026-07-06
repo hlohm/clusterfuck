@@ -1,4 +1,5 @@
 import { createServer, type IncomingMessage, type ServerResponse, type Server } from 'node:http'
+import { isVersioningType, VERSIONING_TYPES } from '@clusterfuck/shared'
 import { InvalidTargetError, NotManagedError, type ClusterStateManager } from './clusterState.ts'
 import { SYNCTHING_FOLDER_TYPES, type SyncthingFolderType } from './syncthing/types.ts'
 import { PROXY_VERSION } from './version.ts'
@@ -19,6 +20,16 @@ async function readJsonBody(req: IncomingMessage): Promise<unknown> {
 
 function isFolderType(value: unknown): value is SyncthingFolderType {
   return (SYNCTHING_FOLDER_TYPES as readonly unknown[]).includes(value)
+}
+
+/** A plain object whose every value is a string — Syncthing's versioning params shape. */
+function isStringMap(value: unknown): value is Record<string, string> {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    !Array.isArray(value) &&
+    Object.values(value).every((v) => typeof v === 'string')
+  )
 }
 
 function sendJson(res: ServerResponse, status: number, body: unknown): void {
@@ -254,6 +265,34 @@ async function handleRequest(
           return
         }
         await manager.setFolderType(deviceId, folderId, body.type)
+        sendJson(res, 200, { ok: true })
+        return
+      }
+
+      // PUT .../versioning — set this folder's file-versioning config on this
+      // node. Sub-resource (not folded into the PATCH above) matching the
+      // /shares, /pause, /rescan idiom.
+      if (method === 'PUT' && parts.length === 6 && parts[5] === 'versioning') {
+        const body = (await readJsonBody(req)) as
+          | { type?: unknown; params?: unknown; cleanupIntervalS?: unknown }
+          | undefined
+        if (!isVersioningType(body?.type)) {
+          sendJson(res, 400, { error: `type must be one of: ${VERSIONING_TYPES.join(', ')}` })
+          return
+        }
+        if (body.params !== undefined && !isStringMap(body.params)) {
+          sendJson(res, 400, { error: 'params must be an object of string values' })
+          return
+        }
+        if (body.cleanupIntervalS !== undefined && typeof body.cleanupIntervalS !== 'number') {
+          sendJson(res, 400, { error: 'cleanupIntervalS must be a number' })
+          return
+        }
+        await manager.setFolderVersioning(deviceId, folderId, {
+          type: body.type,
+          params: body.params ?? {},
+          cleanupIntervalS: body.cleanupIntervalS,
+        })
         sendJson(res, 200, { ok: true })
         return
       }

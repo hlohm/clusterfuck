@@ -1,4 +1,4 @@
-import type { FolderType } from '@clusterfuck/shared'
+import type { FolderType, VersioningType } from '@clusterfuck/shared'
 import { PROXY_BASE } from './proxyBase'
 
 async function call(method: string, path: string, body?: unknown): Promise<void> {
@@ -76,6 +76,19 @@ export function setFolderType(deviceId: string, folderId: string, type: FolderTy
     'PATCH',
     `/api/folders/${encodeURIComponent(folderId)}/devices/${encodeURIComponent(deviceId)}`,
     { type },
+  )
+}
+
+/** Sets this folder's file-versioning config on one node; `type: 'none'` turns versioning off. */
+export function setFolderVersioning(
+  deviceId: string,
+  folderId: string,
+  spec: { type: VersioningType; params: Record<string, string>; cleanupIntervalS?: number },
+): Promise<void> {
+  return call(
+    'PUT',
+    `/api/folders/${encodeURIComponent(folderId)}/devices/${encodeURIComponent(deviceId)}/versioning`,
+    spec,
   )
 }
 

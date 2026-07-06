@@ -8,9 +8,16 @@ import type {
   ServiceHealth,
   Share,
   TransferTotals,
+  VersioningType,
 } from '@clusterfuck/shared'
 import type { Selection } from './selection'
-import { connectionsByDevice, sharesByDevice, sharesByFolder, sumTransfer } from '@clusterfuck/shared'
+import {
+  connectionsByDevice,
+  sharesByDevice,
+  sharesByFolder,
+  sumTransfer,
+  VERSIONING_TYPES,
+} from '@clusterfuck/shared'
 import { FOLDER_TYPE_STYLE } from '../encoding/folderTypeStyle'
 import { FOLDER_STATE_STYLE } from '../encoding/folderStateStyle'
 import { DEVICE_STATE_STYLE } from '../encoding/deviceStateStyle'
@@ -18,6 +25,14 @@ import { StatusBadge } from '../views/StatusBadge'
 import { useAsyncAction } from '../data/useAsyncAction'
 import * as mutations from '../data/mutations'
 import { formatBytes, formatDuration } from '../format'
+import {
+  describeVersioning,
+  formFieldsFor,
+  paramsFromFormFields,
+  versioningFieldsValid,
+  VERSIONING_FIELDS,
+  VERSIONING_TYPE_LABELS,
+} from '../views/versioning'
 
 export interface DetailPanelProps {
   cluster: ClusterModel
@@ -144,6 +159,79 @@ const FOLDER_TYPE_OPTIONS = (Object.keys(FOLDER_TYPE_STYLE) as FolderType[]).map
   label: FOLDER_TYPE_STYLE[value].label,
 }))
 
+/**
+ * Editor for one share's file-versioning config. Self-contained (its own
+ * useAsyncAction) so its busy/error state is independent of the sibling
+ * folder actions. Initialized once from `share.versioning`; the parent keys
+ * it by that config so a change from the server (an SSE refresh) remounts it
+ * with the new values rather than stranding the form on a stale config.
+ */
+function VersioningEditor({
+  share,
+  folderLabel,
+  nodeName,
+}: {
+  share: Share
+  folderLabel: string
+  nodeName: string
+}) {
+  const { busy, error, run } = useAsyncAction()
+  const current = share.versioning ?? { type: 'none' as VersioningType, params: {} }
+  const [type, setType] = useState<VersioningType>(current.type)
+  const [fields, setFields] = useState<Record<string, string>>(() => formFieldsFor(current.type, current))
+
+  const selectType = (next: VersioningType) => {
+    setType(next)
+    setFields(formFieldsFor(next, current))
+  }
+
+  return (
+    <div className="detail-panel__group">
+      <div className="detail-panel__group-label">Versioning</div>
+      <label className="detail-panel__action-row">
+        Strategy:
+        <select value={type} disabled={busy} onChange={(event) => selectType(event.target.value as VersioningType)}>
+          {VERSIONING_TYPES.map((t) => (
+            <option key={t} value={t}>
+              {VERSIONING_TYPE_LABELS[t]}
+            </option>
+          ))}
+        </select>
+      </label>
+      {VERSIONING_FIELDS[type].map((field) => (
+        <label key={field.key} className="detail-panel__action-row">
+          {field.label}
+          <input
+            type={field.kind === 'int' ? 'number' : 'text'}
+            min={field.kind === 'int' ? 0 : undefined}
+            placeholder={field.placeholder}
+            value={fields[field.key] ?? ''}
+            disabled={busy}
+            onChange={(event) => setFields((prev) => ({ ...prev, [field.key]: event.target.value }))}
+          />
+        </label>
+      ))}
+      <div className="detail-panel__action-row">
+        <button
+          className="detail-panel__button--primary"
+          disabled={busy || !versioningFieldsValid(type, fields)}
+          onClick={() =>
+            run(`Set versioning on "${folderLabel}" to ${VERSIONING_TYPE_LABELS[type]} for ${nodeName}?`, () =>
+              mutations.setFolderVersioning(share.deviceId, share.folderId, {
+                type,
+                params: paramsFromFormFields(type, fields),
+              }),
+            )
+          }
+        >
+          Apply versioning
+        </button>
+      </div>
+      {error && <div className="detail-panel__error">{error}</div>}
+    </div>
+  )
+}
+
 function ShareActions({ cluster, share }: { cluster: ClusterModel; share: Share }) {
   const { busy, error, run } = useAsyncAction()
   const [addTarget, setAddTarget] = useState('')
@@ -220,6 +308,13 @@ function ShareActions({ cluster, share }: { cluster: ClusterModel; share: Share 
           </select>
         </label>
       </div>
+
+      <VersioningEditor
+        key={`${share.folderId}:${share.deviceId}:${share.versioning?.type ?? 'none'}:${JSON.stringify(share.versioning?.params ?? {})}`}
+        share={share}
+        folderLabel={folderLabel}
+        nodeName={nodeName}
+      />
 
       <div className="detail-panel__group detail-panel__shared-with">
         <div className="detail-panel__group-label">Shared with (via this node)</div>
@@ -409,6 +504,11 @@ export function DetailPanel({ cluster, selection, onSelect, isLive }: DetailPane
       <p>
         <strong>State:</strong> {stateStyle.label}
       </p>
+      {share.versioning && (
+        <p>
+          <strong>Versioning:</strong> {describeVersioning(share.versioning)}
+        </p>
+      )}
       {share.completionPct !== undefined && (
         <p>
           <strong>Completion:</strong> {share.completionPct}%

@@ -1,4 +1,4 @@
-import type { ClusterModel } from '@clusterfuck/shared'
+import type { ClusterModel, VersioningType } from '@clusterfuck/shared'
 import { aggregateCluster, type NodeSnapshot } from './aggregate.ts'
 import { fetchNodeSnapshot } from './snapshot.ts'
 import { saveNodeConfig } from './config.ts'
@@ -403,6 +403,28 @@ export class ClusterStateManager {
   setFolderType(deviceId: string, folderId: string, type: SyncthingFolderType): Promise<void> {
     return this.patchFolder(deviceId, folderId, (f) => {
       f.type = type
+    })
+  }
+
+  /**
+   * Sets this folder's file-versioning config on one node. `type: 'none'`
+   * maps back to Syncthing's empty-string ("versioning off") and clears the
+   * params. Other fields on the existing versioning block (fsPath/fsType,
+   * and cleanupIntervalS when the caller doesn't set it) are preserved via
+   * the GET-modify-PUT, so we don't clobber knobs we don't model.
+   */
+  setFolderVersioning(
+    deviceId: string,
+    folderId: string,
+    spec: { type: VersioningType; params: Record<string, string>; cleanupIntervalS?: number },
+  ): Promise<void> {
+    return this.patchFolder(deviceId, folderId, (f) => {
+      f.versioning = {
+        ...f.versioning,
+        type: spec.type === 'none' ? '' : spec.type,
+        params: spec.params,
+        ...(spec.cleanupIntervalS !== undefined ? { cleanupIntervalS: spec.cleanupIntervalS } : {}),
+      }
     })
   }
 

@@ -42,6 +42,34 @@ export type FolderType = 'sendreceive' | 'sendonly' | 'receiveonly' | 'receiveen
 
 export type FolderState = 'idle' | 'scanning' | 'syncing' | 'paused' | 'error' | 'out-of-sync'
 
+/**
+ * File-versioning strategies Syncthing supports for a folder. `none` is our
+ * normalization of Syncthing's own empty-string type (`""` = "No File
+ * Versioning") — every other value is passed through to/from Syncthing as-is.
+ */
+export const VERSIONING_TYPES = ['none', 'trashcan', 'simple', 'staggered', 'external'] as const
+export type VersioningType = (typeof VERSIONING_TYPES)[number]
+
+export function isVersioningType(value: unknown): value is VersioningType {
+  return (VERSIONING_TYPES as readonly unknown[]).includes(value)
+}
+
+/**
+ * One share's file-versioning config — a property of the folder *on a given
+ * device*, like `type`, so it lives on `Share` rather than `Folder` (each node
+ * can version its own copy differently). `params` are Syncthing's own raw
+ * key/value knobs, kept verbatim (all values are strings, e.g. `{ keep: "5",
+ * cleanoutDays: "0" }` for `simple`, `{ maxAge: "0" }` in *seconds* for
+ * `staggered`, `{ command: "..." }` for `external`) — the meaning of each key
+ * depends on `type`. `cleanupIntervalS` is the shared housekeeping interval,
+ * preserved on round-trip.
+ */
+export interface FolderVersioning {
+  type: VersioningType
+  params: Record<string, string>
+  cleanupIntervalS?: number
+}
+
 export interface Folder {
   id: FolderId
   label: string
@@ -61,6 +89,12 @@ export interface Share {
   completionPct?: number
   outOfSyncItems?: number
   errorMessage?: string
+  /**
+   * This node's file-versioning config for its own copy of the folder. Live
+   * aggregation always populates it (defaulting to `{ type: 'none' }` when
+   * versioning is off); fixtures may omit it, so treat absent as "none".
+   */
+  versioning?: FolderVersioning
   /** Every device `deviceId`'s own config shares this folder with (incl. itself). */
   sharedWith: DeviceId[]
 }

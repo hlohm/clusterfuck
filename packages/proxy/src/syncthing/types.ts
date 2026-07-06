@@ -52,12 +52,27 @@ export const SYNCTHING_FOLDER_TYPES = [
 
 export type SyncthingFolderType = (typeof SYNCTHING_FOLDER_TYPES)[number]
 
+/**
+ * A folder's file-versioning config as Syncthing stores it. `type` is an
+ * empty string when versioning is off; `params` values are always strings.
+ * `fsPath`/`fsType` and any other fields we don't touch are round-tripped
+ * verbatim on edit (GET-modify-PUT), so this stays a partial view.
+ */
+export interface ConfigFolderVersioning {
+  type: string
+  params: Record<string, string>
+  cleanupIntervalS?: number
+  fsPath?: string
+  fsType?: string
+}
+
 export interface ConfigFolder {
   id: string
   label: string
   type: SyncthingFolderType
   paused: boolean
   devices: ConfigFolderDevice[]
+  versioning?: ConfigFolderVersioning
   /** Filesystem path on the owning node. Only set when creating a folder. */
   path?: string
 }

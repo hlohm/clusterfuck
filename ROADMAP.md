@@ -127,7 +127,9 @@ tabs. Mapped from the GUI's actual surface, in priority order.
 - [x] Per-share encryption passwords — setting one on an added/existing share
       makes that peer untrusted/`receiveencrypted` on its own side; write-only,
       never read back into the model; an empty string explicitly clears it
-- [ ] Versioning config (trashcan/simple/staggered/external) per node
+- [x] Versioning config (trashcan/simple/staggered/external) per node — view +
+      edit each node's own copy, since a folder can be versioned differently per
+      node (params surfaced verbatim; staggered's `maxAge` shown in days)
 - [ ] Ignore patterns — view/edit per node, diff across nodes
 - [ ] Advanced folder options (rescan interval, watcher, min disk free);
       `sendonly` override + `receiveonly` revert
