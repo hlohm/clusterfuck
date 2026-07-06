@@ -192,17 +192,62 @@ tabs. Mapped from the GUI's actual surface, in priority order.
 - [ ] Auth on the proxy the moment it's exposed beyond localhost
 - [ ] Syncthing 2.x REST support (currently targets 1.x)
 
-## Phase 6 — Multi-cluster (parked)
+## Phase 6 — Multi-cluster (2.0, parked)
 
-One proxy managing several independent clusters. Workable today by running
-one proxy process (own port + `cluster.json`) per cluster; the feature folds
-that into one instance:
+One clusterfuck instance managing several independent Syncthing clusters —
+e.g. home + offsite + a friend's cluster you administer — with one UI and a
+cluster switcher. Workable today without any of this by running one proxy
+process per cluster (own port + own `cluster.json`) and one browser tab each;
+this phase folds that into a single instance.
 
-- [ ] Proxy: multiple named node registries, one ClusterStateManager each;
-      routes namespaced `/api/clusters/:id/...`; SSE per cluster
-- [ ] Web: cluster switcher alongside the existing Source dropdown
-- [ ] Registry file grows a cluster dimension (migration for existing
-      single-cluster `cluster.json`)
+**Why this is 2.0:** every proxy route gets re-namespaced under
+`/api/clusters/:clusterId/...`, which breaks the API we promise stability for
+at 1.0 — under SemVer that's a major bump. It also deliberately lands *after*
+1.0's auth: multiplying the clusters behind one unauthenticated port
+multiplies the blast radius, so auth is a hard prerequisite, not a nicety.
+The normalized model already carries a cluster id + label, so
+`packages/shared` should be untouched — this was designed in from Phase 1.
 
-The normalized model already carries a cluster id/label, so `shared` is
-untouched. See `docs/HOW-IT-WORKS.md` for the architectural context.
+### Proxy
+
+- [ ] Registry grows a cluster dimension: named clusters, each with its own
+      node list. Migration: a bare single-cluster `cluster.json` is
+      auto-wrapped into a default cluster on first load — no hand-editing
+- [ ] One `ClusterStateManager` per cluster with an isolated lifecycle:
+      event loops, poll backstop, and mutation queue per cluster, so one
+      cluster's outage or slow node never stalls another's refreshes
+- [ ] All routes re-namespaced `/api/clusters/:clusterId/...`; unknown
+      cluster id is a distinct 404 from unknown route (the stale-proxy
+      failure mode must stay diagnosable)
+- [ ] Cluster CRUD at runtime (create/rename/delete, like node registration
+      today) — deleting a cluster de-registers its nodes from *our* registry
+      only, never touches the Syncthings themselves
+- [ ] `/api/version` stays global (one process, one version)
+
+### Web
+
+- [ ] Cluster switcher in the header next to the existing Source dropdown;
+      last selection remembered locally
+- [ ] Data layer keyed by cluster id — model fetch, SSE subscription, and
+      every mutation call carry the active cluster
+- [ ] Fixtures need no changes (each already is a model with its own
+      id/label — they were the multi-cluster case all along)
+- [ ] Stretch: an all-clusters landing page (one health tile per cluster)
+      before drilling into one
+
+### Decisions to settle before building (flagged, not guessed)
+
+- **SSE shape:** one stream per cluster (browser subscribes to the active
+  one) vs. one multiplexed stream tagging models by cluster. Per-cluster is
+  simpler; multiplexed enables the all-clusters landing page cheaply.
+- **Same node in two clusters:** allow (they're independent views, at the
+  cost of double-polling that node) or reject at registration like the
+  duplicate-node check does today?
+- **Auth granularity:** 2.0 minimum is one credential for the whole proxy;
+  per-cluster access control is a plausible follow-up but out of scope
+  unless a real need appears.
+- **Transition:** hard cutover of route paths at 2.0.0, or keep unprefixed
+  routes as a deprecated alias for the default cluster during one MINOR
+  release. Hard cutover is cleaner; alias eases self-hosted upgrades.
+
+See `docs/HOW-IT-WORKS.md` for the architectural context.
