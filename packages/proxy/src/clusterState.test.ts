@@ -23,7 +23,10 @@ function jsonResponse(body: unknown): Response {
  * (default 0) delays every response, to give a test room to run something
  * else while a refresh cycle is still in flight.
  */
-function installFakeCluster(delayMs = 0, failOn?: { host: string; pathname: string }) {
+function installFakeCluster(
+  delayMs = 0,
+  failOn?: { host: string; pathname: string; reject?: boolean },
+) {
   const calls: { method: string; url: string; host: string; body?: string }[] = []
   let folderTypeOnA: 'sendreceive' | 'sendonly' = 'sendreceive'
 
@@ -40,6 +43,9 @@ function installFakeCluster(delayMs = 0, failOn?: { host: string; pathname: stri
     const base = `${url.protocol}//${url.host}`
 
     if (failOn && url.host === failOn.host && url.pathname === failOn.pathname) {
+      // reject simulates a connection-level failure (ECONNREFUSED, socket
+      // dropped) as opposed to an HTTP error response.
+      if (failOn.reject) throw new TypeError('fetch failed')
       return new Response('nope', { status: 500 })
     }
 
@@ -82,6 +88,15 @@ function installFakeCluster(delayMs = 0, failOn?: { host: string; pathname: stri
       return jsonResponse({ folder: 'f1', errors: [] })
     }
     if (url.pathname === '/rest/system/pause' || url.pathname === '/rest/system/resume') {
+      return jsonResponse({})
+    }
+    if (url.pathname === '/rest/db/scan' && method === 'POST') {
+      return jsonResponse({})
+    }
+    if (
+      (url.pathname === '/rest/system/restart' || url.pathname === '/rest/system/shutdown') &&
+      method === 'POST'
+    ) {
       return jsonResponse({})
     }
     if (url.pathname === '/rest/cluster/pending/devices' && method === 'GET') {
@@ -608,6 +623,46 @@ describe('ClusterStateManager mutations', () => {
     // The GET-modify-PUT must carry the untouched fields through.
     expect(folder.id).toBe('f1')
     expect(folder.devices).toEqual([{ deviceID: 'DEVICE-A' }, { deviceID: 'DEVICE-B' }])
+  })
+
+  it('rescans every folder on every registered node in one batch', async () => {
+    const { manager, calls } = installFakeCluster()
+    await refreshed(manager)
+    calls.length = 0
+
+    await manager.rescanAllFolders()
+
+    const scans = calls.filter((c) => c.method === 'POST' && c.url.startsWith('/rest/db/scan'))
+    expect(scans.map((c) => `${c.host}${c.url}`).sort()).toEqual([
+      'a.test/rest/db/scan?folder=f1',
+      'b.test/rest/db/scan?folder=f1',
+    ])
+  })
+
+  it('restarts/shuts down exactly the named node', async () => {
+    const { manager, calls } = installFakeCluster()
+    await refreshed(manager)
+    calls.length = 0
+
+    await manager.restartNode('DEVICE-B', 'restart')
+    await manager.restartNode('DEVICE-A', 'shutdown')
+
+    const restarts = calls.filter((c) => c.url === '/rest/system/restart')
+    const shutdowns = calls.filter((c) => c.url === '/rest/system/shutdown')
+    expect(restarts.map((c) => c.host)).toEqual(['b.test'])
+    expect(shutdowns.map((c) => c.host)).toEqual(['a.test'])
+  })
+
+  it('tolerates the connection dropping mid-restart, but still surfaces a real HTTP error', async () => {
+    // Syncthing can exit before the response makes it out — that's a success.
+    const dropped = installFakeCluster(0, { host: 'a.test', pathname: '/rest/system/restart', reject: true })
+    await refreshed(dropped.manager)
+    await expect(dropped.manager.restartNode('DEVICE-A', 'restart')).resolves.toBeUndefined()
+
+    // An explicit error response (e.g. 403) is a real failure, not a race.
+    const denied = installFakeCluster(0, { host: 'a.test', pathname: '/rest/system/restart' })
+    await refreshed(denied.manager)
+    await expect(denied.manager.restartNode('DEVICE-A', 'restart')).rejects.toThrow('HTTP 500')
   })
 
   it('relays a device-ID QR from the first reachable node, falling back when one fails', async () => {

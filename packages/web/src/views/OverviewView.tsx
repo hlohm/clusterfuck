@@ -86,6 +86,16 @@ function ClusterActions() {
               >
                 Resume all
               </button>
+              <button
+                disabled={busy}
+                onClick={() =>
+                  run('Rescan every folder on every registered node?', () =>
+                    mutations.rescanAllFolders(),
+                  )
+                }
+              >
+                Rescan all
+              </button>
             </div>
           </div>
         </div>

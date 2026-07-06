@@ -4,6 +4,20 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.4.12]
+
+- **Rescan all + node restart/shutdown** (ROADMAP.md Phase 5 Cluster
+  operations): `POST /api/folders/all/rescan` rescans every folder on every
+  registered node as one batch (same reporting as pause all), surfaced as a
+  Rescan-all button in the Overview's cluster actions. `POST
+  /api/nodes/:deviceId/restart|shutdown` controls one node's Syncthing
+  process from the device detail panel — both confirmation-gated, shutdown
+  with an explicit "won't come back until started on the machine" warning.
+  A connection dropping mid-restart counts as success (Syncthing can exit
+  before its response gets out); an explicit HTTP error still fails. The
+  remaining piece of that roadmap line, upgrade orchestration, is split out
+  as its own item.
+
 ## [0.4.11]
 
 - **Device identity QR** (ROADMAP.md Phase 5 Device management): the device

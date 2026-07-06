@@ -299,7 +299,7 @@ async function handleRequest(
       }
     }
 
-    // POST /api/folders/all/pause|resume — cluster-wide, every folder on every registered node
+    // POST /api/folders/all/pause|resume|rescan — cluster-wide, every folder on every registered node
     if (
       method === 'POST' &&
       parts.length === 4 &&
@@ -310,6 +310,22 @@ async function handleRequest(
       const action = parts[3]
       if (action === 'pause' || action === 'resume') {
         await manager.setAllFoldersPaused(action === 'pause')
+        sendJson(res, 200, { ok: true })
+        return
+      }
+      if (action === 'rescan') {
+        await manager.rescanAllFolders()
+        sendJson(res, 200, { ok: true })
+        return
+      }
+    }
+
+    // POST /api/nodes/:deviceId/restart|shutdown — that node's own Syncthing
+    // process. :deviceId is the node's own device ID, like every other route.
+    if (method === 'POST' && parts.length === 4 && parts[0] === 'api' && parts[1] === 'nodes') {
+      const action = parts[3]
+      if (action === 'restart' || action === 'shutdown') {
+        await manager.restartNode(decodeURIComponent(parts[2]!), action)
         sendJson(res, 200, { ok: true })
         return
       }
