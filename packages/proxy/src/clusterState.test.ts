@@ -124,6 +124,23 @@ function installFakeCluster(delayMs = 0, failOn?: { host: string; pathname: stri
     if (url.pathname.startsWith('/rest/config/devices/') && method === 'DELETE') {
       return jsonResponse({})
     }
+    if (url.pathname.startsWith('/rest/config/devices/') && method === 'GET') {
+      const deviceID = decodeURIComponent(url.pathname.split('/').pop()!)
+      return jsonResponse({
+        deviceID,
+        name: deviceID === 'DEVICE-A' ? 'st-a' : 'st-b',
+        paused: false,
+        addresses: ['dynamic'],
+        compression: 'metadata',
+        introducer: false,
+        autoAcceptFolders: false,
+        maxSendKbps: 0,
+        maxRecvKbps: 0,
+      })
+    }
+    if (url.pathname.startsWith('/rest/config/devices/') && method === 'PATCH') {
+      return jsonResponse({})
+    }
     if (url.pathname === '/rest/config/folders/f1' && method === 'DELETE') {
       return jsonResponse({})
     }
@@ -586,6 +603,57 @@ describe('ClusterStateManager mutations', () => {
     // The GET-modify-PUT must carry the untouched fields through.
     expect(folder.id).toBe('f1')
     expect(folder.devices).toEqual([{ deviceID: 'DEVICE-A' }, { deviceID: 'DEVICE-B' }])
+  })
+
+  it("reads device options from every referencing node — never the device's own self-entry", async () => {
+    const { manager } = installFakeCluster()
+    await refreshed(manager)
+
+    const view = await manager.getDeviceOptions('DEVICE-B')
+
+    // st-b's own config also lists DEVICE-B (its self-entry), but only st-a
+    // *references* it as a peer — same scope as pause/remove.
+    expect(view.deviceId).toBe('DEVICE-B')
+    expect(view.nodes).toEqual([
+      {
+        nodeId: 'DEVICE-A',
+        options: {
+          name: 'st-b',
+          addresses: ['dynamic'],
+          compression: 'metadata',
+          introducer: false,
+          autoAcceptFolders: false,
+          maxSendKbps: 0,
+          maxRecvKbps: 0,
+        },
+      },
+    ])
+  })
+
+  it('patches device options on every referencing node, leaving unmodeled fields to the element PATCH', async () => {
+    const { manager, calls } = installFakeCluster()
+    await refreshed(manager)
+    calls.length = 0
+
+    await manager.setDeviceOptions('DEVICE-B', {
+      name: 'backup box',
+      addresses: ['tcp://10.0.0.9:22000'],
+      compression: 'always',
+      introducer: true,
+      autoAcceptFolders: false,
+      maxSendKbps: 1000,
+      maxRecvKbps: 0,
+    })
+
+    const patches = calls.filter((c) => c.method === 'PATCH' && c.url === '/rest/config/devices/DEVICE-B')
+    expect(patches).toHaveLength(1)
+    expect(patches[0]!.host).toBe('a.test')
+    const body = JSON.parse(patches[0]!.body!) as Record<string, unknown>
+    expect(body.name).toBe('backup box')
+    expect(body.addresses).toEqual(['tcp://10.0.0.9:22000'])
+    expect(body.maxSendKbps).toBe(1000)
+    // paused deliberately absent: the PATCH must not touch fields we don't model.
+    expect('paused' in body).toBe(false)
   })
 
   it("scans every sharing node's tree for conflict copies, reporting folder-relative paths per node", async () => {

@@ -30,6 +30,14 @@ export interface ConfigDevice {
   deviceID: string
   name: string
   paused: boolean
+  /** Dial addresses; `["dynamic"]` means discovery. */
+  addresses?: string[]
+  compression?: string
+  introducer?: boolean
+  autoAcceptFolders?: boolean
+  /** KiB/s; 0 = unlimited. */
+  maxSendKbps?: number
+  maxRecvKbps?: number
 }
 
 export interface ConfigFolderDevice {

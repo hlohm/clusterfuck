@@ -158,8 +158,12 @@ tabs. Mapped from the GUI's actual surface, in priority order.
       enforced both client- and server-side. Dismissing is non-permanent —
       it resurfaces if seen again; a permanent per-device/folder ignore list
       isn't exposed yet.
-- [ ] Edit device options: name, addresses, compression, introducer,
-      auto-accept, per-device rate limits
+- [x] Edit device options: name, addresses, compression, introducer,
+      auto-accept, per-device rate limits — on-demand view of how every
+      referencing node configures the device (not in the model; entries can
+      differ per node), with a "nodes disagree" warning; applying writes one
+      set of options to every referencing node (same fan-out scope as
+      pause/remove) via Syncthing's element-scoped PATCH
 - [ ] Device identity: show ID/QR for any managed node
 
 ### Cluster operations

@@ -57,6 +57,22 @@ Listens on `PORT` (default `4000`). Routes:
   device as a peer from *every* registered node that has it configured (never
   from the device's own config — there's no "remove yourself"). Syncthing
   also drops it from any folder it was shared on for that node.
+- `GET /api/devices/:deviceId/options` — how every registered node that
+  references the device currently has it configured: `{ "deviceId": "...",
+  "nodes": [{ "nodeId": "<node device ID>", "options": { "name": "...",
+  "addresses": ["dynamic"], "compression": "metadata", "introducer": false,
+  "autoAcceptFolders": false, "maxSendKbps": 0, "maxRecvKbps": 0 } }] }`.
+  Same fan-out scope as pause/remove (never the device's own self-entry);
+  a node whose entry couldn't be read gets an `error` string instead of
+  failing the whole call. On-demand — entries can differ per node and are
+  deliberately not part of the aggregated model.
+- `PUT /api/devices/:deviceId/options` body = one `options` object as above —
+  applies the same options on *every* referencing node (the UI warns first
+  when nodes currently disagree). All fields required; `compression` one of
+  `metadata`, `always`, `never`; `addresses` a non-empty list (`["dynamic"]`
+  for discovery); rate limits integers ≥ 0 (0 = unlimited). Uses Syncthing's
+  element-scoped PATCH per node, so unmodeled fields (paused,
+  allowedNetworks, ...) are untouched.
 - `POST /api/folders/:folderId/devices/:deviceId/pause` / `.../resume` —
   pauses/resumes that folder on that specific registered node.
 - `POST /api/folders/:folderId/devices/:deviceId/rescan` — triggers an

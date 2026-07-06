@@ -1,4 +1,5 @@
 import type {
+  ConfigDevice,
   ConfigFolder,
   ConfigResponse,
   ConnectionsResponse,
@@ -41,7 +42,7 @@ export class SyncthingClient {
   }
 
   private async request(
-    method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+    method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
     path: string,
     body?: unknown,
     signal?: AbortSignal,
@@ -76,7 +77,7 @@ export class SyncthingClient {
   }
 
   private async send(
-    method: 'POST' | 'PUT' | 'DELETE',
+    method: 'POST' | 'PUT' | 'PATCH' | 'DELETE',
     path: string,
     body?: unknown,
     signal?: AbortSignal,
@@ -171,6 +172,20 @@ export class SyncthingClient {
   /** Adds (or replaces) a device entry in this node's config. */
   postDevice(device: { deviceID: string; name?: string }, signal?: AbortSignal): Promise<void> {
     return this.send('POST', '/rest/config/devices', device, signal)
+  }
+
+  /** This node's config entry for one device (how *it* has the peer configured). */
+  deviceConfig(deviceId: string, signal?: AbortSignal): Promise<ConfigDevice> {
+    return this.get(`/rest/config/devices/${encodeURIComponent(deviceId)}`, signal)
+  }
+
+  /**
+   * Merges the given fields into this node's config entry for the device —
+   * Syncthing's element-scoped PATCH, so unmentioned fields are untouched
+   * without a read-modify-write round-trip.
+   */
+  patchDeviceConfig(deviceId: string, fields: Partial<ConfigDevice>, signal?: AbortSignal): Promise<void> {
+    return this.send('PATCH', `/rest/config/devices/${encodeURIComponent(deviceId)}`, fields, signal)
   }
 
   /** Adds (or replaces) a folder in this node's config. */

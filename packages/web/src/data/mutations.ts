@@ -1,4 +1,6 @@
 import type {
+  DeviceOptions,
+  DeviceOptionsView,
   FolderAdvancedOptions,
   FolderConflicts,
   FolderFailedItems,
@@ -53,6 +55,16 @@ export function registerNode(id: string, url: string, apiKey: string): Promise<v
 /** De-registers a node from the proxy. Doesn't touch its own Syncthing config or unlink it as a peer elsewhere. */
 export function removeNode(nodeId: string): Promise<void> {
   return call('DELETE', `/api/nodes/${encodeURIComponent(nodeId)}`)
+}
+
+/** How every referencing registered node currently has this device configured (on-demand; not in the model). */
+export function getDeviceOptions(deviceId: string): Promise<DeviceOptionsView> {
+  return getJson(`/api/devices/${encodeURIComponent(deviceId)}/options`)
+}
+
+/** Applies the same device options on every registered node that references the device — same scope as pause/remove. */
+export function setDeviceOptions(deviceId: string, options: DeviceOptions): Promise<void> {
+  return call('PUT', `/api/devices/${encodeURIComponent(deviceId)}/options`, options)
 }
 
 /** Adds a device as a peer in each named registered node's config. */

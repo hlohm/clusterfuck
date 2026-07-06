@@ -3,6 +3,7 @@ import type {
   ClusterModel,
   Connection,
   Device,
+  DeviceOptionsView,
   DeviceSystemStatus,
   FolderConflicts,
   FolderFailedItems,
@@ -15,6 +16,7 @@ import type {
 } from '@clusterfuck/shared'
 import type { Selection } from './selection'
 import {
+  COMPRESSION_LEVELS,
   connectionsByDevice,
   MIN_DISK_FREE_UNITS,
   sharesByDevice,
@@ -44,6 +46,13 @@ import {
   advancedFromFormFields,
   describeAdvanced,
 } from '../views/advancedOptions'
+import {
+  deviceOptionsDiffer,
+  deviceOptionsFieldsValid,
+  deviceOptionsFormFields,
+  deviceOptionsFromFormFields,
+  type DeviceOptionsFormFields,
+} from '../views/deviceOptions'
 
 export interface DetailPanelProps {
   cluster: ClusterModel
@@ -169,6 +178,166 @@ const FOLDER_TYPE_OPTIONS = (Object.keys(FOLDER_TYPE_STYLE) as FolderType[]).map
   value,
   label: FOLDER_TYPE_STYLE[value].label,
 }))
+
+/**
+ * View/edit how the referencing nodes configure this device: name, addresses,
+ * compression, introducer, auto-accept, rate limits. Loaded on demand (the
+ * entries aren't in the model); applying writes the same options to every
+ * referencing node, so a per-node divergence is called out before it gets
+ * flattened.
+ */
+function DeviceOptionsSection({ device }: { device: Device }) {
+  const { busy, error, run } = useAsyncAction()
+  const [view, setView] = useState<DeviceOptionsView>()
+  const [fields, setFields] = useState<DeviceOptionsFormFields>()
+  const [loading, setLoading] = useState(false)
+  const [loadError, setLoadError] = useState<string>()
+
+  const load = () => {
+    setLoading(true)
+    setLoadError(undefined)
+    mutations
+      .getDeviceOptions(device.id)
+      .then((result) => {
+        setView(result)
+        const first = result.nodes.find((n) => n.options !== undefined)
+        setFields(first?.options !== undefined ? deviceOptionsFormFields(first.options) : undefined)
+      })
+      .catch((err: unknown) => setLoadError(err instanceof Error ? err.message : 'Failed to load'))
+      .finally(() => setLoading(false))
+  }
+
+  if (!view || !fields) {
+    return (
+      <div className="detail-panel__group">
+        <div className="detail-panel__group-label">Device options</div>
+        {view && <p>No registered node has this device configured.</p>}
+        <div className="detail-panel__action-row">
+          <button disabled={loading} onClick={load}>
+            {loading ? 'Loading…' : view ? 'Reload' : 'Load device options'}
+          </button>
+        </div>
+        {loadError && <div className="detail-panel__error">{loadError}</div>}
+      </div>
+    )
+  }
+
+  const differ = deviceOptionsDiffer(view.nodes)
+  const readErrors = view.nodes.filter((n) => n.error !== undefined)
+
+  const set = <K extends keyof DeviceOptionsFormFields>(key: K, value: DeviceOptionsFormFields[K]) =>
+    setFields((prev) => (prev ? { ...prev, [key]: value } : prev))
+
+  return (
+    <div className="detail-panel__group">
+      <div className="detail-panel__group-label">Device options</div>
+      {differ && (
+        <p className="detail-panel__status-errors">
+          ⚠ Nodes configure this device differently — applying will set the values below on all of
+          them.
+        </p>
+      )}
+      <label className="detail-panel__action-row">
+        Name:
+        <input
+          type="text"
+          placeholder="(empty shows the device ID)"
+          value={fields.name}
+          disabled={busy}
+          onChange={(event) => set('name', event.target.value)}
+        />
+      </label>
+      <label className="detail-panel__action-row">
+        Addresses (one per line):
+        <textarea
+          className="ignore-node__textarea"
+          rows={2}
+          spellCheck={false}
+          placeholder="dynamic"
+          value={fields.addressesText}
+          disabled={busy}
+          onChange={(event) => set('addressesText', event.target.value)}
+        />
+      </label>
+      <label className="detail-panel__action-row">
+        Compression:
+        <select
+          value={fields.compression}
+          disabled={busy}
+          onChange={(event) => set('compression', event.target.value)}
+        >
+          {[...new Set([...COMPRESSION_LEVELS, fields.compression])].map((level) => (
+            <option key={level} value={level}>
+              {level}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="detail-panel__action-row">
+        <input
+          type="checkbox"
+          checked={fields.introducer}
+          disabled={busy}
+          onChange={(event) => set('introducer', event.target.checked)}
+        />
+        Introducer (may introduce its own peers to us)
+      </label>
+      <label className="detail-panel__action-row">
+        <input
+          type="checkbox"
+          checked={fields.autoAcceptFolders}
+          disabled={busy}
+          onChange={(event) => set('autoAcceptFolders', event.target.checked)}
+        />
+        Auto-accept offered folders
+      </label>
+      <label className="detail-panel__action-row">
+        Send limit (KiB/s, 0 = unlimited):
+        <input
+          type="number"
+          min={0}
+          value={fields.maxSendKbps}
+          disabled={busy}
+          onChange={(event) => set('maxSendKbps', event.target.value)}
+        />
+      </label>
+      <label className="detail-panel__action-row">
+        Receive limit (KiB/s, 0 = unlimited):
+        <input
+          type="number"
+          min={0}
+          value={fields.maxRecvKbps}
+          disabled={busy}
+          onChange={(event) => set('maxRecvKbps', event.target.value)}
+        />
+      </label>
+      <div className="detail-panel__action-row">
+        <button
+          className="detail-panel__button--primary"
+          disabled={busy || !deviceOptionsFieldsValid(fields)}
+          onClick={() => {
+            const nodeCount = view.nodes.filter((n) => n.options !== undefined).length
+            run(
+              `Apply these options for ${device.name} on ${nodeCount === 1 ? 'the 1 node' : `all ${nodeCount} nodes`} referencing it?`,
+              () => mutations.setDeviceOptions(device.id, deviceOptionsFromFormFields(fields)),
+            )
+          }}
+        >
+          Apply options
+        </button>
+        <button className="detail-panel__link-button" disabled={loading || busy} onClick={load}>
+          {loading ? 'Reloading…' : 'Reload'}
+        </button>
+      </div>
+      {readErrors.map((n) => (
+        <div className="detail-panel__error" key={n.nodeId}>
+          {n.nodeId}: {n.error}
+        </div>
+      ))}
+      {error && <div className="detail-panel__error">{error}</div>}
+    </div>
+  )
+}
 
 /**
  * Editor for one share's file-versioning config. Self-contained (its own
@@ -789,6 +958,11 @@ export function DetailPanel({ cluster, selection, onSelect, isLive }: DetailPane
         </p>
         {device.systemStatus && <SystemStatusSection status={device.systemStatus} />}
         {isLive && <DeviceActions device={device} />}
+        {/* Keyed by device so switching selection remounts the editor instead
+            of carrying the previous device's loaded options over. */}
+        {isLive && device.state !== 'this-device' && (
+          <DeviceOptionsSection key={device.id} device={device} />
+        )}
         {device.managed && <ConnectionsSection connections={connections} deviceById={deviceById} />}
         <h4>Folder shares ({shares.length})</h4>
         <ul className="attention-list">

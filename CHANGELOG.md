@@ -4,6 +4,20 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.4.10]
+
+- **Edit device options** (ROADMAP.md Phase 5 Device management): name,
+  addresses, compression, introducer, auto-accept folders, and per-device
+  send/receive rate limits. New routes
+  `GET`/`PUT /api/devices/:deviceId/options` — the GET shows how *every* referencing
+  registered node currently configures the device (on-demand, not in the
+  model: entries can legitimately differ per node), the PUT applies one set
+  of options to all of them (same fan-out scope as pause/remove, never the
+  device's own self-entry) via Syncthing's element-scoped config PATCH so
+  unmodeled fields stay untouched. The device detail panel gains a "Device
+  options" editor with a "nodes configure this differently" warning before
+  a divergent config gets flattened.
+
 ## [0.4.9]
 
 - **Conflict & failed-item surfacing** (ROADMAP.md Phase 5 Folder
