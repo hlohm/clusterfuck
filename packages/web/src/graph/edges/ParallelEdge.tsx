@@ -2,6 +2,8 @@ import { BaseEdge, EdgeLabelRenderer, useInternalNode, type EdgeProps } from '@x
 import { exitDistance, FALLBACK_NODE_HEIGHT, FALLBACK_NODE_WIDTH } from './edgeGeometry'
 
 export interface ParallelEdgeData extends Record<string, unknown> {
+  /** The folder this line represents — used by click handling (parsing it out of the edge id would break on folder ids containing ':'). */
+  folderId?: string
   /** Perpendicular offset in px from the pair's centerline. */
   offset: number
   label?: string

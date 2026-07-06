@@ -4,6 +4,35 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.4.5]
+
+Project-wide review pass: bug fixes and documentation refresh, no new features.
+
+- **Fixed: ignore-patterns editor could show — and save — the previous
+  folder's patterns after switching folders.** The detail panel's ignore
+  section (and each share's action block) wasn't keyed by what it displays,
+  so React reused the component instance across folder switches and its
+  loaded state carried over; saving would have written folder A's patterns
+  under folder B's id. Both are now keyed by folder/share identity so a
+  selection change remounts them fresh (regression-tested).
+- **Fixed: a stopped/errored folder read as "idle".** `/rest/db/status`
+  states `error` and `stopped` (folder-level problems like a missing marker
+  or path) now map to the model's `error` state, with db/status' own `error`
+  string surfaced as the share's `errorMessage` (previously only per-file
+  pull errors from `/rest/folder/errors` counted, so a fully stopped folder
+  showed as healthy). Also maps `scan-waiting`/`sync-waiting` to
+  scanning/syncing instead of idle.
+- **Fixed: clicking a folder edge in the Nodes graph mis-selected the folder
+  when its id contains `:`.** The click handler parsed the folder id out of
+  the edge's id string; it now travels in the edge's own data.
+- **Fixed: duplicate node ids in `cluster.json` were accepted at startup**
+  and silently collided in runtime lookups keyed by id — now rejected with a
+  clear error, matching the guard runtime registration already had.
+- Docs: `CLAUDE.md` no longer claims the repo is greenfield ("no code yet") —
+  its current-state, guardrail, dev-data, and definition-of-done sections now
+  describe the shipped Phases 1–4 + in-progress Phase 5 reality and defer
+  status to `ROADMAP.md`.
+
 ## [0.4.4]
 
 - Ignore patterns (ROADMAP.md Phase 5 Folder management): view and edit each

@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { DetailPanel } from './DetailPanel'
 import { edgeCases } from '../fixtures/edge-cases'
 import { formatBytes } from '../format'
@@ -130,5 +130,52 @@ describe('DetailPanel device connections', () => {
     )
 
     expect(screen.queryByText(/^Connections/)).not.toBeInTheDocument()
+  })
+})
+
+describe('DetailPanel ignore patterns across folder switches', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it("resets the loaded ignore section when the selected folder changes, instead of showing the previous folder's patterns", async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string | URL) => {
+        const path = typeof input === 'string' ? input : input.toString()
+        if (path.includes('/api/folders/ledger/ignores')) {
+          return new Response(
+            JSON.stringify({ folderId: 'ledger', nodes: [{ deviceId: 'device-origin', patterns: ['*.tmp'] }] }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          )
+        }
+        throw new Error(`unexpected fetch in test: ${path}`)
+      }),
+    )
+    const { rerender } = render(
+      <DetailPanel
+        cluster={edgeCases}
+        selection={{ kind: 'folder', folderId: 'ledger' }}
+        onSelect={vi.fn()}
+        isLive={true}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('Load ignore patterns'))
+    expect(await screen.findByDisplayValue('*.tmp')).toBeInTheDocument()
+
+    rerender(
+      <DetailPanel
+        cluster={edgeCases}
+        selection={{ kind: 'folder', folderId: 'coldstore' }}
+        onSelect={vi.fn()}
+        isLive={true}
+      />,
+    )
+
+    // The new folder must start unloaded — carrying ledger's patterns over
+    // would let a Save write them under coldstore's id.
+    expect(screen.getByText('Load ignore patterns')).toBeInTheDocument()
+    expect(screen.queryByDisplayValue('*.tmp')).not.toBeInTheDocument()
   })
 })

@@ -37,10 +37,18 @@ export function loadNodeConfig(path = configPath()): NodeConfig[] {
   // any time by removing every registered node. Rejecting it here would
   // mean removeNode() could persist a config the proxy can no longer start
   // back up with.
+  const seen = new Set<string>()
   for (const node of parsed.nodes) {
     if (!node.id || !node.url || !node.apiKey) {
       throw new Error(`${path}: every node needs id, url, and apiKey — got ${JSON.stringify(node)}`)
     }
+    // Duplicate ids would silently collide at runtime (snapshots and node
+    // lookups are keyed by id) — reject at startup like addNode() does for
+    // runtime registration.
+    if (seen.has(node.id)) {
+      throw new Error(`${path}: duplicate node id "${node.id}" — every node needs a unique id`)
+    }
+    seen.add(node.id)
   }
 
   return parsed.nodes

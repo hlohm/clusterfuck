@@ -594,12 +594,23 @@ export function DetailPanel({ cluster, selection, onSelect, isLive }: DetailPane
                   <StatusBadge state={share.state} />
                 </header>
                 <div className="node-section__type">{typeStyle.label}</div>
-                {isLive && <ShareActions cluster={cluster} share={share} />}
+                {/* Keyed by the share so switching the selected folder remounts the
+                    editor instead of carrying the previous folder's drafts over. */}
+                {isLive && (
+                  <ShareActions
+                    key={`${share.folderId}:${share.deviceId}`}
+                    cluster={cluster}
+                    share={share}
+                  />
+                )}
               </section>
             )
           })}
         </div>
-        {isLive && <IgnorePatternsSection cluster={cluster} folderId={folder.id} />}
+        {/* Keyed by folder: without it React reuses the instance across folder
+            switches and the previous folder's loaded patterns/drafts would be
+            shown — and saved — under the new folder's id. */}
+        {isLive && <IgnorePatternsSection key={folder.id} cluster={cluster} folderId={folder.id} />}
       </aside>
     )
   }
@@ -646,7 +657,13 @@ export function DetailPanel({ cluster, selection, onSelect, isLive }: DetailPane
           <strong>Error:</strong> {share.errorMessage}
         </p>
       )}
-      {isLive && <ShareActions cluster={cluster} share={share} />}
+      {isLive && (
+        <ShareActions
+          key={`${share.folderId}:${share.deviceId}`}
+          cluster={cluster}
+          share={share}
+        />
+      )}
     </aside>
   )
 }
