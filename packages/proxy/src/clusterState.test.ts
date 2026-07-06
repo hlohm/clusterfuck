@@ -143,6 +143,14 @@ function installFakeCluster(delayMs = 0, failOn?: { host: string; pathname: stri
       }
       return jsonResponse({})
     }
+    if (url.pathname === '/rest/db/ignores' && method === 'GET') {
+      // Different patterns per node so a test can exercise the cross-node diff.
+      const ignore = base.includes('a.test') ? ['*.tmp'] : ['*.bak']
+      return jsonResponse({ ignore, expanded: ignore })
+    }
+    if (url.pathname === '/rest/db/ignores' && method === 'POST') {
+      return jsonResponse({ ignore: [], expanded: [] })
+    }
     throw new Error(`unexpected fetch: ${method} ${url.href}`)
   })
 
@@ -508,6 +516,30 @@ describe('ClusterStateManager mutations', () => {
     // 'none' is our label; Syncthing's own "versioning off" is the empty string.
     expect(folder.versioning.type).toBe('')
     expect(folder.versioning.params).toEqual({})
+  })
+
+  it("reads every sharing node's ignore patterns, keyed by that node's own device ID", async () => {
+    const { manager } = installFakeCluster()
+    await refreshed(manager)
+
+    const res = await manager.getFolderIgnores('f1')
+
+    expect(res.folderId).toBe('f1')
+    const byDevice = Object.fromEntries(res.nodes.map((n) => [n.deviceId, n.patterns]))
+    expect(byDevice['DEVICE-A']).toEqual(['*.tmp'])
+    expect(byDevice['DEVICE-B']).toEqual(['*.bak'])
+  })
+
+  it('sets ignore patterns on the node identified by its device ID', async () => {
+    const { manager, calls } = installFakeCluster()
+    await refreshed(manager)
+    calls.length = 0
+
+    await manager.setFolderIgnores('DEVICE-A', 'f1', ['*.tmp', '/build'])
+
+    const post = calls.find((c) => c.method === 'POST' && c.url === '/rest/db/ignores?folder=f1')
+    expect(post!.host).toBe('a.test')
+    expect(JSON.parse(post!.body!)).toEqual({ ignore: ['*.tmp', '/build'] })
   })
 
   it('surfaces a pending device merged across nodes, and a pending folder scoped to the node it was offered on', async () => {

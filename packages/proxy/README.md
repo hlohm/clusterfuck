@@ -72,6 +72,16 @@ Listens on `PORT` (default `4000`). Routes:
   `cleanoutDays`, `maxAge` in *seconds* for staggered, `command` for external).
   `fsPath`/`fsType` and other fields we don't model are preserved on the
   round-trip.
+- `GET /api/folders/:folderId/ignores` — every registered node that shares the
+  folder, each with its own `.stignore` patterns (raw lines):
+  `{ "folderId": "...", "nodes": [{ "deviceId": "...", "patterns": ["*.tmp"] }] }`.
+  A node whose patterns couldn't be read gets an `error` string and empty
+  `patterns` instead of failing the whole call. On-demand only — ignore lists
+  are per-node and can be large, so they're deliberately **not** part of the
+  aggregated `ClusterModel`/SSE snapshot.
+- `PUT /api/folders/:folderId/devices/:deviceId/ignores` body
+  `{ "patterns": ["*.tmp", "/build"] }` — replaces that folder's `.stignore`
+  patterns on that node.
 - `POST /api/folders/:folderId/devices/:deviceId/shares` body
   `{ "deviceId": "...", "encryptionPassword": "..." }` (`encryptionPassword`
   optional) — adds a device to that folder's share list on that node. Set

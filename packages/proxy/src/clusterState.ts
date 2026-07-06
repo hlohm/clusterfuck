@@ -1,4 +1,4 @@
-import type { ClusterModel, VersioningType } from '@clusterfuck/shared'
+import type { ClusterModel, FolderIgnores, VersioningType } from '@clusterfuck/shared'
 import { aggregateCluster, type NodeSnapshot } from './aggregate.ts'
 import { fetchNodeSnapshot } from './snapshot.ts'
 import { saveNodeConfig } from './config.ts'
@@ -382,6 +382,43 @@ export class ClusterStateManager {
   rescanFolder(deviceId: string, folderId: string): Promise<void> {
     return this.enqueueMutation(async () => {
       await this.clientForDevice(deviceId).rescanFolder(folderId)
+      await this.refreshAfterMutation()
+    })
+  }
+
+  /**
+   * Reads every registered node's `.stignore` patterns for one folder — an
+   * on-demand fan-out (not part of the aggregated model; see FolderIgnores).
+   * Read-only, so it's not serialized through the mutation chain. One entry
+   * per node whose own config shares the folder (its snapshot lists it), with
+   * a per-node `error` captured rather than failing the whole call — the same
+   * "one bad node doesn't blank everything" stance as doRefresh.
+   */
+  async getFolderIgnores(folderId: string): Promise<FolderIgnores> {
+    const targets = this.clients.flatMap(({ nodeId, client }) => {
+      const snap = this.snapshots.find((s) => s.nodeId === nodeId)
+      if (!snap || !snap.folders.some((f) => f.id === folderId)) return []
+      return [{ deviceId: snap.myID, client }]
+    })
+    const nodes = await Promise.all(
+      targets.map(async ({ deviceId, client }) => {
+        try {
+          const res = await client.folderIgnores(folderId)
+          return { deviceId, patterns: res.ignore ?? [] }
+        } catch (err) {
+          return { deviceId, patterns: [], error: (err as Error).message }
+        }
+      }),
+    )
+    return { folderId, nodes }
+  }
+
+  /** Replaces this folder's `.stignore` patterns on one node. */
+  setFolderIgnores(deviceId: string, folderId: string, patterns: string[]): Promise<void> {
+    return this.enqueueMutation(async () => {
+      await this.clientForDevice(deviceId).setFolderIgnores(folderId, patterns)
+      // Ignore changes shift what's in/out of sync, so re-poll to reflect the
+      // new folder state in the next SSE frame rather than waiting for events.
       await this.refreshAfterMutation()
     })
   }

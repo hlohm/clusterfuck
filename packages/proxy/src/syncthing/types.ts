@@ -102,6 +102,15 @@ export interface DbStatusResponse {
   errors: number
 }
 
+/**
+ * GET/POST /rest/db/ignores. `ignore` are the raw `.stignore` lines; `expanded`
+ * is the fully-resolved list. Both are null when the folder has no `.stignore`.
+ */
+export interface DbIgnoresResponse {
+  ignore: string[] | null
+  expanded: string[] | null
+}
+
 export interface FolderError {
   path: string
   error: string

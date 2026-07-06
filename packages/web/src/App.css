@@ -868,6 +868,52 @@ button {
   flex: 1 1 160px;
 }
 
+.detail-panel__link-button {
+  margin-left: 8px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.detail-panel__link-button:disabled {
+  color: var(--text);
+  cursor: default;
+}
+
+.ignore-node {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ignore-node__name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.ignore-node__textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: monospace;
+  font-size: 12px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+  resize: vertical;
+}
+
+.ignore-node__dirty {
+  font-size: 11px;
+  color: var(--text);
+}
+
 .detail-panel__shared-with ul {
   margin: 0;
 }

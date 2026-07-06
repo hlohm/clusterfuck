@@ -166,3 +166,28 @@ export interface ClusterModel {
   pendingDevices: PendingDevice[]
   pendingFolders: PendingFolder[]
 }
+
+/**
+ * One node's `.stignore` patterns for a folder — the raw lines, not the
+ * expanded form. `error` is set (and `patterns` empty) when that node's
+ * patterns couldn't be read.
+ */
+export interface NodeIgnorePatterns {
+  /** The node's own Syncthing device ID — the same value as a Share's `deviceId`. */
+  deviceId: DeviceId
+  patterns: string[]
+  error?: string
+}
+
+/**
+ * Every sharing node's ignore patterns for one folder — an on-demand payload,
+ * deliberately NOT part of `ClusterModel`: `.stignore` lists are per-node, can
+ * be large, and change independently of topology, so they're fetched per
+ * folder only when asked rather than aggregated into (and pushed on) every SSE
+ * snapshot. One entry per registered node that shares the folder, so the UI
+ * can both edit each node's patterns and diff them across nodes.
+ */
+export interface FolderIgnores {
+  folderId: FolderId
+  nodes: NodeIgnorePatterns[]
+}

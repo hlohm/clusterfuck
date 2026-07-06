@@ -1,4 +1,4 @@
-import type { FolderType, VersioningType } from '@clusterfuck/shared'
+import type { FolderIgnores, FolderType, VersioningType } from '@clusterfuck/shared'
 import { PROXY_BASE } from './proxyBase'
 
 async function call(method: string, path: string, body?: unknown): Promise<void> {
@@ -11,6 +11,16 @@ async function call(method: string, path: string, body?: unknown): Promise<void>
     const data = (await res.json().catch(() => undefined)) as { error?: string } | undefined
     throw new Error(data?.error ?? `${method} ${path} failed (HTTP ${res.status})`)
   }
+}
+
+/** GET variant of `call` for the few routes that return data, not just `{ ok }`. */
+async function getJson<T>(path: string): Promise<T> {
+  const res = await fetch(`${PROXY_BASE}${path}`)
+  if (!res.ok) {
+    const data = (await res.json().catch(() => undefined)) as { error?: string } | undefined
+    throw new Error(data?.error ?? `GET ${path} failed (HTTP ${res.status})`)
+  }
+  return (await res.json()) as T
 }
 
 /** Pauses/resumes every registered node's connection to this device. */
@@ -114,6 +124,20 @@ export function removeShare(deviceId: string, folderId: string, shareDeviceId: s
   return call(
     'DELETE',
     `/api/folders/${encodeURIComponent(folderId)}/devices/${encodeURIComponent(deviceId)}/shares/${encodeURIComponent(shareDeviceId)}`,
+  )
+}
+
+/** Every sharing node's `.stignore` patterns for one folder (on-demand; not in the model). */
+export function getFolderIgnores(folderId: string): Promise<FolderIgnores> {
+  return getJson(`/api/folders/${encodeURIComponent(folderId)}/ignores`)
+}
+
+/** Replaces this folder's `.stignore` patterns on one node. */
+export function setFolderIgnores(deviceId: string, folderId: string, patterns: string[]): Promise<void> {
+  return call(
+    'PUT',
+    `/api/folders/${encodeURIComponent(folderId)}/devices/${encodeURIComponent(deviceId)}/ignores`,
+    { patterns },
   )
 }
 

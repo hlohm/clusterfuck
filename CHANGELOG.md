@@ -4,6 +4,22 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.4.4]
+
+- Ignore patterns (ROADMAP.md Phase 5 Folder management): view and edit each
+  node's `.stignore` patterns for a folder, with a cluster-level
+  "patterns differ / identical across nodes" indicator — the genuinely
+  cluster-level bit a single-node GUI can't show. Patterns are fetched
+  **on demand** per folder (a "Load ignore patterns" button in the folder
+  detail panel), deliberately **not** part of the aggregated `ClusterModel`/SSE
+  snapshot: `.stignore` lists are per-node, can be large, and change
+  independently of topology. New read route `GET /api/folders/:folderId/ignores`
+  (every sharing node's raw patterns, per-node `error` captured rather than
+  failing the whole call) and write route
+  `PUT /api/folders/:folderId/devices/:deviceId/ignores`. New shared
+  on-demand-payload types `FolderIgnores`/`NodeIgnorePatterns`. No auth — same
+  trust model as the other mutation routes.
+
 ## [0.4.3]
 
 - Folder versioning config (ROADMAP.md Phase 5 Folder management): view and set
