@@ -4,6 +4,8 @@ import type {
   Connection,
   Device,
   DeviceSystemStatus,
+  FolderConflicts,
+  FolderFailedItems,
   FolderIgnores,
   FolderType,
   ServiceHealth,
@@ -646,6 +648,100 @@ function IgnorePatternsSection({ cluster, folderId }: { cluster: ClusterModel; f
   )
 }
 
+/**
+ * On-demand "what's actually wrong" view for a folder: every sharing node's
+ * failed pull items (the detail behind Share.failedItems) and its conflict
+ * copies (`*.sync-conflict-*`). Behind a button like the ignore patterns —
+ * the conflict scan walks each node's whole folder tree, which is far too
+ * heavy to run on every selection, let alone every SSE frame.
+ */
+function ProblemsSection({ cluster, folderId }: { cluster: ClusterModel; folderId: string }) {
+  const [data, setData] = useState<{ failed: FolderFailedItems; conflicts: FolderConflicts }>()
+  const [loading, setLoading] = useState(false)
+  const [loadError, setLoadError] = useState<string>()
+
+  const deviceById = new Map(cluster.devices.map((d) => [d.id, d]))
+
+  const load = () => {
+    setLoading(true)
+    setLoadError(undefined)
+    Promise.all([mutations.getFolderFailedItems(folderId), mutations.getFolderConflicts(folderId)])
+      .then(([failed, conflicts]) => setData({ failed, conflicts }))
+      .catch((err: unknown) => setLoadError(err instanceof Error ? err.message : 'Failed to load'))
+      .finally(() => setLoading(false))
+  }
+
+  if (!data) {
+    return (
+      <div className="detail-panel__group">
+        <div className="detail-panel__group-label">Conflicts & failed items</div>
+        <div className="detail-panel__action-row">
+          <button disabled={loading} onClick={load} title="Scans every sharing node's folder tree — can take a moment on large folders.">
+            {loading ? 'Scanning…' : 'Scan for conflicts & failures'}
+          </button>
+        </div>
+        {loadError && <div className="detail-panel__error">{loadError}</div>}
+      </div>
+    )
+  }
+
+  const totalFailed = data.failed.nodes.reduce((sum, n) => sum + n.items.length, 0)
+  const totalConflicts = data.conflicts.nodes.reduce((sum, n) => sum + n.paths.length, 0)
+  const readErrors = [
+    ...data.failed.nodes.filter((n) => n.error !== undefined),
+    ...data.conflicts.nodes.filter((n) => n.error !== undefined),
+  ]
+
+  return (
+    <div className="detail-panel__group">
+      <div className="detail-panel__group-label">Conflicts & failed items</div>
+      <p className={totalFailed + totalConflicts > 0 ? 'detail-panel__status-errors' : undefined}>
+        {totalFailed + totalConflicts > 0
+          ? `${totalConflicts} conflict cop${totalConflicts === 1 ? 'y' : 'ies'}, ${totalFailed} failed item${totalFailed === 1 ? '' : 's'} across ${data.failed.nodes.length} node${data.failed.nodes.length === 1 ? '' : 's'}`
+          : '✓ No conflicts or failed items on any node'}
+        <button className="detail-panel__link-button" disabled={loading} onClick={load}>
+          {loading ? 'Rescanning…' : 'Rescan'}
+        </button>
+      </p>
+      {data.failed.nodes.map((node) => {
+        const name = deviceById.get(node.deviceId)?.name ?? node.deviceId
+        const conflicts = data.conflicts.nodes.find((n) => n.deviceId === node.deviceId)
+        if (node.items.length === 0 && (conflicts?.paths.length ?? 0) === 0) return null
+        return (
+          <div className="ignore-node" key={node.deviceId}>
+            <div className="ignore-node__name">{name}</div>
+            {conflicts !== undefined && conflicts.paths.length > 0 && (
+              <ul className="problems-list">
+                {conflicts.paths.map((path) => (
+                  <li key={path}>
+                    <code>{path}</code>
+                    <span className="problems-list__detail">conflict copy</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {node.items.length > 0 && (
+              <ul className="problems-list">
+                {node.items.map((item) => (
+                  <li key={item.path}>
+                    <code>{item.path}</code>
+                    <span className="problems-list__detail">{item.error}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )
+      })}
+      {readErrors.map((n) => (
+        <div className="detail-panel__error" key={n.deviceId}>
+          {deviceById.get(n.deviceId)?.name ?? n.deviceId}: {n.error}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false)
   return (
@@ -764,6 +860,7 @@ export function DetailPanel({ cluster, selection, onSelect, isLive }: DetailPane
         {/* Keyed by folder: without it React reuses the instance across folder
             switches and the previous folder's loaded patterns/drafts would be
             shown — and saved — under the new folder's id. */}
+        {isLive && <ProblemsSection key={`problems:${folder.id}`} cluster={cluster} folderId={folder.id} />}
         {isLive && <IgnorePatternsSection key={folder.id} cluster={cluster} folderId={folder.id} />}
       </aside>
     )
@@ -809,6 +906,11 @@ export function DetailPanel({ cluster, selection, onSelect, isLive }: DetailPane
       {share.outOfSyncItems !== undefined && (
         <p>
           <strong>Out-of-sync items:</strong> {share.outOfSyncItems}
+        </p>
+      )}
+      {share.failedItems !== undefined && (
+        <p className="detail-panel__status-errors">
+          <strong>Failed items:</strong> {share.failedItems}
         </p>
       )}
       {share.errorMessage && (

@@ -87,6 +87,7 @@ export const edgeCases: ClusterModel = {
       type: 'receiveonly',
       state: 'error',
       errorMessage: 'disk full: no space to write incoming files',
+      failedItems: 3,
       sharedWith: ['device-origin', 'device-mirror', 'device-satellite', 'device-vault'],
     },
     {

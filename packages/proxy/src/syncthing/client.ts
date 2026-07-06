@@ -2,6 +2,7 @@ import type {
   ConfigFolder,
   ConfigResponse,
   ConnectionsResponse,
+  DbBrowseItem,
   DbIgnoresResponse,
   DbStatusResponse,
   FolderErrorsResponse,
@@ -105,6 +106,15 @@ export class SyncthingClient {
 
   folderErrors(folderId: string, signal?: AbortSignal): Promise<FolderErrorsResponse> {
     return this.get(`/rest/folder/errors?folder=${encodeURIComponent(folderId)}`, signal)
+  }
+
+  /**
+   * This node's full view of the folder tree, nested via `children`. Heavy on
+   * big folders — only ever called on demand (conflict scan), never as part
+   * of the snapshot/refresh cycle.
+   */
+  dbBrowse(folderId: string, signal?: AbortSignal): Promise<DbBrowseItem[]> {
+    return this.get(`/rest/db/browse?folder=${encodeURIComponent(folderId)}`, signal)
   }
 
   /**

@@ -139,7 +139,11 @@ tabs. Mapped from the GUI's actual surface, in priority order.
       scans and guards its own copy
 - [x] `sendonly` override + `receiveonly` revert — confirmation-gated buttons
       on the share detail, shown only for the matching folder type
-- [ ] Conflict & failed-item surfacing (per folder, cluster-rolled-up)
+- [x] Conflict & failed-item surfacing (per folder, cluster-rolled-up) —
+      `Share.failedItems` count in the model (rolled up on the Overview KPI),
+      with the per-item detail and the `*.sync-conflict-*` scan behind an
+      on-demand "Conflicts & failed items" section on the folder detail
+      (a tree walk per node is far too heavy for the refresh cycle)
 
 ### Device management
 

@@ -920,6 +920,23 @@ button {
   color: var(--text);
 }
 
+.problems-list {
+  margin: 0;
+  padding-left: 16px;
+  font-size: 12px;
+}
+
+.problems-list li {
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.problems-list__detail {
+  color: var(--text);
+  margin-left: 6px;
+  font-size: 11px;
+}
+
 .detail-panel__shared-with ul {
   margin: 0;
 }

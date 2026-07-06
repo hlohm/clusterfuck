@@ -64,6 +64,11 @@ describe('fixture clusters', () => {
     expect(advanced.some((a) => !a.fsWatcherEnabled)).toBe(true)
   })
 
+  it('include at least one share with failed items', () => {
+    const hasFailed = FIXTURE_CLUSTERS.some((c) => c.shares.some((s) => (s.failedItems ?? 0) > 0))
+    expect(hasFailed).toBe(true)
+  })
+
   it('include at least one receiveencrypted share', () => {
     const hasEncrypted = FIXTURE_CLUSTERS.some((cluster) =>
       cluster.shares.some((s) => s.type === 'receiveencrypted'),

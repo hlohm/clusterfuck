@@ -87,6 +87,19 @@ Listens on `PORT` (default `4000`). Routes:
   `minDiskFree.value >= 0` (0 disables the free-space check) with `unit` one
   of `%`, `kB`, `MB`, `GB`, `TB`. Everything else on the folder config is
   preserved on the round-trip.
+- `GET /api/folders/:folderId/failed-items` — every registered node that
+  shares the folder, each with the items its last pull failed on:
+  `{ "folderId": "...", "nodes": [{ "deviceId": "...", "items": [{ "path":
+  "...", "error": "..." }] }] }`. The aggregated model carries only the
+  per-share `failedItems` *count*; this is the on-demand detail behind it. A
+  node whose list couldn't be read gets an `error` string instead of failing
+  the whole call.
+- `GET /api/folders/:folderId/conflicts` — scans every sharing node's view of
+  the folder tree (`/rest/db/browse`) for Syncthing conflict copies
+  (`*.sync-conflict-<date>-<time>-<device>*`): `{ "folderId": "...", "nodes":
+  [{ "deviceId": "...", "paths": ["sub/file.sync-conflict-....txt"] }] }`.
+  On-demand only and deliberately behind an explicit UI button — the browse
+  call returns the node's whole tree, which can be heavy on large folders.
 - `GET /api/folders/:folderId/ignores` — every registered node that shares the
   folder, each with its own `.stignore` patterns (raw lines):
   `{ "folderId": "...", "nodes": [{ "deviceId": "...", "patterns": ["*.tmp"] }] }`.

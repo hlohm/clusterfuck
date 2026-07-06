@@ -1,4 +1,11 @@
-import type { FolderAdvancedOptions, FolderIgnores, FolderType, VersioningType } from '@clusterfuck/shared'
+import type {
+  FolderAdvancedOptions,
+  FolderConflicts,
+  FolderFailedItems,
+  FolderIgnores,
+  FolderType,
+  VersioningType,
+} from '@clusterfuck/shared'
 import { PROXY_BASE } from './proxyBase'
 
 async function call(method: string, path: string, body?: unknown): Promise<void> {
@@ -159,6 +166,16 @@ export function removeShare(deviceId: string, folderId: string, shareDeviceId: s
 /** Every sharing node's `.stignore` patterns for one folder (on-demand; not in the model). */
 export function getFolderIgnores(folderId: string): Promise<FolderIgnores> {
   return getJson(`/api/folders/${encodeURIComponent(folderId)}/ignores`)
+}
+
+/** Every sharing node's failed (pull-error) items for one folder — the detail behind `Share.failedItems`. */
+export function getFolderFailedItems(folderId: string): Promise<FolderFailedItems> {
+  return getJson(`/api/folders/${encodeURIComponent(folderId)}/failed-items`)
+}
+
+/** Scans every sharing node's folder tree for `*.sync-conflict-*` copies. Heavy on big folders — user-triggered only. */
+export function getFolderConflicts(folderId: string): Promise<FolderConflicts> {
+  return getJson(`/api/folders/${encodeURIComponent(folderId)}/conflicts`)
 }
 
 /** Replaces this folder's `.stignore` patterns on one node. */

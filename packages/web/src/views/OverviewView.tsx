@@ -405,7 +405,11 @@ export function OverviewView({ cluster, onOpenShare, isLive }: OverviewViewProps
               : undefined
           }
         />
-        <StatTile label="Out-of-sync items" value={String(health.outOfSyncItems)} />
+        <StatTile
+          label="Out-of-sync items"
+          value={String(health.outOfSyncItems)}
+          detail={health.failedItems > 0 ? `${health.failedItems} failed` : undefined}
+        />
         <StatTile label="Needs attention" value={String(health.attention.length)} />
         <StatTile
           label="Data transferred"

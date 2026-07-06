@@ -97,6 +97,8 @@ export interface ClusterHealth {
   folderCounts: Record<FolderState, number>
   /** Sum of out-of-sync items across all shares. */
   outOfSyncItems: number
+  /** Sum of failed (pull-error) items across all shares — the cluster-rolled-up view. */
+  failedItems: number
   /** Shares that need a look: error, out-of-sync, or paused — worst first. */
   attention: Share[]
 }
@@ -127,10 +129,11 @@ export function clusterHealth(cluster: ClusterModel): ClusterHealth {
   }
 
   const outOfSyncItems = cluster.shares.reduce((sum, s) => sum + (s.outOfSyncItems ?? 0), 0)
+  const failedItems = cluster.shares.reduce((sum, s) => sum + (s.failedItems ?? 0), 0)
 
   const attention = cluster.shares
     .filter((s) => ATTENTION_STATES.includes(s.state))
     .sort((a, b) => FOLDER_STATE_SEVERITY[b.state] - FOLDER_STATE_SEVERITY[a.state])
 
-  return { deviceCounts, folderCounts, outOfSyncItems, attention }
+  return { deviceCounts, folderCounts, outOfSyncItems, failedItems, attention }
 }

@@ -119,6 +119,13 @@ export interface Share {
   state: FolderState
   completionPct?: number
   outOfSyncItems?: number
+  /**
+   * Items this node tried to pull for the folder and failed on (permission
+   * errors, ignored-then-deleted files, ...). A count only — the per-item
+   * paths/errors are an on-demand payload (FolderFailedItems), not model
+   * state, same reasoning as ignore patterns.
+   */
+  failedItems?: number
   errorMessage?: string
   /**
    * This node's file-versioning config for its own copy of the folder. Live
@@ -214,6 +221,45 @@ export interface NodeIgnorePatterns {
   deviceId: DeviceId
   patterns: string[]
   error?: string
+}
+
+/**
+ * One node's failed sync items for a folder — the files it tried to pull and
+ * couldn't, each with Syncthing's own error string. `error` is set (and
+ * `items` empty) when that node's list couldn't be read at all.
+ */
+export interface NodeFailedItems {
+  deviceId: DeviceId
+  items: { path: string; error: string }[]
+  error?: string
+}
+
+/**
+ * Every sharing node's failed items for one folder — on-demand, like
+ * FolderIgnores: the model carries only the per-share `failedItems` count,
+ * and the paths/errors are fetched when a folder is inspected.
+ */
+export interface FolderFailedItems {
+  folderId: FolderId
+  nodes: NodeFailedItems[]
+}
+
+/**
+ * One node's conflict copies for a folder — files Syncthing renamed to
+ * `*.sync-conflict-<date>-<time>-<device>*` when both sides changed them.
+ * Found by walking the node's own view of the folder tree, so `paths` are
+ * folder-relative. `error` is set (and `paths` empty) when the walk failed.
+ */
+export interface NodeConflicts {
+  deviceId: DeviceId
+  paths: string[]
+  error?: string
+}
+
+/** Every sharing node's conflict copies for one folder — on-demand; a tree walk is far too heavy for the aggregated model. */
+export interface FolderConflicts {
+  folderId: FolderId
+  nodes: NodeConflicts[]
 }
 
 /**

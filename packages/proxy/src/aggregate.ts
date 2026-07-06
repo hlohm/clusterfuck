@@ -34,6 +34,7 @@ export interface NodeSnapshot {
     state: FolderState
     completionPct?: number
     outOfSyncItems?: number
+    failedItems?: number
     errorMessage?: string
     /** This node's own file-versioning config for the folder (normalized; see snapshot.ts). */
     versioning?: FolderVersioning
@@ -141,6 +142,7 @@ export function aggregateCluster(
         state: f.state,
         completionPct: f.completionPct,
         outOfSyncItems: f.outOfSyncItems,
+        failedItems: f.failedItems,
         errorMessage: f.errorMessage,
         versioning: f.versioning,
         advanced: f.advanced,

@@ -101,6 +101,17 @@ export interface ConnectionsResponse {
   connections: Record<string, ConnectionInfo>
 }
 
+/**
+ * One entry of GET /rest/db/browse's nested tree. `type` is
+ * FILE_INFO_TYPE_FILE / FILE_INFO_TYPE_DIRECTORY (plus symlink variants);
+ * directories carry `children`.
+ */
+export interface DbBrowseItem {
+  name: string
+  type: string
+  children?: DbBrowseItem[]
+}
+
 export interface DbStatusResponse {
   /**
    * Folder service state. Known values include 'idle', 'scanning',
@@ -116,6 +127,8 @@ export interface DbStatusResponse {
   needItems: number
   globalFiles: number
   errors: number
+  /** Count of items the last pull failed on — newer Syncthings report it here; older ones only in `errors`. */
+  pullErrors?: number
 }
 
 /**
