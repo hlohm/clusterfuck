@@ -20,6 +20,7 @@ export const smallMirror: ClusterModel = {
       deviceId: 'device-alpha',
       type: 'sendreceive',
       state: 'idle',
+      versioning: { type: 'staggered', params: { maxAge: String(30 * 86400) } },
       sharedWith: ['device-alpha', 'device-bravo', 'device-charlie'],
     },
     {
@@ -27,6 +28,7 @@ export const smallMirror: ClusterModel = {
       deviceId: 'device-bravo',
       type: 'sendreceive',
       state: 'idle',
+      versioning: { type: 'simple', params: { keep: '5', cleanoutDays: '0' } },
       sharedWith: ['device-alpha', 'device-bravo', 'device-charlie'],
     },
     {

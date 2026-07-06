@@ -486,6 +486,30 @@ describe('ClusterStateManager mutations', () => {
     expect(model.shares.find((s) => s.deviceId === 'DEVICE-A')?.type).toBe('sendonly')
   })
 
+  it('sets folder versioning, mapping "none" back to Syncthing\'s empty-string type', async () => {
+    const { manager, calls } = installFakeCluster()
+    await refreshed(manager)
+    calls.length = 0
+
+    await manager.setFolderVersioning('DEVICE-A', 'f1', {
+      type: 'simple',
+      params: { keep: '5', cleanoutDays: '0' },
+    })
+    let put = calls.find((c) => c.method === 'PUT' && c.url === '/rest/config/folders/f1')
+    let folder = JSON.parse(put!.body!) as { versioning: { type: string; params: Record<string, string> } }
+    expect(folder.versioning.type).toBe('simple')
+    expect(folder.versioning.params).toEqual({ keep: '5', cleanoutDays: '0' })
+    expect(put!.host).toBe('a.test')
+
+    calls.length = 0
+    await manager.setFolderVersioning('DEVICE-A', 'f1', { type: 'none', params: {} })
+    put = calls.find((c) => c.method === 'PUT' && c.url === '/rest/config/folders/f1')
+    folder = JSON.parse(put!.body!) as { versioning: { type: string; params: Record<string, string> } }
+    // 'none' is our label; Syncthing's own "versioning off" is the empty string.
+    expect(folder.versioning.type).toBe('')
+    expect(folder.versioning.params).toEqual({})
+  })
+
   it('surfaces a pending device merged across nodes, and a pending folder scoped to the node it was offered on', async () => {
     const { manager } = installFakeCluster()
     await refreshed(manager)

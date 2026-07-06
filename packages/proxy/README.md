@@ -63,6 +63,15 @@ Listens on `PORT` (default `4000`). Routes:
   immediate rescan of that folder on that node.
 - `PATCH /api/folders/:folderId/devices/:deviceId` body
   `{ "type": "sendonly" }` — changes that folder's type on that node.
+- `PUT /api/folders/:folderId/devices/:deviceId/versioning` body
+  `{ "type": "simple", "params": { "keep": "5" }, "cleanupIntervalS": 3600 }`
+  (`params`/`cleanupIntervalS` optional) — sets that folder's file-versioning
+  config on that node. `type` is one of `none`, `trashcan`, `simple`,
+  `staggered`, `external` (`none` maps to Syncthing's own "versioning off");
+  `params` are Syncthing's raw string knobs, kept verbatim (e.g. `keep`,
+  `cleanoutDays`, `maxAge` in *seconds* for staggered, `command` for external).
+  `fsPath`/`fsType` and other fields we don't model are preserved on the
+  round-trip.
 - `POST /api/folders/:folderId/devices/:deviceId/shares` body
   `{ "deviceId": "...", "encryptionPassword": "..." }` (`encryptionPassword`
   optional) — adds a device to that folder's share list on that node. Set

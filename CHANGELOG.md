@@ -4,6 +4,23 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.4.3]
+
+- Folder versioning config (ROADMAP.md Phase 5 Folder management): view and set
+  each folder's file-versioning strategy — `none`/`trashcan`/`simple`/
+  `staggered`/`external` — per node, since a folder can be versioned differently
+  on each node that shares it. `Share` gains `versioning?: FolderVersioning`
+  (`{ type, params, cleanupIntervalS? }`), populated first-hand from each node's
+  `/rest/config` (`none` is our normalization of Syncthing's own empty-string
+  "versioning off"); `params` are Syncthing's raw string knobs kept verbatim.
+  New mutation route `PUT /api/folders/:folderId/devices/:deviceId/versioning`,
+  a GET-modify-PUT that preserves `fsPath`/`fsType` and other fields we don't
+  model. The detail panel's per-share actions gain a Versioning editor (type
+  selector + the knob subset Syncthing's own GUI exposes per type; staggered's
+  `maxAge` is edited in days and converted to Syncthing's seconds), plus a
+  read-only one-line summary. No auth added — same trust model as the other
+  mutation routes.
+
 ## [0.4.2]
 
 - Transfer totals (ROADMAP.md Phase 5 Observability): cumulative bytes

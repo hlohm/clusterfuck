@@ -1,12 +1,24 @@
-import type { FolderState, ServiceHealth } from '@clusterfuck/shared'
+import { isVersioningType, type FolderState, type FolderVersioning, type ServiceHealth } from '@clusterfuck/shared'
 import type { NodeSnapshot } from './aggregate.ts'
 import type { SyncthingClient } from './syncthing/client.ts'
+import type { ConfigFolderVersioning } from './syncthing/types.ts'
 
 /** connectionServiceStatus/discoveryStatus are both `{ [name]: { error: string | null } }` — roll each up to a count plus the actual failures, matching folder health's "roll up, keep detail on selection" convention. */
 function summarizeServiceStatus(status: Record<string, { error: string | null }> | undefined): ServiceHealth {
   const entries = Object.values(status ?? {})
   const errors = entries.flatMap((e) => (e.error ? [e.error] : []))
   return { total: entries.length, ok: entries.length - errors.length, errors }
+}
+
+/**
+ * Normalizes Syncthing's raw versioning block into the model shape. Always
+ * returns a value (Syncthing's empty-string type — versioning off — becomes
+ * `none`), so a live share always carries its current versioning config for
+ * the detail panel and editor to read.
+ */
+function mapVersioning(v: ConfigFolderVersioning | undefined): FolderVersioning {
+  const type = isVersioningType(v?.type) ? v.type : 'none'
+  return { type, params: v?.params ?? {}, cleanupIntervalS: v?.cleanupIntervalS }
 }
 
 function mapFolderState(dbState: string, hasErrors: boolean, needFiles: number): FolderState {
@@ -69,6 +81,7 @@ export async function fetchNodeSnapshot(
           globalFiles > 0 ? Math.round(((globalFiles - needFiles) / globalFiles) * 100) : 100,
         outOfSyncItems: needFiles > 0 ? needFiles : undefined,
         errorMessage: hasErrors ? errors!.errors![0]!.error : undefined,
+        versioning: mapVersioning(f.versioning),
         sharedWith: f.devices.map((d) => d.deviceID),
       }
     }),

@@ -31,9 +31,9 @@ manage devices and folders across every node from one place.
 - **Live, read-only cluster state** aggregated from every node and pushed to the
   browser over Server-Sent Events.
 - **Management actions** (against a live cluster): pause/resume devices and
-  folders, change folder type, rescan, add/remove shares, and create new
-  devices and folders across a chosen set of nodes — each behind a confirmation
-  or preview.
+  folders, change folder type, set file-versioning (trashcan/simple/staggered/
+  external) per node, rescan, add/remove shares, and create new devices and
+  folders across a chosen set of nodes — each behind a confirmation or preview.
 
 See **[ROADMAP.md](ROADMAP.md)** for what's shipped and what's planned (the goal
 is cluster-wide parity with the Syncthing web GUI).

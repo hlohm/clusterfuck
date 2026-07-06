@@ -9,6 +9,7 @@ import type {
   FolderId,
   FolderState,
   FolderType,
+  FolderVersioning,
   PendingDevice,
   PendingFolder,
   Share,
@@ -33,6 +34,8 @@ export interface NodeSnapshot {
     completionPct?: number
     outOfSyncItems?: number
     errorMessage?: string
+    /** This node's own file-versioning config for the folder (normalized; see snapshot.ts). */
+    versioning?: FolderVersioning
     /** Every device this node's own config shares this folder with (incl. itself). */
     sharedWith: DeviceId[]
   }[]
@@ -136,6 +139,7 @@ export function aggregateCluster(
         completionPct: f.completionPct,
         outOfSyncItems: f.outOfSyncItems,
         errorMessage: f.errorMessage,
+        versioning: f.versioning,
         sharedWith: f.sharedWith,
       })
     }
