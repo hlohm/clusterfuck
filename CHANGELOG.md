@@ -4,6 +4,19 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.4.14]
+
+- **Cluster-wide bandwidth limits** (ROADMAP.md Phase 5 Cluster operations):
+  a Bandwidth-limits card on the Overview shows each node's global
+  send/receive caps (loaded on demand from `/rest/config/options` — not
+  model state) and sets them on one node ("Apply here") or every registered
+  node in one confirmation-gated action. New routes `GET`/`PUT
+  /api/bandwidth` and `PUT /api/nodes/:deviceId/bandwidth`; element-scoped
+  PATCH keeps every other global option untouched. These are the node-global
+  caps — per-device limits shipped in 0.4.10's device options editor.
+  Closes out the Phase 5 "Cluster operations" list except upgrade
+  orchestration.
+
 ## [0.4.13]
 
 - **Config drift detection** (ROADMAP.md Phase 5 Cluster operations) — the

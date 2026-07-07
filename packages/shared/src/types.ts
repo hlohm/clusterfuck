@@ -267,6 +267,24 @@ export interface DeviceOptionsView {
 }
 
 /**
+ * One registered node's global (whole-process) bandwidth limits, in KiB/s;
+ * 0 = unlimited. Distinct from DeviceOptions' per-device limits: these cap
+ * the node's total traffic. `error` set when the node couldn't be read.
+ */
+export interface NodeBandwidthLimits {
+  /** The registered node's own device ID. */
+  nodeId: DeviceId
+  maxSendKbps?: number
+  maxRecvKbps?: number
+  error?: string
+}
+
+/** Every registered node's global bandwidth limits — on-demand, not part of ClusterModel. */
+export interface BandwidthLimitsView {
+  nodes: NodeBandwidthLimits[]
+}
+
+/**
  * One node's `.stignore` patterns for a folder — the raw lines, not the
  * expanded form. `error` is set (and `patterns` empty) when that node's
  * patterns couldn't be read.

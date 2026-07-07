@@ -1,4 +1,5 @@
 import type {
+  BandwidthLimitsView,
   DeviceOptions,
   DeviceOptionsView,
   FolderAdvancedOptions,
@@ -50,6 +51,20 @@ export function setAllFoldersPaused(paused: boolean): Promise<void> {
 /** Cluster-wide: triggers a rescan of every folder on every registered node. */
 export function rescanAllFolders(): Promise<void> {
   return call('POST', '/api/folders/all/rescan')
+}
+
+/** Every registered node's global bandwidth limits (KiB/s, 0 = unlimited). */
+export function getBandwidthLimits(): Promise<BandwidthLimitsView> {
+  return getJson('/api/bandwidth')
+}
+
+/** Sets global bandwidth limits on one node, or on every registered node when nodeId is undefined. */
+export function setBandwidthLimits(
+  nodeId: string | undefined,
+  limits: { maxSendKbps: number; maxRecvKbps: number },
+): Promise<void> {
+  const path = nodeId === undefined ? '/api/bandwidth' : `/api/nodes/${encodeURIComponent(nodeId)}/bandwidth`
+  return call('PUT', path, limits)
 }
 
 /** Restarts (or shuts down) one registered node's Syncthing. Shutdown does not come back on its own. */

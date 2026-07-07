@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { ClusterModel, Device, PendingDevice, Share } from '@clusterfuck/shared'
+import type { BandwidthLimitsView, ClusterModel, Device, PendingDevice, Share } from '@clusterfuck/shared'
 import {
   clusterHealth,
   clusterTransferTotals,
@@ -100,6 +100,121 @@ function ClusterActions() {
             </div>
           </div>
         </div>
+        {error && <div className="detail-panel__error cluster-actions__error">{error}</div>}
+      </article>
+    </section>
+  )
+}
+
+/** KiB/s field: integer >= 0, 0 meaning unlimited — mirrors the proxy's validation. */
+function validKbpsField(raw: string): boolean {
+  const n = Number(raw)
+  return raw.trim() !== '' && Number.isInteger(n) && n >= 0
+}
+
+/**
+ * Global (whole-node) bandwidth caps, viewed per node and set either on one
+ * node or cluster-wide in one action. Loaded on demand — the limits live in
+ * each node's /rest/config/options, not in the model. Per-device limits are
+ * a different knob (the device detail's options editor).
+ */
+function BandwidthSection({ cluster }: { cluster: ClusterModel }) {
+  const { busy, error, run } = useAsyncAction()
+  const [view, setView] = useState<BandwidthLimitsView>()
+  const [loading, setLoading] = useState(false)
+  const [loadError, setLoadError] = useState<string>()
+  const [send, setSend] = useState('0')
+  const [recv, setRecv] = useState('0')
+
+  const deviceById = new Map(cluster.devices.map((d) => [d.id, d]))
+  const valid = validKbpsField(send) && validKbpsField(recv)
+  const limits = () => ({ maxSendKbps: Number(send), maxRecvKbps: Number(recv) })
+
+  const load = () => {
+    setLoading(true)
+    setLoadError(undefined)
+    mutations
+      .getBandwidthLimits()
+      .then(setView)
+      .catch((err: unknown) => setLoadError(err instanceof Error ? err.message : 'Failed to load'))
+      .finally(() => setLoading(false))
+  }
+
+  return (
+    <section className="overview__section">
+      <article className="folder-card">
+        <header className="folder-card__header">
+          <h4>Bandwidth limits</h4>
+        </header>
+        <div className="cluster-actions__body">
+          {!view ? (
+            <div className="detail-panel__action-row">
+              <button disabled={loading} onClick={load}>
+                {loading ? 'Loading…' : 'Load bandwidth limits'}
+              </button>
+            </div>
+          ) : (
+            <>
+              {view.nodes.map((node) => (
+                <div className="cluster-actions__row" key={node.nodeId}>
+                  <span className="cluster-actions__label">
+                    {deviceById.get(node.nodeId)?.name ?? node.nodeId}
+                  </span>
+                  {node.error !== undefined ? (
+                    <span className="detail-panel__error">{node.error}</span>
+                  ) : (
+                    <div className="detail-panel__action-row">
+                      <span>
+                        ↑ {node.maxSendKbps ? `${node.maxSendKbps} KiB/s` : 'unlimited'} / ↓{' '}
+                        {node.maxRecvKbps ? `${node.maxRecvKbps} KiB/s` : 'unlimited'}
+                      </span>
+                      <button
+                        disabled={busy || !valid}
+                        onClick={() =>
+                          run(
+                            `Set ${deviceById.get(node.nodeId)?.name ?? node.nodeId}'s global limits to ↑${send} / ↓${recv} KiB/s (0 = unlimited)?`,
+                            () => mutations.setBandwidthLimits(node.nodeId, limits()).then(load),
+                          )
+                        }
+                      >
+                        Apply here
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+              <div className="cluster-actions__row">
+                <span className="cluster-actions__label">Set (KiB/s)</span>
+                <div className="detail-panel__action-row">
+                  <label>
+                    ↑
+                    <input type="number" min={0} value={send} disabled={busy} onChange={(e) => setSend(e.target.value)} />
+                  </label>
+                  <label>
+                    ↓
+                    <input type="number" min={0} value={recv} disabled={busy} onChange={(e) => setRecv(e.target.value)} />
+                  </label>
+                  <button
+                    className="detail-panel__button--warning"
+                    disabled={busy || !valid}
+                    onClick={() =>
+                      run(
+                        `Set EVERY registered node's global limits to ↑${send} / ↓${recv} KiB/s (0 = unlimited)?`,
+                        () => mutations.setBandwidthLimits(undefined, limits()).then(load),
+                      )
+                    }
+                  >
+                    Apply to all nodes
+                  </button>
+                  <button className="detail-panel__link-button" disabled={loading} onClick={load}>
+                    {loading ? 'Reloading…' : 'Reload'}
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+        {loadError && <div className="detail-panel__error cluster-actions__error">{loadError}</div>}
         {error && <div className="detail-panel__error cluster-actions__error">{error}</div>}
       </article>
     </section>
@@ -432,6 +547,7 @@ export function OverviewView({ cluster, onOpenShare, isLive }: OverviewViewProps
       </div>
 
       {isLive && <ClusterActions />}
+      {isLive && <BandwidthSection cluster={cluster} />}
 
       {health.attention.length > 0 && (
         <section className="overview__section">

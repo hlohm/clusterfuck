@@ -159,6 +159,15 @@ Listens on `PORT` (default `4000`). Routes:
   every registered node that has it.
 - `POST /api/folders/all/rescan` — triggers a rescan of every folder on every
   registered node (same batch/reporting shape as pause all).
+- `GET /api/bandwidth` — every registered node's *global* bandwidth caps:
+  `{ "nodes": [{ "nodeId": "...", "maxSendKbps": 0, "maxRecvKbps": 0 }] }`
+  (KiB/s, 0 = unlimited; per-node `error` captured). Distinct from the
+  per-device limits in the device options.
+- `PUT /api/bandwidth` body `{ "maxSendKbps": 0, "maxRecvKbps": 0 }` — sets
+  those caps on **every** registered node; `PUT
+  /api/nodes/:deviceId/bandwidth` (same body) on one node. Integers ≥ 0;
+  element-scoped PATCH of `/rest/config/options`, all other global options
+  untouched.
 - `POST /api/nodes/:deviceId/restart` / `.../shutdown` — restarts or shuts
   down that one node's Syncthing process. Restart comes back on its own;
   shutdown does **not** (start it on the machine itself). The connection

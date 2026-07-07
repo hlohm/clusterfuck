@@ -97,6 +97,12 @@ export interface ConfigResponse {
   folders: ConfigFolder[]
 }
 
+/** Subset of GET/PATCH /rest/config/options — the node-global knobs we touch. KiB/s; 0 = unlimited. */
+export interface ConfigOptions {
+  maxSendKbps?: number
+  maxRecvKbps?: number
+}
+
 export interface ConnectionInfo {
   connected: boolean
   paused: boolean

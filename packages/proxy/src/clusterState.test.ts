@@ -93,6 +93,12 @@ function installFakeCluster(
     if (url.pathname === '/rest/db/scan' && method === 'POST') {
       return jsonResponse({})
     }
+    if (url.pathname === '/rest/config/options' && method === 'GET') {
+      return jsonResponse({ maxSendKbps: 1000, maxRecvKbps: 0, listenAddresses: ['default'] })
+    }
+    if (url.pathname === '/rest/config/options' && method === 'PATCH') {
+      return jsonResponse({})
+    }
     if (
       (url.pathname === '/rest/system/restart' || url.pathname === '/rest/system/shutdown') &&
       method === 'POST'
@@ -623,6 +629,34 @@ describe('ClusterStateManager mutations', () => {
     // The GET-modify-PUT must carry the untouched fields through.
     expect(folder.id).toBe('f1')
     expect(folder.devices).toEqual([{ deviceID: 'DEVICE-A' }, { deviceID: 'DEVICE-B' }])
+  })
+
+  it("reads every node's global bandwidth limits, keyed by its own device ID", async () => {
+    const { manager } = installFakeCluster()
+    await refreshed(manager)
+
+    const view = await manager.getBandwidthLimits()
+
+    expect(view.nodes).toEqual([
+      { nodeId: 'DEVICE-A', maxSendKbps: 1000, maxRecvKbps: 0 },
+      { nodeId: 'DEVICE-B', maxSendKbps: 1000, maxRecvKbps: 0 },
+    ])
+  })
+
+  it('sets bandwidth limits on one node or on every node, via the options PATCH', async () => {
+    const { manager, calls } = installFakeCluster()
+    await refreshed(manager)
+    calls.length = 0
+
+    await manager.setBandwidthLimits('DEVICE-B', { maxSendKbps: 500, maxRecvKbps: 250 })
+    let patches = calls.filter((c) => c.method === 'PATCH' && c.url === '/rest/config/options')
+    expect(patches.map((c) => c.host)).toEqual(['b.test'])
+    expect(JSON.parse(patches[0]!.body!)).toEqual({ maxSendKbps: 500, maxRecvKbps: 250 })
+
+    calls.length = 0
+    await manager.setBandwidthLimits(undefined, { maxSendKbps: 0, maxRecvKbps: 0 })
+    patches = calls.filter((c) => c.method === 'PATCH' && c.url === '/rest/config/options')
+    expect(patches.map((c) => c.host).sort()).toEqual(['a.test', 'b.test'])
   })
 
   it('rescans every folder on every registered node in one batch', async () => {

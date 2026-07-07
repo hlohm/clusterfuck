@@ -191,7 +191,10 @@ tabs. Mapped from the GUI's actual surface, in priority order.
       genuinely broken all-sendonly / all-receiveonly cases, since pairwise
       type differences are normal topology; `Share` gained `label` (each
       node's own label) to make label drift detectable at all
-- [ ] Bandwidth limits cluster-wide
+- [x] Bandwidth limits cluster-wide — each node's *global* send/receive caps
+      (per-device caps live in the device-options editor), viewed per node
+      and settable on one node or every node in one action, via the
+      element-scoped options PATCH
 
 ### Observability
 
