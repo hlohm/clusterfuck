@@ -4,7 +4,10 @@ import type { ClusterModel } from '@clusterfuck/shared'
  * Exercises states the other fixtures don't hit organically: a paused
  * device, a disconnected device, a folder in error, and an out-of-sync
  * sendonly share (out-of-sync by design, not a bug). Also includes a second
- * receiveencrypted pairing so the encrypted-relay case isn't a one-off.
+ * receiveencrypted pairing so the encrypted-relay case isn't a one-off, and
+ * two deliberate config-drift examples on the ledger folder (a divergent
+ * label on mirror, and vault not sharing back with mirror/satellite) so the
+ * Overview's drift section is explorable without a live cluster.
  */
 export const edgeCases: ClusterModel = {
   id: 'edge-cases',
@@ -68,6 +71,8 @@ export const edgeCases: ClusterModel = {
     {
       folderId: 'ledger',
       deviceId: 'device-mirror',
+      // Deliberate label drift: mirror calls the folder something else.
+      label: 'Ledger (main)',
       type: 'sendonly',
       state: 'out-of-sync',
       outOfSyncItems: 12,
@@ -95,7 +100,9 @@ export const edgeCases: ClusterModel = {
       deviceId: 'device-vault',
       type: 'receiveonly',
       state: 'paused',
-      sharedWith: ['device-origin', 'device-mirror', 'device-satellite', 'device-vault'],
+      // Deliberate asymmetry: mirror and satellite share with vault, but
+      // vault only shares back with origin — two drift warnings.
+      sharedWith: ['device-origin', 'device-vault'],
     },
 
     // coldstore: mutual encrypted relay between two untrusted peers

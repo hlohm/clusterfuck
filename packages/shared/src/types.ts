@@ -115,6 +115,13 @@ export interface Folder {
 export interface Share {
   folderId: FolderId
   deviceId: DeviceId
+  /**
+   * This node's own label for the folder. `Folder.label` is just a
+   * representative pick; keeping each node's value here is what makes label
+   * drift detectable. Live aggregation always populates it; fixtures may
+   * omit it (treated as agreeing with `Folder.label`).
+   */
+  label?: string
   type: FolderType
   state: FolderState
   completionPct?: number
