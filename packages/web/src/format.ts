@@ -16,6 +16,11 @@ export function formatDuration(seconds: number): string {
   return `${Math.floor(seconds)}s`
 }
 
+/** A live transfer rate — the byte formatting with a per-second suffix. */
+export function formatRate(bytesPerSecond: number): string {
+  return `${formatBytes(bytesPerSecond)}/s`
+}
+
 const BYTE_UNITS = ['B', 'KB', 'MB', 'GB', 'TB'] as const
 
 export function formatBytes(bytes: number): string {

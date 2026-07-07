@@ -206,10 +206,12 @@ tabs. Mapped from the GUI's actual surface, in priority order.
 - [x] Transfer totals, per link/device/cluster-aggregate — cumulative bytes
       in/out since each connection's current session started (resets on
       disconnect/restart, same as Syncthing's own counters)
-- [ ] Transfer *rates* (a live bytes/sec, not just the cumulative totals
-      above) — deferred: Syncthing's REST API only exposes cumulative
-      counters, so a rate needs stateful sampling across poll cycles, which
-      is a bigger, separate feature from the totals above
+- [x] Transfer *rates* (a live bytes/sec, not just the cumulative totals
+      above) — the proxy samples each connection's cumulative counters
+      across refresh cycles and derives `Connection.inBps/outBps`
+      (sub-2s windows carry the previous rate forward to avoid event-storm
+      noise; counter resets read as 0, disconnected links have no rate).
+      Shown per link and summed on the device panel and Overview tile
 - [ ] Recent-changes feed and event log, merged across nodes
 - [ ] Completion history/sparklines on the overview tiles
 

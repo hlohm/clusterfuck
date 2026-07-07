@@ -31,7 +31,7 @@ import { StatusBadge } from '../views/StatusBadge'
 import { useAsyncAction } from '../data/useAsyncAction'
 import * as mutations from '../data/mutations'
 import { PROXY_BASE } from '../data/proxyBase'
-import { formatBytes, formatDuration } from '../format'
+import { formatBytes, formatDuration, formatRate } from '../format'
 import {
   describeVersioning,
   formFieldsFor,
@@ -110,6 +110,9 @@ function ConnectionsSection({
   deviceById: Map<string, Device>
 }) {
   const totals: TransferTotals = sumTransfer(connections)
+  const outBps = connections.reduce((sum, c) => sum + (c.outBps ?? 0), 0)
+  const inBps = connections.reduce((sum, c) => sum + (c.inBps ?? 0), 0)
+  const hasRates = connections.some((c) => c.inBps !== undefined || c.outBps !== undefined)
   return (
     <>
       <h4>Connections ({connections.length})</h4>
@@ -119,6 +122,12 @@ function ConnectionsSection({
         >
           <strong>Total transfer:</strong> ↑{formatBytes(totals.outBytesTotal)} / ↓
           {formatBytes(totals.inBytesTotal)}
+          {hasRates && (
+            <span className="connections-list__rate">
+              {' '}
+              · now ↑{formatRate(outBps)} / ↓{formatRate(inBps)}
+            </span>
+          )}
         </p>
       )}
       <ul className="connections-list">
@@ -128,6 +137,12 @@ function ConnectionsSection({
             <span className="connections-list__detail">
               {c.connected ? 'Connected' : 'Disconnected'} — ↑{formatBytes(c.outBytesTotal)} / ↓
               {formatBytes(c.inBytesTotal)}
+              {c.outBps !== undefined && (
+                <span className="connections-list__rate">
+                  {' '}
+                  · ↑{formatRate(c.outBps)} / ↓{formatRate(c.inBps ?? 0)}
+                </span>
+              )}
             </span>
           </li>
         ))}

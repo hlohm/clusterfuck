@@ -920,6 +920,10 @@ button {
   color: var(--text);
 }
 
+.connections-list__rate {
+  color: var(--accent);
+}
+
 .drift-badge {
   flex: 0 0 auto;
   font-size: 13px;

@@ -173,6 +173,14 @@ export interface Connection {
   connected: boolean
   inBytesTotal: number
   outBytesTotal: number
+  /**
+   * Live transfer rate in bytes/sec, estimated by the proxy from the change
+   * in the cumulative totals between refresh cycles (Syncthing's REST API
+   * only exposes the counters). Absent until two samples far enough apart
+   * exist, and absent while disconnected; 0 after a counter reset.
+   */
+  inBps?: number
+  outBps?: number
 }
 
 /**

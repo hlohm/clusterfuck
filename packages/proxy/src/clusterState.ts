@@ -11,6 +11,7 @@ import type {
 } from '@clusterfuck/shared'
 import { aggregateCluster, type NodeSnapshot } from './aggregate.ts'
 import { collectConflictPaths } from './conflicts.ts'
+import { computeRates, type RateSamples } from './rates.ts'
 import { fetchNodeSnapshot } from './snapshot.ts'
 import { saveNodeConfig } from './config.ts'
 import { SyncthingClient, type NodeConfig } from './syncthing/client.ts'
@@ -68,6 +69,8 @@ export class ClusterStateManager {
   private stopped = false
   private refreshInFlight: Promise<void> | undefined
   private mutationChain: Promise<void> = Promise.resolve()
+  /** Last per-connection counter readings, for the transfer-rate estimation (see rates.ts). */
+  private rateSamples: RateSamples = new Map()
 
   constructor(
     nodeConfigs: NodeConfig[],
@@ -266,8 +269,10 @@ export class ClusterStateManager {
   }
 
   private applyModel(snapshots: NodeSnapshot[], model: ClusterModel): void {
+    const rated = computeRates(model.connections, this.rateSamples, Date.now())
+    this.rateSamples = rated.samples
     this.snapshots = snapshots
-    this.model = model
+    this.model = { ...model, connections: rated.connections }
     for (const fn of this.subscribers) fn(this.model)
   }
 

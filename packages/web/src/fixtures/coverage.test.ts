@@ -64,6 +64,13 @@ describe('fixture clusters', () => {
     expect(advanced.some((a) => !a.fsWatcherEnabled)).toBe(true)
   })
 
+  it('include at least one connection with a live transfer rate', () => {
+    const hasRate = FIXTURE_CLUSTERS.some((c) =>
+      c.connections.some((conn) => conn.inBps !== undefined && conn.outBps !== undefined),
+    )
+    expect(hasRate).toBe(true)
+  })
+
   it('include at least one share with failed items', () => {
     const hasFailed = FIXTURE_CLUSTERS.some((c) => c.shares.some((s) => (s.failedItems ?? 0) > 0))
     expect(hasFailed).toBe(true)

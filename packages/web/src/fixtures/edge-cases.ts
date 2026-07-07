@@ -123,7 +123,9 @@ export const edgeCases: ClusterModel = {
     },
   ],
   connections: [
-    { deviceId: 'device-origin', peerId: 'device-mirror', connected: true, inBytesTotal: 128_500_000, outBytesTotal: 340_200_000 },
+    // A live link mid-transfer: cumulative totals plus a current rate (the
+    // proxy estimates inBps/outBps from counter deltas between refreshes).
+    { deviceId: 'device-origin', peerId: 'device-mirror', connected: true, inBytesTotal: 128_500_000, outBytesTotal: 340_200_000, inBps: 356_000, outBps: 1_240_000 },
     // A disconnected peer's totals are 0, not stale nonzero data: Syncthing's
     // own connection stats only populate while a connection is live (see
     // Connection's doc comment) — a disconnected row keeping old bytes isn't
