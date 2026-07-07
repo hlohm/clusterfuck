@@ -211,6 +211,20 @@ async function handleRequest(
       return
     }
 
+    // GET /api/upgrade — the current/most recent upgrade sweep (null before
+    // the first). POST /api/upgrade — start a sweep: every registered node,
+    // one at a time, health-checked; returns immediately, poll the GET.
+    if (parts.length === 2 && parts[0] === 'api' && parts[1] === 'upgrade') {
+      if (method === 'GET') {
+        sendJson(res, 200, { run: manager.getUpgradeRun() ?? null })
+        return
+      }
+      if (method === 'POST') {
+        sendJson(res, 200, { run: manager.startUpgradeAll() })
+        return
+      }
+    }
+
     // GET /api/bandwidth — every registered node's global send/receive caps.
     // PUT /api/bandwidth — set the same caps on every registered node;
     // PUT /api/nodes/:deviceId/bandwidth — on one node.

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type {
   BandwidthLimitsView,
   ClusterModel,
@@ -6,6 +6,8 @@ import type {
   PendingDevice,
   RecentChangesView,
   Share,
+  UpgradeNodeStatus,
+  UpgradeRun,
 } from '@clusterfuck/shared'
 import {
   clusterHealth,
@@ -219,6 +221,101 @@ function BandwidthSection({ cluster }: { cluster: ClusterModel }) {
                 </div>
               </div>
             </>
+          )}
+        </div>
+        {loadError && <div className="detail-panel__error cluster-actions__error">{loadError}</div>}
+        {error && <div className="detail-panel__error cluster-actions__error">{error}</div>}
+      </article>
+    </section>
+  )
+}
+
+const UPGRADE_STATUS_LABELS: Record<UpgradeNodeStatus, string> = {
+  pending: 'queued',
+  checking: 'checking…',
+  'up-to-date': 'up to date',
+  upgrading: 'upgrading…',
+  done: 'upgraded',
+  failed: 'FAILED',
+  skipped: 'skipped',
+}
+
+/**
+ * Cluster upgrade orchestration: every node, strictly one at a time, each
+ * health-checked back before the next starts (a failure aborts the sweep).
+ * The run lives on the proxy; this card starts it and polls while it runs.
+ */
+function UpgradeSection({ cluster }: { cluster: ClusterModel }) {
+  const { busy, error, run: confirmRun } = useAsyncAction()
+  const [run, setRun] = useState<UpgradeRun | null>(null)
+  const [loaded, setLoaded] = useState(false)
+  const [loadError, setLoadError] = useState<string>()
+
+  const deviceById = new Map(cluster.devices.map((d) => [d.id, d]))
+
+  const load = () => {
+    mutations
+      .getUpgradeRun()
+      .then((res) => {
+        setRun(res.run)
+        setLoaded(true)
+        setLoadError(undefined)
+      })
+      .catch((err: unknown) => setLoadError(err instanceof Error ? err.message : 'Failed to load'))
+  }
+
+  // While a sweep is running, keep the per-node statuses fresh.
+  useEffect(() => {
+    if (!run?.running) return
+    const timer = setInterval(load, 3000)
+    return () => clearInterval(timer)
+  }, [run?.running])
+
+  return (
+    <section className="overview__section">
+      <article className="folder-card">
+        <header className="folder-card__header">
+          <h4>Upgrades</h4>
+          <button className="detail-panel__link-button" onClick={load}>
+            {loaded ? 'Reload' : 'Load status'}
+          </button>
+        </header>
+        <div className="cluster-actions__body">
+          <div className="detail-panel__action-row">
+            <button
+              className="detail-panel__button--warning"
+              disabled={busy || run?.running === true}
+              onClick={() =>
+                confirmRun(
+                  'Upgrade Syncthing on every registered node, one node at a time? Each node restarts during its upgrade; a node that fails to come back aborts the rest.',
+                  () => mutations.startUpgradeAll().then(load),
+                )
+              }
+            >
+              {run?.running ? 'Upgrade in progress…' : 'Upgrade all nodes'}
+            </button>
+          </div>
+          {run && (
+            <ul className="upgrade-run">
+              {run.nodes.map((node) => (
+                <li key={node.nodeId} className={node.status === 'failed' ? 'detail-panel__error' : undefined}>
+                  <strong>{deviceById.get(node.nodeId)?.name ?? node.nodeId}</strong>{' '}
+                  {UPGRADE_STATUS_LABELS[node.status]}
+                  {node.fromVersion &&
+                    node.toVersion &&
+                    node.fromVersion !== node.toVersion &&
+                    ` (${node.fromVersion} → ${node.toVersion})`}
+                  {node.detail && <span className="recent-changes__detail"> — {node.detail}</span>}
+                </li>
+              ))}
+            </ul>
+          )}
+          {run && !run.running && (
+            <p className="recent-changes__empty">
+              {run.aborted
+                ? 'Run aborted — fix the failed node before retrying.'
+                : `Finished ${run.finishedAt ? new Date(run.finishedAt).toLocaleTimeString() : ''}`}
+            </p>
           )}
         </div>
         {loadError && <div className="detail-panel__error cluster-actions__error">{loadError}</div>}
@@ -623,6 +720,7 @@ export function OverviewView({ cluster, onOpenShare, isLive }: OverviewViewProps
 
       {isLive && <ClusterActions />}
       {isLive && <BandwidthSection cluster={cluster} />}
+      {isLive && <UpgradeSection cluster={cluster} />}
       {isLive && <RecentChangesSection cluster={cluster} />}
 
       {health.attention.length > 0 && (

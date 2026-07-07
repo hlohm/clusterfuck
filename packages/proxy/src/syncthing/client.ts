@@ -13,6 +13,7 @@ import type {
   SyncthingEvent,
   SystemStatusResponse,
   SystemVersionResponse,
+  UpgradeCheckResponse,
 } from './types.ts'
 
 export interface NodeConfig {
@@ -160,6 +161,16 @@ export class SyncthingClient {
 
   rescanFolder(folderId: string, signal?: AbortSignal): Promise<void> {
     return this.send('POST', `/rest/db/scan?folder=${encodeURIComponent(folderId)}`, undefined, signal)
+  }
+
+  /** Whether a newer Syncthing release exists for this node. */
+  upgradeCheck(signal?: AbortSignal): Promise<UpgradeCheckResponse> {
+    return this.get('/rest/system/upgrade', signal)
+  }
+
+  /** Downloads and installs the newest release, then restarts. Only works for upgrade-capable builds (not distro packages). */
+  upgradePerform(signal?: AbortSignal): Promise<void> {
+    return this.send('POST', '/rest/system/upgrade', undefined, signal)
   }
 
   /** Restarts this node's Syncthing process (it comes back on its own). */

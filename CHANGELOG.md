@@ -4,6 +4,21 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.4.17]
+
+- **Upgrade orchestration** (ROADMAP.md Phase 5 Cluster operations — the
+  last item of that section): `POST /api/upgrade` starts a background sweep
+  on the proxy that upgrades every registered node **one at a time** — each
+  node is version-checked first (already-current nodes are skipped),
+  upgraded via Syncthing's own `/rest/system/upgrade`, and must come back
+  reachable before the next node starts; a node that fails (or never comes
+  back within the timeout) aborts the remainder, so at most one node is
+  ever mid-upgrade. `GET /api/upgrade` serves the run's live per-node
+  progress; one run at a time, in-memory only. The Overview gains an
+  Upgrades card that starts a sweep (confirmation-gated) and polls progress
+  while it runs. The connection dropping as a node restarts mid-upgrade is
+  treated as success, same as the restart action.
+
 ## [0.4.16]
 
 - **Recent-changes feed** (ROADMAP.md Phase 5 Observability): a Recent
