@@ -1,5 +1,5 @@
 import { createServer, type IncomingMessage, type ServerResponse, type Server } from 'node:http'
-import { isVersioningType, VERSIONING_TYPES } from '@clusterfuck/shared'
+import { isMinDiskFreeUnit, isVersioningType, MIN_DISK_FREE_UNITS, VERSIONING_TYPES } from '@clusterfuck/shared'
 import { InvalidTargetError, NotManagedError, type ClusterStateManager } from './clusterState.ts'
 import { SYNCTHING_FOLDER_TYPES, type SyncthingFolderType } from './syncthing/types.ts'
 import { PROXY_VERSION } from './version.ts'
@@ -323,6 +323,53 @@ async function handleRequest(
           type: body.type,
           params: body.params ?? {},
           cleanupIntervalS: body.cleanupIntervalS,
+        })
+        sendJson(res, 200, { ok: true })
+        return
+      }
+
+      // PUT .../options — set this folder's advanced options (rescan
+      // interval, watcher, min disk free) on this node. Whole-object PUT like
+      // /versioning: the client sends all four fields, current values
+      // included, so there's no field-level merge to get subtly wrong.
+      if (method === 'PUT' && parts.length === 6 && parts[5] === 'options') {
+        const body = (await readJsonBody(req)) as
+          | {
+              rescanIntervalS?: unknown
+              fsWatcherEnabled?: unknown
+              fsWatcherDelayS?: unknown
+              minDiskFree?: unknown
+            }
+          | undefined
+        if (typeof body?.rescanIntervalS !== 'number' || !Number.isFinite(body.rescanIntervalS) || body.rescanIntervalS < 0) {
+          sendJson(res, 400, { error: 'rescanIntervalS must be a number >= 0 (0 disables periodic rescans)' })
+          return
+        }
+        if (typeof body.fsWatcherEnabled !== 'boolean') {
+          sendJson(res, 400, { error: 'fsWatcherEnabled must be a boolean' })
+          return
+        }
+        if (typeof body.fsWatcherDelayS !== 'number' || !Number.isFinite(body.fsWatcherDelayS) || body.fsWatcherDelayS <= 0) {
+          sendJson(res, 400, { error: 'fsWatcherDelayS must be a number > 0' })
+          return
+        }
+        const mdf = body.minDiskFree as { value?: unknown; unit?: unknown } | undefined
+        if (
+          typeof mdf?.value !== 'number' ||
+          !Number.isFinite(mdf.value) ||
+          mdf.value < 0 ||
+          !isMinDiskFreeUnit(mdf.unit)
+        ) {
+          sendJson(res, 400, {
+            error: `minDiskFree must be { value: number >= 0, unit: one of ${MIN_DISK_FREE_UNITS.join(', ')} }`,
+          })
+          return
+        }
+        await manager.setFolderAdvanced(deviceId, folderId, {
+          rescanIntervalS: body.rescanIntervalS,
+          fsWatcherEnabled: body.fsWatcherEnabled,
+          fsWatcherDelayS: body.fsWatcherDelayS,
+          minDiskFree: { value: mdf.value, unit: mdf.unit },
         })
         sendJson(res, 200, { ok: true })
         return

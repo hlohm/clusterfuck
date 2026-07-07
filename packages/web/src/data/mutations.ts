@@ -1,4 +1,4 @@
-import type { FolderIgnores, FolderType, VersioningType } from '@clusterfuck/shared'
+import type { FolderAdvancedOptions, FolderIgnores, FolderType, VersioningType } from '@clusterfuck/shared'
 import { PROXY_BASE } from './proxyBase'
 
 async function call(method: string, path: string, body?: unknown): Promise<void> {
@@ -115,6 +115,19 @@ export function setFolderVersioning(
     'PUT',
     `/api/folders/${encodeURIComponent(folderId)}/devices/${encodeURIComponent(deviceId)}/versioning`,
     spec,
+  )
+}
+
+/** Sets this folder's advanced options (rescan interval, watcher, min disk free) on one node. */
+export function setFolderAdvanced(
+  deviceId: string,
+  folderId: string,
+  opts: FolderAdvancedOptions,
+): Promise<void> {
+  return call(
+    'PUT',
+    `/api/folders/${encodeURIComponent(folderId)}/devices/${encodeURIComponent(deviceId)}/options`,
+    opts,
   )
 }
 

@@ -70,6 +70,37 @@ export interface FolderVersioning {
   cleanupIntervalS?: number
 }
 
+/** The units Syncthing accepts for a folder's minimum-free-disk-space threshold. */
+export const MIN_DISK_FREE_UNITS = ['%', 'kB', 'MB', 'GB', 'TB'] as const
+export type MinDiskFreeUnit = (typeof MIN_DISK_FREE_UNITS)[number]
+
+export function isMinDiskFreeUnit(value: unknown): value is MinDiskFreeUnit {
+  return (MIN_DISK_FREE_UNITS as readonly unknown[]).includes(value)
+}
+
+/**
+ * One share's advanced folder options — like `versioning`, a property of the
+ * folder *on a given device* (each node scans and guards its own copy), so it
+ * lives on `Share` rather than `Folder`.
+ */
+export interface FolderAdvancedOptions {
+  /**
+   * Full-rescan interval in seconds; 0 disables periodic rescans (the
+   * watcher, if enabled, still picks changes up as they happen).
+   */
+  rescanIntervalS: number
+  /** Filesystem watcher (inotify & friends) — notices changes without waiting for a rescan. */
+  fsWatcherEnabled: boolean
+  /** How long the watcher batches changes before acting, in seconds. */
+  fsWatcherDelayS: number
+  /**
+   * Stop syncing into the folder when its disk's free space drops below this;
+   * `value: 0` disables the check. `unit` is Syncthing's own string — kept
+   * verbatim on read, restricted to MIN_DISK_FREE_UNITS on write.
+   */
+  minDiskFree: { value: number; unit: string }
+}
+
 export interface Folder {
   id: FolderId
   label: string
@@ -95,6 +126,12 @@ export interface Share {
    * versioning is off); fixtures may omit it, so treat absent as "none".
    */
   versioning?: FolderVersioning
+  /**
+   * This node's advanced options for its own copy of the folder. Live
+   * aggregation always populates it (falling back to Syncthing's defaults for
+   * any field a node omits); fixtures may leave it out.
+   */
+  advanced?: FolderAdvancedOptions
   /** Every device `deviceId`'s own config shares this folder with (incl. itself). */
   sharedWith: DeviceId[]
 }

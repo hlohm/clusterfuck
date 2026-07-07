@@ -133,7 +133,10 @@ tabs. Mapped from the GUI's actual surface, in priority order.
 - [x] Ignore patterns — view/edit per node, diff across nodes (fetched on
       demand per folder, not baked into the model; a per-node `.stignore` editor
       plus a cluster-level "patterns differ / identical" indicator)
-- [ ] Advanced folder options (rescan interval, watcher, min disk free)
+- [x] Advanced folder options (rescan interval, watcher, min disk free) —
+      view (a `Scanning:` summary on the share detail) + edit per node; the
+      three knobs live on `Share.advanced` like `versioning`, since each node
+      scans and guards its own copy
 - [x] `sendonly` override + `receiveonly` revert — confirmation-gated buttons
       on the share detail, shown only for the matching folder type
 - [ ] Conflict & failed-item surfacing (per folder, cluster-rolled-up)

@@ -547,6 +547,30 @@ describe('ClusterStateManager mutations', () => {
     expect(folder.versioning.params).toEqual({})
   })
 
+  it('sets advanced options on the folder config without disturbing the rest of it', async () => {
+    const { manager, calls } = installFakeCluster()
+    await refreshed(manager)
+    calls.length = 0
+
+    await manager.setFolderAdvanced('DEVICE-A', 'f1', {
+      rescanIntervalS: 0,
+      fsWatcherEnabled: false,
+      fsWatcherDelayS: 30,
+      minDiskFree: { value: 500, unit: 'MB' },
+    })
+
+    const put = calls.find((c) => c.method === 'PUT' && c.url === '/rest/config/folders/f1')
+    const folder = JSON.parse(put!.body!) as Record<string, unknown>
+    expect(put!.host).toBe('a.test')
+    expect(folder.rescanIntervalS).toBe(0)
+    expect(folder.fsWatcherEnabled).toBe(false)
+    expect(folder.fsWatcherDelayS).toBe(30)
+    expect(folder.minDiskFree).toEqual({ value: 500, unit: 'MB' })
+    // The GET-modify-PUT must carry the untouched fields through.
+    expect(folder.id).toBe('f1')
+    expect(folder.devices).toEqual([{ deviceID: 'DEVICE-A' }, { deviceID: 'DEVICE-B' }])
+  })
+
   it("reads every sharing node's ignore patterns, keyed by that node's own device ID", async () => {
     const { manager } = installFakeCluster()
     await refreshed(manager)

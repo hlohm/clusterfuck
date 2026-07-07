@@ -58,6 +58,12 @@ describe('fixture clusters', () => {
     expect(hasWideShare).toBe(true)
   })
 
+  it('include advanced options covering both watcher on and watcher off', () => {
+    const advanced = FIXTURE_CLUSTERS.flatMap((c) => c.shares.flatMap((s) => s.advanced ?? []))
+    expect(advanced.some((a) => a.fsWatcherEnabled)).toBe(true)
+    expect(advanced.some((a) => !a.fsWatcherEnabled)).toBe(true)
+  })
+
   it('include at least one receiveencrypted share', () => {
     const hasEncrypted = FIXTURE_CLUSTERS.some((cluster) =>
       cluster.shares.some((s) => s.type === 'receiveencrypted'),

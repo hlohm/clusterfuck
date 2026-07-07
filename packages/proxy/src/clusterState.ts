@@ -1,4 +1,4 @@
-import type { ClusterModel, FolderIgnores, VersioningType } from '@clusterfuck/shared'
+import type { ClusterModel, FolderAdvancedOptions, FolderIgnores, VersioningType } from '@clusterfuck/shared'
 import { aggregateCluster, type NodeSnapshot } from './aggregate.ts'
 import { fetchNodeSnapshot } from './snapshot.ts'
 import { saveNodeConfig } from './config.ts'
@@ -476,6 +476,20 @@ export class ClusterStateManager {
         params: spec.params,
         ...(spec.cleanupIntervalS !== undefined ? { cleanupIntervalS: spec.cleanupIntervalS } : {}),
       }
+    })
+  }
+
+  /**
+   * Sets this folder's advanced options (rescan interval, watcher, min disk
+   * free) on one node. The GET-modify-PUT only touches these four fields, so
+   * everything else on the folder config rides through untouched.
+   */
+  setFolderAdvanced(deviceId: string, folderId: string, opts: FolderAdvancedOptions): Promise<void> {
+    return this.patchFolder(deviceId, folderId, (f) => {
+      f.rescanIntervalS = opts.rescanIntervalS
+      f.fsWatcherEnabled = opts.fsWatcherEnabled
+      f.fsWatcherDelayS = opts.fsWatcherDelayS
+      f.minDiskFree = opts.minDiskFree
     })
   }
 

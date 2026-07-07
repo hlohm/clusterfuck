@@ -14,6 +14,7 @@ import type {
 import type { Selection } from './selection'
 import {
   connectionsByDevice,
+  MIN_DISK_FREE_UNITS,
   sharesByDevice,
   sharesByFolder,
   sumTransfer,
@@ -35,6 +36,12 @@ import {
   VERSIONING_TYPE_LABELS,
 } from '../views/versioning'
 import { ignoresDiffer, patternsToText, textToPatterns } from '../views/ignores'
+import {
+  advancedFieldsValid,
+  advancedFormFields,
+  advancedFromFormFields,
+  describeAdvanced,
+} from '../views/advancedOptions'
 
 export interface DetailPanelProps {
   cluster: ClusterModel
@@ -234,6 +241,100 @@ function VersioningEditor({
   )
 }
 
+/**
+ * Editor for one share's advanced options (rescan interval, watcher, min disk
+ * free). Same lifecycle as VersioningEditor: self-contained busy/error state,
+ * initialized once from the share and remounted by the parent's key when the
+ * server-side config changes.
+ */
+function AdvancedOptionsEditor({
+  share,
+  folderLabel,
+  nodeName,
+}: {
+  share: Share
+  folderLabel: string
+  nodeName: string
+}) {
+  const { busy, error, run } = useAsyncAction()
+  const [fields, setFields] = useState(() => advancedFormFields(share.advanced))
+
+  return (
+    <div className="detail-panel__group">
+      <div className="detail-panel__group-label">Advanced</div>
+      <label className="detail-panel__action-row">
+        Rescan interval (s, 0 = off):
+        <input
+          type="number"
+          min={0}
+          value={fields.rescanIntervalS}
+          disabled={busy}
+          onChange={(event) => setFields((prev) => ({ ...prev, rescanIntervalS: event.target.value }))}
+        />
+      </label>
+      <label className="detail-panel__action-row">
+        <input
+          type="checkbox"
+          checked={fields.fsWatcherEnabled}
+          disabled={busy}
+          onChange={(event) => setFields((prev) => ({ ...prev, fsWatcherEnabled: event.target.checked }))}
+        />
+        Watch for changes
+      </label>
+      {fields.fsWatcherEnabled && (
+        <label className="detail-panel__action-row">
+          Watcher delay (s):
+          <input
+            type="number"
+            min={1}
+            value={fields.fsWatcherDelayS}
+            disabled={busy}
+            onChange={(event) => setFields((prev) => ({ ...prev, fsWatcherDelayS: event.target.value }))}
+          />
+        </label>
+      )}
+      <label className="detail-panel__action-row">
+        Min disk free (0 = off):
+        <input
+          type="number"
+          min={0}
+          value={fields.minDiskFreeValue}
+          disabled={busy}
+          onChange={(event) => setFields((prev) => ({ ...prev, minDiskFreeValue: event.target.value }))}
+        />
+        <select
+          value={fields.minDiskFreeUnit}
+          disabled={busy}
+          onChange={(event) => setFields((prev) => ({ ...prev, minDiskFreeUnit: event.target.value }))}
+        >
+          {/* The current unit joins the list even if it isn't one we'd offer —
+              the model keeps units verbatim, so an exotic one must stay selectable
+              rather than being silently swapped to '%'. */}
+          {[...new Set([...MIN_DISK_FREE_UNITS, fields.minDiskFreeUnit])].map((unit) => (
+            <option key={unit} value={unit}>
+              {unit}
+            </option>
+          ))}
+        </select>
+      </label>
+      <div className="detail-panel__action-row">
+        <button
+          className="detail-panel__button--primary"
+          disabled={busy || !advancedFieldsValid(fields)}
+          onClick={() =>
+            run(`Apply advanced options for "${folderLabel}" on ${nodeName}?`, () =>
+              mutations.setFolderAdvanced(share.deviceId, share.folderId, advancedFromFormFields(fields)),
+            )
+          }
+        >
+          Apply options
+        </button>
+      </div>
+      {error && <div className="detail-panel__error">{error}</div>}
+    </div>
+  )
+}
+
 function ShareActions({ cluster, share }: { cluster: ClusterModel; share: Share }) {
   const { busy, error, run } = useAsyncAction()
   const [addTarget, setAddTarget] = useState('')
@@ -341,6 +442,13 @@ function ShareActions({ cluster, share }: { cluster: ClusterModel; share: Share 
 
       <VersioningEditor
         key={`${share.folderId}:${share.deviceId}:${share.versioning?.type ?? 'none'}:${JSON.stringify(share.versioning?.params ?? {})}`}
+        share={share}
+        folderLabel={folderLabel}
+        nodeName={nodeName}
+      />
+
+      <AdvancedOptionsEditor
+        key={`adv:${share.folderId}:${share.deviceId}:${JSON.stringify(share.advanced ?? null)}`}
         share={share}
         folderLabel={folderLabel}
         nodeName={nodeName}
@@ -686,6 +794,11 @@ export function DetailPanel({ cluster, selection, onSelect, isLive }: DetailPane
       {share.versioning && (
         <p>
           <strong>Versioning:</strong> {describeVersioning(share.versioning)}
+        </p>
+      )}
+      {share.advanced && (
+        <p>
+          <strong>Scanning:</strong> {describeAdvanced(share.advanced)}
         </p>
       )}
       {share.completionPct !== undefined && (

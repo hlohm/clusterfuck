@@ -1,7 +1,13 @@
-import { isVersioningType, type FolderState, type FolderVersioning, type ServiceHealth } from '@clusterfuck/shared'
+import {
+  isVersioningType,
+  type FolderAdvancedOptions,
+  type FolderState,
+  type FolderVersioning,
+  type ServiceHealth,
+} from '@clusterfuck/shared'
 import type { NodeSnapshot } from './aggregate.ts'
 import type { SyncthingClient } from './syncthing/client.ts'
-import type { ConfigFolderVersioning } from './syncthing/types.ts'
+import type { ConfigFolder, ConfigFolderVersioning } from './syncthing/types.ts'
 
 /** connectionServiceStatus/discoveryStatus are both `{ [name]: { error: string | null } }` — roll each up to a count plus the actual failures, matching folder health's "roll up, keep detail on selection" convention. */
 function summarizeServiceStatus(status: Record<string, { error: string | null }> | undefined): ServiceHealth {
@@ -19,6 +25,20 @@ function summarizeServiceStatus(status: Record<string, { error: string | null }>
 function mapVersioning(v: ConfigFolderVersioning | undefined): FolderVersioning {
   const type = isVersioningType(v?.type) ? v.type : 'none'
   return { type, params: v?.params ?? {}, cleanupIntervalS: v?.cleanupIntervalS }
+}
+
+/**
+ * A folder's advanced options as the model shape. /rest/config normally
+ * returns every field, so the fallbacks (Syncthing's own defaults) only kick
+ * in for a node that omits one — better a documented default than a hole.
+ */
+function mapAdvanced(f: ConfigFolder): FolderAdvancedOptions {
+  return {
+    rescanIntervalS: f.rescanIntervalS ?? 3600,
+    fsWatcherEnabled: f.fsWatcherEnabled ?? true,
+    fsWatcherDelayS: f.fsWatcherDelayS ?? 10,
+    minDiskFree: f.minDiskFree ?? { value: 1, unit: '%' },
+  }
 }
 
 function mapFolderState(dbState: string, hasErrors: boolean, needFiles: number): FolderState {
@@ -97,6 +117,7 @@ export async function fetchNodeSnapshot(
         outOfSyncItems: needFiles > 0 ? needFiles : undefined,
         errorMessage,
         versioning: mapVersioning(f.versioning),
+        advanced: mapAdvanced(f),
         sharedWith: f.devices.map((d) => d.deviceID),
       }
     }),

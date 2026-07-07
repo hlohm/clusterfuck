@@ -177,6 +177,70 @@ describe('fetchNodeSnapshot versioning', () => {
   })
 })
 
+describe('fetchNodeSnapshot advanced options', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  function installWithFolderFields(extra: Record<string, unknown>) {
+    const fetchMock = vi.fn(async (input: string | URL) => {
+      const url = new URL(input)
+      if (url.pathname === '/rest/system/status') {
+        return jsonResponse({ myID: 'DEVICE-A', uptime: 1, alloc: 1, connectionServiceStatus: {}, discoveryStatus: {} })
+      }
+      if (url.pathname === '/rest/system/version') return jsonResponse({ version: 'v1' })
+      if (url.pathname === '/rest/config') {
+        return jsonResponse({
+          devices: [],
+          folders: [
+            { id: 'f1', label: 'F1', type: 'sendreceive', paused: false, devices: [{ deviceID: 'DEVICE-A' }], ...extra },
+          ],
+        })
+      }
+      if (url.pathname === '/rest/system/connections') return jsonResponse({ connections: {} })
+      if (url.pathname === '/rest/db/status') {
+        return jsonResponse({ state: 'idle', needFiles: 0, needItems: 0, globalFiles: 10, errors: 0 })
+      }
+      if (url.pathname === '/rest/folder/errors') return jsonResponse({ folder: 'f1', errors: [] })
+      if (url.pathname === '/rest/cluster/pending/devices' || url.pathname === '/rest/cluster/pending/folders') {
+        return jsonResponse({})
+      }
+      throw new Error(`unexpected fetch in snapshot test: ${url.href}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    return new SyncthingClient({ id: 'st-a', url: 'http://a.test', apiKey: 'ka' })
+  }
+
+  it('copies rescan interval, watcher config, and min disk free through verbatim', async () => {
+    const client = installWithFolderFields({
+      rescanIntervalS: 120,
+      fsWatcherEnabled: false,
+      fsWatcherDelayS: 30,
+      minDiskFree: { value: 500, unit: 'MB' },
+    })
+    const snap = await fetchNodeSnapshot(client, 'st-a')
+
+    expect(snap.folders[0]!.advanced).toEqual({
+      rescanIntervalS: 120,
+      fsWatcherEnabled: false,
+      fsWatcherDelayS: 30,
+      minDiskFree: { value: 500, unit: 'MB' },
+    })
+  })
+
+  it("falls back to Syncthing's own defaults for fields a node omits", async () => {
+    const client = installWithFolderFields({})
+    const snap = await fetchNodeSnapshot(client, 'st-a')
+
+    expect(snap.folders[0]!.advanced).toEqual({
+      rescanIntervalS: 3600,
+      fsWatcherEnabled: true,
+      fsWatcherDelayS: 10,
+      minDiskFree: { value: 1, unit: '%' },
+    })
+  })
+})
+
 describe('fetchNodeSnapshot folder state', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
