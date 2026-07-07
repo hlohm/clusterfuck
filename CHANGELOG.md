@@ -4,6 +4,19 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.4.15]
+
+- **Live transfer rates** (ROADMAP.md Phase 5 Observability): `Connection`
+  gains `inBps`/`outBps`, estimated by the proxy from the change in
+  Syncthing's cumulative per-connection counters between refresh cycles
+  (the REST API exposes no rate itself). Sampling rules: no rate until two
+  readings ≥2s apart exist (event-triggered refreshes can land
+  back-to-back — shorter windows carry the previous rate forward), a
+  counter reset reads as 0 rather than a negative rate, and disconnected
+  links have no rate. Shown per connection and as a "now ↑/↓" summary on
+  the device panel's transfer line and the Overview's data-transferred
+  tile.
+
 ## [0.4.14]
 
 - **Cluster-wide bandwidth limits** (ROADMAP.md Phase 5 Cluster operations):

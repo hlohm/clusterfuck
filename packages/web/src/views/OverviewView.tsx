@@ -17,7 +17,7 @@ import { StatusBadge } from './StatusBadge'
 import { AcceptPendingDeviceDialog, AcceptPendingFolderDialog, type PendingFolderOffer } from './PendingDialogs'
 import { useAsyncAction } from '../data/useAsyncAction'
 import * as mutations from '../data/mutations'
-import { formatBytes } from '../format'
+import { formatBytes, formatRate } from '../format'
 
 export interface OverviewViewProps {
   cluster: ClusterModel
@@ -501,6 +501,8 @@ function NodeCard({
 export function OverviewView({ cluster, onOpenShare, isLive }: OverviewViewProps) {
   const health = clusterHealth(cluster)
   const transfer = clusterTransferTotals(cluster)
+  const outBps = cluster.connections.reduce((sum, c) => sum + (c.outBps ?? 0), 0)
+  const inBps = cluster.connections.reduce((sum, c) => sum + (c.inBps ?? 0), 0)
   const drift = detectDrift(cluster)
   const deviceById = new Map(cluster.devices.map((d) => [d.id, d]))
 
@@ -541,7 +543,10 @@ export function OverviewView({ cluster, onOpenShare, isLive }: OverviewViewProps
         <StatTile
           label="Data transferred"
           value={formatBytes(transfer.inBytesTotal + transfer.outBytesTotal)}
-          detail={`↑${formatBytes(transfer.outBytesTotal)} / ↓${formatBytes(transfer.inBytesTotal)}`}
+          detail={
+            `↑${formatBytes(transfer.outBytesTotal)} / ↓${formatBytes(transfer.inBytesTotal)}` +
+            (outBps + inBps > 0 ? ` · now ↑${formatRate(outBps)} / ↓${formatRate(inBps)}` : '')
+          }
           title="Cumulative for each connection's current session only — resets to 0 on disconnect or a restart, not a durable all-time total. A link between two managed nodes is counted from both ends."
         />
       </div>
