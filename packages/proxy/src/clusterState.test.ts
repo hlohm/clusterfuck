@@ -105,6 +105,12 @@ function installFakeCluster(
     ) {
       return jsonResponse({})
     }
+    if (url.pathname === '/rest/system/upgrade' && method === 'GET') {
+      return jsonResponse({ running: 'v1.27.0', latest: 'v1.27.0', newer: false, majorNewer: false })
+    }
+    if (url.pathname === '/rest/system/upgrade' && method === 'POST') {
+      return jsonResponse({})
+    }
     if (url.pathname === '/rest/cluster/pending/devices' && method === 'GET') {
       // Seen on both nodes, so aggregation should merge it into one entry.
       return jsonResponse({
@@ -657,6 +663,24 @@ describe('ClusterStateManager mutations', () => {
     await manager.setBandwidthLimits(undefined, { maxSendKbps: 0, maxRecvKbps: 0 })
     patches = calls.filter((c) => c.method === 'PATCH' && c.url === '/rest/config/options')
     expect(patches.map((c) => c.host).sort()).toEqual(['a.test', 'b.test'])
+  })
+
+  it('runs an upgrade sweep across the registered nodes and rejects a second concurrent one', async () => {
+    const { manager, calls } = installFakeCluster()
+    await refreshed(manager)
+    calls.length = 0
+
+    const run = manager.startUpgradeAll()
+    expect(run.running).toBe(true)
+    expect(run.nodes.map((n) => n.nodeId)).toEqual(['DEVICE-A', 'DEVICE-B'])
+    expect(() => manager.startUpgradeAll()).toThrow(InvalidTargetError)
+
+    await manager.waitForUpgradeIdle()
+
+    // The fake reports both nodes as already current, so no POSTs happen.
+    expect(run.running).toBe(false)
+    expect(run.nodes.every((n) => n.status === 'up-to-date')).toBe(true)
+    expect(calls.some((c) => c.method === 'POST' && c.url === '/rest/system/upgrade')).toBe(false)
   })
 
   it('rescans every folder on every registered node in one batch', async () => {

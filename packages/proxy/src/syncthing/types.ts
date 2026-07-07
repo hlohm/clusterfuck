@@ -26,6 +26,15 @@ export interface SystemVersionResponse {
   version: string
 }
 
+/** GET /rest/system/upgrade — whether a newer release exists for this node. */
+export interface UpgradeCheckResponse {
+  /** The version this node is currently running. */
+  running: string
+  latest: string
+  newer: boolean
+  majorNewer: boolean
+}
+
 export interface ConfigDevice {
   deviceID: string
   name: string

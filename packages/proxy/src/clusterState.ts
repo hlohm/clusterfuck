@@ -8,6 +8,7 @@ import type {
   FolderFailedItems,
   FolderIgnores,
   RecentChangesView,
+  UpgradeRun,
   VersioningType,
 } from '@clusterfuck/shared'
 import { aggregateCluster, type NodeSnapshot } from './aggregate.ts'
@@ -15,6 +16,7 @@ import { ChangeBuffer, mapDiskEvent } from './changes.ts'
 import { collectConflictPaths } from './conflicts.ts'
 import { computeRates, type RateSamples } from './rates.ts'
 import { fetchNodeSnapshot } from './snapshot.ts'
+import { executeUpgradeRun, newUpgradeRun, type UpgradeTarget } from './upgrade.ts'
 import { saveNodeConfig } from './config.ts'
 import { SyncthingClient, type NodeConfig } from './syncthing/client.ts'
 import type { ConfigFolder, SyncthingFolderType } from './syncthing/types.ts'
@@ -75,15 +77,33 @@ export class ClusterStateManager {
   private rateSamples: RateSamples = new Map()
   /** Bounded, in-memory recent-changes feed, merged across every node's disk-events stream. */
   private readonly changes = new ChangeBuffer(200)
+  private readonly upgradePollMs: number
+  private readonly upgradeTimeoutMs: number
+  /** The current (or most recent) upgrade sweep — one at a time, in memory only. */
+  private upgradeRun: UpgradeRun | undefined
+  private upgradePromise: Promise<void> = Promise.resolve()
+
+  /** Resolves when the current upgrade sweep (if any) finishes — for tests and shutdown hooks, never awaited by routes. */
+  waitForUpgradeIdle(): Promise<void> {
+    return this.upgradePromise
+  }
 
   constructor(
     nodeConfigs: NodeConfig[],
-    opts: { clusterId: string; label: string; pollIntervalMs?: number },
+    opts: {
+      clusterId: string
+      label: string
+      pollIntervalMs?: number
+      upgradePollMs?: number
+      upgradeTimeoutMs?: number
+    },
   ) {
     this.clients = nodeConfigs.map((n) => ({ nodeId: n.id, client: new SyncthingClient(n) }))
     this.clusterId = opts.clusterId
     this.label = opts.label
     this.pollIntervalMs = opts.pollIntervalMs ?? 45_000
+    this.upgradePollMs = opts.upgradePollMs ?? 10_000
+    this.upgradeTimeoutMs = opts.upgradeTimeoutMs ?? 300_000
     this.model = this.emptyModel()
   }
 
@@ -952,6 +972,38 @@ export class ClusterStateManager {
   /** The merged recent-changes feed, newest first. */
   getRecentChanges(): RecentChangesView {
     return { changes: this.changes.list() }
+  }
+
+  /** The current or most recent upgrade sweep, if any. Progress mutates in place, so pollers see it live. */
+  getUpgradeRun(): UpgradeRun | undefined {
+    return this.upgradeRun
+  }
+
+  /**
+   * Kicks off an upgrade sweep across every registered node and returns
+   * immediately — the sweep takes minutes (download + restart + health check
+   * per node), so callers poll getUpgradeRun() instead of awaiting. Not
+   * serialized through the mutation chain: blocking every other mutation for
+   * the duration would be worse than the (already-serialized-per-node)
+   * upgrade itself. One sweep at a time.
+   */
+  startUpgradeAll(): UpgradeRun {
+    if (this.upgradeRun?.running) {
+      throw new InvalidTargetError('an upgrade run is already in progress')
+    }
+    const targets: UpgradeTarget[] = this.clients.map(({ nodeId, client }) => ({
+      deviceId: this.snapshots.find((s) => s.nodeId === nodeId)?.myID ?? nodeId,
+      client,
+    }))
+    if (targets.length === 0) throw new NotManagedError('cluster (no registered nodes)')
+
+    const run = newUpgradeRun(targets)
+    this.upgradeRun = run
+    this.upgradePromise = executeUpgradeRun(run, targets, {
+      pollMs: this.upgradePollMs,
+      timeoutMs: this.upgradeTimeoutMs,
+    }).then(() => this.refreshAfterMutation())
+    return run
   }
 
   /**

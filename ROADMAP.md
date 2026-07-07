@@ -179,8 +179,13 @@ tabs. Mapped from the GUI's actual surface, in priority order.
       shutdown warns it can't be undone from here — a connection dropping
       mid-restart is treated as success, since Syncthing may exit before the
       response gets out)
-- [ ] Upgrade orchestration (one node at a time, health-checked) — split out
-      of the line above; a longer-running stateful workflow, not a fan-out
+- [x] Upgrade orchestration (one node at a time, health-checked) — a
+      background sweep on the proxy (`POST /api/upgrade` starts it,
+      `GET /api/upgrade` polls it): each node is version-checked, upgraded
+      only if a newer release exists, and must come back reachable before
+      the next node starts; any failure aborts the remainder so at most one
+      node is ever mid-upgrade. One run at a time, in-memory. Surfaced as an
+      Upgrades card on the Overview with live per-node progress
 - [x] Config drift detection: same folder configured differently across nodes
       (label/type/versioning mismatches), asymmetric shares (A shares with B,
       B doesn't share back), with suggested fixes — the genuinely novel

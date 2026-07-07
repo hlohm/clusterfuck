@@ -175,6 +175,19 @@ Listens on `PORT` (default `4000`). Routes:
   /api/nodes/:deviceId/bandwidth` (same body) on one node. Integers ≥ 0;
   element-scoped PATCH of `/rest/config/options`, all other global options
   untouched.
+- `POST /api/upgrade` — starts an upgrade sweep: every registered node,
+  strictly one at a time; each is checked (`/rest/system/upgrade`), upgraded
+  only if a newer release exists, and must come back reachable (health
+  check, 5-minute default timeout) before the next node starts. A failure
+  aborts the remaining nodes. Returns immediately; one run at a time (400
+  if one is already in progress). Nodes not built with upgrade support
+  (distro packages) fail their step with Syncthing's own error.
+- `GET /api/upgrade` — the current/most recent run, mutating live:
+  `{ "run": { "running": true, "aborted": false, "nodes": [{ "nodeId":
+  "...", "status": "pending|checking|up-to-date|upgrading|done|failed|skipped",
+  "fromVersion": "...", "toVersion": "...", "detail": "..." }] } }` (`run`
+  is `null` before the first sweep; in-memory only, gone after a proxy
+  restart).
 - `POST /api/nodes/:deviceId/restart` / `.../shutdown` — restarts or shuts
   down that one node's Syncthing process. Restart comes back on its own;
   shutdown does **not** (start it on the machine itself). The connection

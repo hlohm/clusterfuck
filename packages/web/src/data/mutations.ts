@@ -8,6 +8,7 @@ import type {
   FolderIgnores,
   FolderType,
   RecentChangesView,
+  UpgradeRun,
   VersioningType,
 } from '@clusterfuck/shared'
 import { PROXY_BASE } from './proxyBase'
@@ -71,6 +72,16 @@ export function setBandwidthLimits(
 ): Promise<void> {
   const path = nodeId === undefined ? '/api/bandwidth' : `/api/nodes/${encodeURIComponent(nodeId)}/bandwidth`
   return call('PUT', path, limits)
+}
+
+/** The current/most recent upgrade sweep, or null before the first. Poll while `running`. */
+export function getUpgradeRun(): Promise<{ run: UpgradeRun | null }> {
+  return getJson('/api/upgrade')
+}
+
+/** Starts an upgrade sweep: every registered node, one at a time, health-checked. Returns immediately. */
+export function startUpgradeAll(): Promise<void> {
+  return call('POST', '/api/upgrade')
 }
 
 /** Restarts (or shuts down) one registered node's Syncthing. Shutdown does not come back on its own. */

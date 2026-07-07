@@ -274,6 +274,41 @@ export interface DeviceOptionsView {
   nodes: NodeDeviceOptions[]
 }
 
+export type UpgradeNodeStatus =
+  | 'pending'
+  | 'checking'
+  | 'up-to-date'
+  | 'upgrading'
+  | 'done'
+  | 'failed'
+  /** Not attempted because an earlier node failed — the run aborts rather than risking the rest. */
+  | 'skipped'
+
+export interface UpgradeNodeProgress {
+  /** The registered node's own device ID. */
+  nodeId: DeviceId
+  status: UpgradeNodeStatus
+  /** Human detail for the current status (error text for failed, wait note while upgrading, ...). */
+  detail?: string
+  fromVersion?: string
+  toVersion?: string
+}
+
+/**
+ * One cluster upgrade sweep — nodes upgraded strictly one at a time, each
+ * health-checked back to reachability before the next starts. Kept on the
+ * proxy (in memory, one run at a time) and polled by the UI; a failure
+ * aborts the run so at most one node is ever in a bad state.
+ */
+export interface UpgradeRun {
+  running: boolean
+  /** True when the run stopped early because a node failed. */
+  aborted: boolean
+  startedAt: string
+  finishedAt?: string
+  nodes: UpgradeNodeProgress[]
+}
+
 /**
  * One observed file/directory change — an entry of the cluster-wide
  * recent-changes feed. Sourced from Syncthing's disk-events stream on each
