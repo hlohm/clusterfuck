@@ -104,6 +104,10 @@ export async function fetchNodeSnapshot(
       const errorMessage = folderError ?? pullError
       const needFiles = dbStatus?.needFiles ?? 0
       const globalFiles = dbStatus?.globalFiles ?? 0
+      // Newer Syncthings report the failed-pull count as pullErrors, older
+      // ones as errors; the /rest/folder/errors list length is the fallback
+      // when db/status itself couldn't be read.
+      const failedItems = dbStatus?.pullErrors ?? dbStatus?.errors ?? errors?.errors?.length ?? 0
 
       return {
         id: f.id,
@@ -115,6 +119,7 @@ export async function fetchNodeSnapshot(
         completionPct:
           globalFiles > 0 ? Math.round(((globalFiles - needFiles) / globalFiles) * 100) : 100,
         outOfSyncItems: needFiles > 0 ? needFiles : undefined,
+        failedItems: failedItems > 0 ? failedItems : undefined,
         errorMessage,
         versioning: mapVersioning(f.versioning),
         advanced: mapAdvanced(f),

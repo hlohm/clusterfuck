@@ -83,6 +83,15 @@ describe('clusterHealth', () => {
     expect(health.attention[0]!.state).toBe('error')
   })
 
+  it('sums failed items across shares (0 when no share reports any)', () => {
+    const c = cluster()
+    expect(clusterHealth(c).failedItems).toBe(0)
+
+    c.shares[1]!.failedItems = 3
+    c.shares[2]!.failedItems = 2
+    expect(clusterHealth(c).failedItems).toBe(5)
+  })
+
   it('sorts attention shares worst-first', () => {
     const c = cluster()
     c.shares[0]!.state = 'paused'

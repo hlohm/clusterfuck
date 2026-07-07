@@ -305,6 +305,23 @@ describe('fetchNodeSnapshot folder state', () => {
     expect(snap.folders[0]!.errorMessage).toBe('permission denied')
   })
 
+  it('surfaces the failed-pull count as failedItems, preferring pullErrors over the older errors field', async () => {
+    const client = installWithDbStatus({ state: 'idle', errors: 2, pullErrors: 5 })
+    const snap = await fetchNodeSnapshot(client, 'st-a')
+
+    expect(snap.folders[0]!.failedItems).toBe(5)
+  })
+
+  it('falls back to the errors count, and omits failedItems entirely when it is zero', async () => {
+    expect(
+      (await fetchNodeSnapshot(installWithDbStatus({ state: 'idle', errors: 2 }), 'st-a')).folders[0]!.failedItems,
+    ).toBe(2)
+    vi.unstubAllGlobals()
+    expect(
+      (await fetchNodeSnapshot(installWithDbStatus({ state: 'idle' }), 'st-a')).folders[0]!.failedItems,
+    ).toBeUndefined()
+  })
+
   it("maps the '-waiting' queue states to their active counterparts, not idle", async () => {
     expect((await fetchNodeSnapshot(installWithDbStatus({ state: 'scan-waiting' }), 'st-a')).folders[0]!.state).toBe('scanning')
     vi.unstubAllGlobals()

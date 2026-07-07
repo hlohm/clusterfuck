@@ -143,6 +143,23 @@ function installFakeCluster(delayMs = 0, failOn?: { host: string; pathname: stri
       }
       return jsonResponse({})
     }
+    if (url.pathname === '/rest/db/browse' && method === 'GET') {
+      // One conflict copy on st-a only, nested a level down.
+      return jsonResponse(
+        base.includes('a.test')
+          ? [
+              {
+                name: 'docs',
+                type: 'FILE_INFO_TYPE_DIRECTORY',
+                children: [
+                  { name: 'plan.sync-conflict-20260701-093015-ABCDEF1.md', type: 'FILE_INFO_TYPE_FILE' },
+                ],
+              },
+              { name: 'readme.md', type: 'FILE_INFO_TYPE_FILE' },
+            ]
+          : [{ name: 'readme.md', type: 'FILE_INFO_TYPE_FILE' }],
+      )
+    }
     if (url.pathname === '/rest/db/ignores' && method === 'GET') {
       // Different patterns per node so a test can exercise the cross-node diff.
       const ignore = base.includes('a.test') ? ['*.tmp'] : ['*.bak']
@@ -569,6 +586,31 @@ describe('ClusterStateManager mutations', () => {
     // The GET-modify-PUT must carry the untouched fields through.
     expect(folder.id).toBe('f1')
     expect(folder.devices).toEqual([{ deviceID: 'DEVICE-A' }, { deviceID: 'DEVICE-B' }])
+  })
+
+  it("scans every sharing node's tree for conflict copies, reporting folder-relative paths per node", async () => {
+    const { manager } = installFakeCluster()
+    await refreshed(manager)
+
+    const res = await manager.getFolderConflicts('f1')
+
+    expect(res.folderId).toBe('f1')
+    const byDevice = Object.fromEntries(res.nodes.map((n) => [n.deviceId, n.paths]))
+    expect(byDevice['DEVICE-A']).toEqual(['docs/plan.sync-conflict-20260701-093015-ABCDEF1.md'])
+    expect(byDevice['DEVICE-B']).toEqual([])
+  })
+
+  it("reads every sharing node's failed items, capturing a per-node error instead of failing the whole call", async () => {
+    const { manager } = installFakeCluster(0, { host: 'b.test', pathname: '/rest/folder/errors' })
+    await refreshed(manager)
+
+    const res = await manager.getFolderFailedItems('f1')
+
+    const a = res.nodes.find((n) => n.deviceId === 'DEVICE-A')
+    const b = res.nodes.find((n) => n.deviceId === 'DEVICE-B')
+    expect(a).toEqual({ deviceId: 'DEVICE-A', items: [] })
+    expect(b!.items).toEqual([])
+    expect(b!.error).toContain('HTTP 500')
   })
 
   it("reads every sharing node's ignore patterns, keyed by that node's own device ID", async () => {

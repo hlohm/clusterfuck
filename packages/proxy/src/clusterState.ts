@@ -1,5 +1,13 @@
-import type { ClusterModel, FolderAdvancedOptions, FolderIgnores, VersioningType } from '@clusterfuck/shared'
+import type {
+  ClusterModel,
+  FolderAdvancedOptions,
+  FolderConflicts,
+  FolderFailedItems,
+  FolderIgnores,
+  VersioningType,
+} from '@clusterfuck/shared'
 import { aggregateCluster, type NodeSnapshot } from './aggregate.ts'
+import { collectConflictPaths } from './conflicts.ts'
 import { fetchNodeSnapshot } from './snapshot.ts'
 import { saveNodeConfig } from './config.ts'
 import { SyncthingClient, type NodeConfig } from './syncthing/client.ts'
@@ -409,13 +417,8 @@ export class ClusterStateManager {
    * "one bad node doesn't blank everything" stance as doRefresh.
    */
   async getFolderIgnores(folderId: string): Promise<FolderIgnores> {
-    const targets = this.clients.flatMap(({ nodeId, client }) => {
-      const snap = this.snapshots.find((s) => s.nodeId === nodeId)
-      if (!snap || !snap.folders.some((f) => f.id === folderId)) return []
-      return [{ deviceId: snap.myID, client }]
-    })
     const nodes = await Promise.all(
-      targets.map(async ({ deviceId, client }) => {
+      this.sharingNodes(folderId).map(async ({ deviceId, client }) => {
         try {
           const res = await client.folderIgnores(folderId)
           return { deviceId, patterns: res.ignore ?? [] }
@@ -425,6 +428,54 @@ export class ClusterStateManager {
       }),
     )
     return { folderId, nodes }
+  }
+
+  /**
+   * Reads every sharing node's failed (pull-error) items for one folder —
+   * the per-item paths/errors behind the model's `failedItems` count. Same
+   * on-demand, per-node-error-captured shape as getFolderIgnores.
+   */
+  async getFolderFailedItems(folderId: string): Promise<FolderFailedItems> {
+    const nodes = await Promise.all(
+      this.sharingNodes(folderId).map(async ({ deviceId, client }) => {
+        try {
+          const res = await client.folderErrors(folderId)
+          return { deviceId, items: res.errors ?? [] }
+        } catch (err) {
+          return { deviceId, items: [], error: (err as Error).message }
+        }
+      }),
+    )
+    return { folderId, nodes }
+  }
+
+  /**
+   * Scans every sharing node's view of the folder tree for Syncthing conflict
+   * copies (`*.sync-conflict-...`). On demand only — /rest/db/browse returns
+   * the whole tree, which is far too heavy for the refresh cycle; the UI puts
+   * it behind an explicit button for the same reason.
+   */
+  async getFolderConflicts(folderId: string): Promise<FolderConflicts> {
+    const nodes = await Promise.all(
+      this.sharingNodes(folderId).map(async ({ deviceId, client }) => {
+        try {
+          const tree = await client.dbBrowse(folderId)
+          return { deviceId, paths: collectConflictPaths(tree) }
+        } catch (err) {
+          return { deviceId, paths: [], error: (err as Error).message }
+        }
+      }),
+    )
+    return { folderId, nodes }
+  }
+
+  /** Every registered node whose own config shares `folderId`, keyed by its own device ID — the read fan-out target set. */
+  private sharingNodes(folderId: string): { deviceId: string; client: SyncthingClient }[] {
+    return this.clients.flatMap(({ nodeId, client }) => {
+      const snap = this.snapshots.find((s) => s.nodeId === nodeId)
+      if (!snap || !snap.folders.some((f) => f.id === folderId)) return []
+      return [{ deviceId: snap.myID, client }]
+    })
   }
 
   /** Replaces this folder's `.stignore` patterns on one node. */

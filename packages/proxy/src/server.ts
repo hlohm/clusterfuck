@@ -237,19 +237,23 @@ async function handleRequest(
       return
     }
 
-    // GET /api/folders/:folderId/ignores — every sharing node's .stignore
-    // patterns for the folder (on-demand; not part of the model), for the
-    // view/edit-per-node + diff-across-nodes UI.
-    if (
-      method === 'GET' &&
-      parts.length === 4 &&
-      parts[0] === 'api' &&
-      parts[1] === 'folders' &&
-      parts[3] === 'ignores'
-    ) {
+    // GET /api/folders/:folderId/ignores|failed-items|conflicts — on-demand
+    // per-folder fan-out reads (not part of the model): every sharing node's
+    // .stignore patterns / failed pull items / conflict-copy paths.
+    if (method === 'GET' && parts.length === 4 && parts[0] === 'api' && parts[1] === 'folders') {
       const folderId = decodeURIComponent(parts[2]!)
-      sendJson(res, 200, await manager.getFolderIgnores(folderId))
-      return
+      if (parts[3] === 'ignores') {
+        sendJson(res, 200, await manager.getFolderIgnores(folderId))
+        return
+      }
+      if (parts[3] === 'failed-items') {
+        sendJson(res, 200, await manager.getFolderFailedItems(folderId))
+        return
+      }
+      if (parts[3] === 'conflicts') {
+        sendJson(res, 200, await manager.getFolderConflicts(folderId))
+        return
+      }
     }
 
     // /api/folders/:folderId/devices/:deviceId[/...] — :deviceId is the

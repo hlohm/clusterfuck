@@ -4,6 +4,22 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.4.9]
+
+- **Conflict & failed-item surfacing** (ROADMAP.md Phase 5 Folder
+  management): `Share` gains a `failedItems` count (from db/status'
+  `pullErrors`/`errors`), rolled up cluster-wide in `clusterHealth()` and
+  shown on the Overview's out-of-sync KPI tile and the share detail. The
+  folder detail gains an on-demand **Conflicts & failed items** section
+  (per the same reasoning as ignore patterns, not part of the model/SSE
+  snapshot): new read routes `GET /api/folders/:folderId/failed-items`
+  (each sharing node's failed paths + errors, via `/rest/folder/errors`)
+  and `GET /api/folders/:folderId/conflicts` (walks each node's
+  `/rest/db/browse` tree for `*.sync-conflict-<date>-<time>-*` copies —
+  user-triggered only, since it's a full tree walk per node). Syncthing's
+  own GUI can't list conflict copies at all, so this is one of the
+  cluster-level extras this project exists for.
+
 ## [0.4.8]
 
 - **Advanced folder options** (ROADMAP.md Phase 5 Folder management): view and
