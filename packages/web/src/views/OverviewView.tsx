@@ -1,5 +1,12 @@
 import { useState } from 'react'
-import type { BandwidthLimitsView, ClusterModel, Device, PendingDevice, Share } from '@clusterfuck/shared'
+import type {
+  BandwidthLimitsView,
+  ClusterModel,
+  Device,
+  PendingDevice,
+  RecentChangesView,
+  Share,
+} from '@clusterfuck/shared'
 import {
   clusterHealth,
   clusterTransferTotals,
@@ -216,6 +223,69 @@ function BandwidthSection({ cluster }: { cluster: ClusterModel }) {
         </div>
         {loadError && <div className="detail-panel__error cluster-actions__error">{loadError}</div>}
         {error && <div className="detail-panel__error cluster-actions__error">{error}</div>}
+      </article>
+    </section>
+  )
+}
+
+/**
+ * The cluster-wide recent-changes feed — every node's disk-change events,
+ * merged newest-first by the proxy (bounded, in-memory). Loaded on demand:
+ * it's a glance backwards, not live state, so it doesn't ride the SSE model.
+ */
+function RecentChangesSection({ cluster }: { cluster: ClusterModel }) {
+  const [view, setView] = useState<RecentChangesView>()
+  const [loading, setLoading] = useState(false)
+  const [loadError, setLoadError] = useState<string>()
+
+  const deviceById = new Map(cluster.devices.map((d) => [d.id, d]))
+  const nameFor = (id: string) => deviceById.get(id)?.name ?? id
+  const folderLabel = (id: string) => cluster.folders.find((f) => f.id === id)?.label ?? id
+
+  const load = () => {
+    setLoading(true)
+    setLoadError(undefined)
+    mutations
+      .getRecentChanges()
+      .then(setView)
+      .catch((err: unknown) => setLoadError(err instanceof Error ? err.message : 'Failed to load'))
+      .finally(() => setLoading(false))
+  }
+
+  return (
+    <section className="overview__section">
+      <article className="folder-card">
+        <header className="folder-card__header">
+          <h4>Recent changes</h4>
+          <button className="detail-panel__link-button" disabled={loading} onClick={load}>
+            {loading ? 'Loading…' : view ? 'Reload' : 'Load'}
+          </button>
+        </header>
+        {view &&
+          (view.changes.length === 0 ? (
+            <p className="recent-changes__empty">
+              Nothing yet — the feed fills as changes are detected (it starts empty on a proxy
+              restart).
+            </p>
+          ) : (
+            <ul className="recent-changes">
+              {view.changes.map((change, i) => (
+                <li key={`${change.time}:${change.nodeId}:${change.path}:${i}`}>
+                  <span className="recent-changes__time">
+                    {new Date(change.time).toLocaleTimeString()}
+                  </span>{' '}
+                  <strong>{change.action}</strong> <code>{change.path}</code>
+                  <span className="recent-changes__detail">
+                    {' '}
+                    in {folderLabel(change.folderId)} on {nameFor(change.nodeId)}
+                    {change.origin === 'remote' &&
+                      ` (from ${change.modifiedBy ? nameFor(change.modifiedBy) : 'a peer'})`}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ))}
+        {loadError && <div className="detail-panel__error cluster-actions__error">{loadError}</div>}
       </article>
     </section>
   )
@@ -553,6 +623,7 @@ export function OverviewView({ cluster, onOpenShare, isLive }: OverviewViewProps
 
       {isLive && <ClusterActions />}
       {isLive && <BandwidthSection cluster={cluster} />}
+      {isLive && <RecentChangesSection cluster={cluster} />}
 
       {health.attention.length > 0 && (
         <section className="overview__section">

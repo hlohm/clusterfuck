@@ -7,9 +7,11 @@ import type {
   FolderConflicts,
   FolderFailedItems,
   FolderIgnores,
+  RecentChangesView,
   VersioningType,
 } from '@clusterfuck/shared'
 import { aggregateCluster, type NodeSnapshot } from './aggregate.ts'
+import { ChangeBuffer, mapDiskEvent } from './changes.ts'
 import { collectConflictPaths } from './conflicts.ts'
 import { computeRates, type RateSamples } from './rates.ts'
 import { fetchNodeSnapshot } from './snapshot.ts'
@@ -71,6 +73,8 @@ export class ClusterStateManager {
   private mutationChain: Promise<void> = Promise.resolve()
   /** Last per-connection counter readings, for the transfer-rate estimation (see rates.ts). */
   private rateSamples: RateSamples = new Map()
+  /** Bounded, in-memory recent-changes feed, merged across every node's disk-events stream. */
+  private readonly changes = new ChangeBuffer(200)
 
   constructor(
     nodeConfigs: NodeConfig[],
@@ -109,6 +113,7 @@ export class ClusterStateManager {
     await this.refresh()
     for (const entry of this.clients) {
       void this.runEventLoop(entry)
+      void this.runDiskEventLoop(entry)
     }
     void this.runPollLoop()
   }
@@ -150,6 +155,7 @@ export class ClusterStateManager {
       const entry: ClientEntry = { nodeId: config.id, client }
       this.clients.push(entry)
       void this.runEventLoop(entry)
+      void this.runDiskEventLoop(entry)
       this.persist()
       await this.refreshAfterMutation()
     })
@@ -941,6 +947,46 @@ export class ClusterStateManager {
       await this.applyFolderPatch(client, folderId, mutate)
       await this.refreshAfterMutation()
     })
+  }
+
+  /** The merged recent-changes feed, newest first. */
+  getRecentChanges(): RecentChangesView {
+    return { changes: this.changes.list() }
+  }
+
+  /**
+   * Companion to runEventLoop for the disk-events stream: Syncthing only
+   * delivers LocalChangeDetected/RemoteChangeDetected there, so each node
+   * gets this second long-poll. Feeds the changes buffer; never triggers a
+   * refresh (item-level changes roll up through the normal event loop's
+   * FolderSummary/StateChanged anyway). Same lifecycle/backoff rules as
+   * runEventLoop — splicing the entry out of this.clients stops it.
+   */
+  private async runDiskEventLoop(entry: ClientEntry): Promise<void> {
+    let since = 0
+    let backoffMs = 1000
+    while (!this.stopped && this.clients.includes(entry)) {
+      try {
+        const events = await entry.client.diskEvents(since)
+        if (events.length > 0) {
+          since = events[events.length - 1]!.id
+          const nodeDeviceId =
+            this.snapshots.find((s) => s.nodeId === entry.nodeId)?.myID ?? entry.nodeId
+          for (const event of events) {
+            const change = mapDiskEvent(event, nodeDeviceId)
+            if (change) this.changes.push(change)
+          }
+        }
+        backoffMs = 1000
+      } catch (err) {
+        console.error(
+          `[clusterfuck-proxy] disk event stream error for ${entry.nodeId}:`,
+          (err as Error).message,
+        )
+        await sleep(backoffMs)
+        backoffMs = Math.min(backoffMs * 2, 30_000)
+      }
+    }
   }
 
   private async runPollLoop(): Promise<void> {

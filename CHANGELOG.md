@@ -4,6 +4,19 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.4.16]
+
+- **Recent-changes feed** (ROADMAP.md Phase 5 Observability): a Recent
+  changes card on the Overview shows what just changed across the whole
+  cluster — action, path, folder, observing node, and for remote changes
+  the peer it came from. The proxy long-polls each node's
+  `/rest/events/disk` stream (a second event loop per node — Syncthing
+  doesn't deliver `LocalChangeDetected`/`RemoteChangeDetected` on the
+  default stream) into a bounded in-memory buffer (200 entries), served
+  newest-first at `GET /api/changes`. Deliberately not persisted and not
+  part of the SSE model: it's a glance backwards, not an audit log. The
+  raw filterable event log is split out as its own roadmap item.
+
 ## [0.4.15]
 
 - **Live transfer rates** (ROADMAP.md Phase 5 Observability): `Connection`

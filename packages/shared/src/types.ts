@@ -275,6 +275,34 @@ export interface DeviceOptionsView {
 }
 
 /**
+ * One observed file/directory change — an entry of the cluster-wide
+ * recent-changes feed. Sourced from Syncthing's disk-events stream on each
+ * registered node; the proxy keeps a bounded in-memory buffer (nothing is
+ * persisted), merged across nodes and served on demand.
+ */
+export interface RecentChange {
+  /** The registered node that observed the change (its own device ID). */
+  nodeId: DeviceId
+  folderId: FolderId
+  /** Folder-relative path of the changed item. */
+  path: string
+  /** Syncthing's action verbatim: added / modified / deleted. */
+  action: string
+  /** Syncthing's item type verbatim: file / dir. */
+  itemType: string
+  /** Whether the change happened on the observing node itself or came in from a peer. */
+  origin: 'local' | 'remote'
+  /** For remote changes: the device the change came from. */
+  modifiedBy?: DeviceId
+  time: string
+}
+
+/** The merged recent-changes feed, newest first — on-demand, not part of ClusterModel. */
+export interface RecentChangesView {
+  changes: RecentChange[]
+}
+
+/**
  * One registered node's global (whole-process) bandwidth limits, in KiB/s;
  * 0 = unlimited. Distinct from DeviceOptions' per-device limits: these cap
  * the node's total traffic. `error` set when the node couldn't be read.

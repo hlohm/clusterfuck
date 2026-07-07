@@ -31,6 +31,13 @@ Listens on `PORT` (default `4000`). Routes:
 - `GET /api/cluster` — current `ClusterModel` snapshot.
 - `GET /api/events` — Server-Sent Events stream; pushes a full snapshot on
   every change.
+- `GET /api/changes` — the cluster-wide recent-changes feed, newest first:
+  `{ "changes": [{ "nodeId": "...", "folderId": "...", "path": "...",
+  "action": "modified", "itemType": "file", "origin": "local" | "remote",
+  "modifiedBy": "...", "time": "..." }] }`. Fed by each node's
+  `/rest/events/disk` stream into a bounded in-memory buffer (last 200) —
+  a "what just happened" glance, not a persisted audit log; empty after a
+  proxy restart.
 - `GET /api/health` — liveness check.
 - `GET /api/version` — `{ "version": "x.y.z" }` from this process's own
   `package.json`. Compare against the frontend build's version (shown next to
