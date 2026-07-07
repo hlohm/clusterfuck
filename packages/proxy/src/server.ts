@@ -204,6 +204,35 @@ async function handleRequest(
       return
     }
 
+    // GET /api/bandwidth — every registered node's global send/receive caps.
+    // PUT /api/bandwidth — set the same caps on every registered node;
+    // PUT /api/nodes/:deviceId/bandwidth — on one node.
+    if (parts.length >= 2 && parts[0] === 'api') {
+      const isGlobal = parts.length === 2 && parts[1] === 'bandwidth'
+      const isPerNode = parts.length === 4 && parts[1] === 'nodes' && parts[3] === 'bandwidth'
+      if (isGlobal && method === 'GET') {
+        sendJson(res, 200, await manager.getBandwidthLimits())
+        return
+      }
+      if ((isGlobal || isPerNode) && method === 'PUT') {
+        const body = (await readJsonBody(req)) as
+          | { maxSendKbps?: unknown; maxRecvKbps?: unknown }
+          | undefined
+        const validKbps = (v: unknown): v is number =>
+          typeof v === 'number' && Number.isInteger(v) && v >= 0
+        if (!validKbps(body?.maxSendKbps) || !validKbps(body.maxRecvKbps)) {
+          sendJson(res, 400, { error: 'maxSendKbps and maxRecvKbps must be integers >= 0 (0 = unlimited)' })
+          return
+        }
+        await manager.setBandwidthLimits(
+          isPerNode ? decodeURIComponent(parts[2]!) : undefined,
+          { maxSendKbps: body.maxSendKbps, maxRecvKbps: body.maxRecvKbps },
+        )
+        sendJson(res, 200, { ok: true })
+        return
+      }
+    }
+
     // GET /api/devices/:deviceId/qr — PNG QR of the device ID, relayed from
     // a registered node's own /qr/ endpoint (no QR library in the proxy).
     if (

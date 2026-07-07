@@ -1,6 +1,7 @@
 import type {
   ConfigDevice,
   ConfigFolder,
+  ConfigOptions,
   ConfigResponse,
   ConnectionsResponse,
   DbBrowseItem,
@@ -95,6 +96,16 @@ export class SyncthingClient {
 
   config(signal?: AbortSignal): Promise<ConfigResponse> {
     return this.get('/rest/config', signal)
+  }
+
+  /** This node's global options (we only read the bandwidth-limit subset). */
+  options(signal?: AbortSignal): Promise<ConfigOptions> {
+    return this.get('/rest/config/options', signal)
+  }
+
+  /** Merges the given fields into this node's global options — element-scoped PATCH, everything else untouched. */
+  patchOptions(fields: ConfigOptions, signal?: AbortSignal): Promise<void> {
+    return this.send('PATCH', '/rest/config/options', fields, signal)
   }
 
   connections(signal?: AbortSignal): Promise<ConnectionsResponse> {

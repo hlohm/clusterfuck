@@ -1,4 +1,5 @@
 import type {
+  BandwidthLimitsView,
   ClusterModel,
   DeviceOptions,
   DeviceOptionsView,
@@ -617,6 +618,49 @@ export class ClusterStateManager {
   removeShare(deviceId: string, folderId: string, shareDeviceId: string): Promise<void> {
     return this.patchFolder(deviceId, folderId, (f) => {
       f.devices = f.devices.filter((d) => d.deviceID !== shareDeviceId)
+    })
+  }
+
+  /**
+   * Every registered node's global bandwidth limits — on-demand read, one
+   * entry per node keyed by its own device ID, per-node errors captured.
+   */
+  async getBandwidthLimits(): Promise<BandwidthLimitsView> {
+    const nodes = await Promise.all(
+      this.clients.map(async ({ nodeId, client }) => {
+        const myID = this.snapshots.find((s) => s.nodeId === nodeId)?.myID ?? nodeId
+        try {
+          const opts = await client.options()
+          return { nodeId: myID, maxSendKbps: opts.maxSendKbps ?? 0, maxRecvKbps: opts.maxRecvKbps ?? 0 }
+        } catch (err) {
+          return { nodeId: myID, error: (err as Error).message }
+        }
+      }),
+    )
+    return { nodes }
+  }
+
+  /**
+   * Sets global bandwidth limits on one node, or on every registered node
+   * when deviceId is undefined (the cluster-wide action). Element-scoped
+   * PATCH of /rest/config/options, so every other global option is
+   * untouched. Limits don't change topology/state, but refresh anyway so
+   * the usual post-mutation guarantees hold.
+   */
+  setBandwidthLimits(deviceId: string | undefined, limits: { maxSendKbps: number; maxRecvKbps: number }): Promise<void> {
+    return this.enqueueMutation(async () => {
+      const targets =
+        deviceId === undefined
+          ? this.clients.map((entry) => ({ nodeId: entry.nodeId, client: entry.client }))
+          : this.resolveTargets([deviceId])
+      if (targets.length === 0) throw new NotManagedError(deviceId ?? 'cluster')
+
+      const results = await Promise.allSettled(targets.map(({ client }) => client.patchOptions(limits)))
+      await this.finishFanOut(
+        `setting bandwidth limits${deviceId !== undefined ? ` on ${deviceId}` : ''}`,
+        targets,
+        results,
+      )
     })
   }
 
