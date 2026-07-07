@@ -212,7 +212,14 @@ tabs. Mapped from the GUI's actual surface, in priority order.
       (sub-2s windows carry the previous rate forward to avoid event-storm
       noise; counter resets read as 0, disconnected links have no rate).
       Shown per link and summed on the device panel and Overview tile
-- [ ] Recent-changes feed and event log, merged across nodes
+- [x] Recent-changes feed, merged across nodes — each node's disk-events
+      stream (`/rest/events/disk`, a second long-poll per node: Syncthing
+      doesn't deliver change events on the default stream) feeds a bounded
+      in-memory buffer on the proxy, served newest-first at `/api/changes`
+      and shown as an on-demand Overview card. A glance, not an audit log —
+      empty after a proxy restart by design
+- [ ] Raw event log (all event types, filterable) — split out of the line
+      above; the changes feed covers the common "what just happened" case
 - [ ] Completion history/sparklines on the overview tiles
 
 ### Foundations these need

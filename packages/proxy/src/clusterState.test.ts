@@ -279,7 +279,7 @@ function installAddNodeFakeCluster() {
     if (url.pathname === '/rest/cluster/pending/devices' || url.pathname === '/rest/cluster/pending/folders') {
       return jsonResponse({})
     }
-    if (url.pathname === '/rest/events') {
+    if (url.pathname === '/rest/events' || url.pathname === '/rest/events/disk') {
       return jsonResponse([])
     }
     throw new Error(`unexpected fetch in addNode fake cluster: ${method} ${url.href}`)

@@ -171,6 +171,21 @@ export interface SyncthingEvent {
   data: unknown
 }
 
+/**
+ * Payload of the /rest/events/disk stream's LocalChangeDetected /
+ * RemoteChangeDetected events. `folder` vs `folderID` varies across 1.x
+ * versions, so both are modeled.
+ */
+export interface DiskEventData {
+  action: string
+  folder?: string
+  folderID?: string
+  label?: string
+  path: string
+  type: string
+  modifiedBy?: string
+}
+
 /** GET /rest/cluster/pending/devices — keyed by the connecting device's own ID. */
 export interface PendingDevicesResponse {
   [deviceID: string]: { time: string; name?: string; address?: string }

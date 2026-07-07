@@ -104,6 +104,13 @@ async function handleRequest(
     return
   }
 
+  // The merged recent-changes feed (newest first). In-memory and bounded —
+  // a "what just happened" glance, not a persisted audit log.
+  if (url.pathname === '/api/changes' && method === 'GET') {
+    sendJson(res, 200, manager.getRecentChanges())
+    return
+  }
+
   if (url.pathname === '/api/events' && method === 'GET') {
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',

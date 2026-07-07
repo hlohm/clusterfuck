@@ -924,6 +924,35 @@ button {
   color: var(--accent);
 }
 
+.recent-changes {
+  margin: 0;
+  padding: 4px 12px 10px;
+  list-style: none;
+  font-size: 12px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.recent-changes li {
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.recent-changes__time {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.recent-changes__detail {
+  color: var(--text);
+}
+
+.recent-changes__empty {
+  margin: 4px 12px 10px;
+  font-size: 12px;
+  color: var(--text);
+}
+
 .drift-badge {
   flex: 0 0 auto;
   font-size: 13px;

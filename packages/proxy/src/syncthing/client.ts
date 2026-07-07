@@ -138,6 +138,16 @@ export class SyncthingClient {
     return this.get(`/rest/events?since=${since}`, signal)
   }
 
+  /**
+   * Long-polls the disk-events stream (LocalChangeDetected /
+   * RemoteChangeDetected) — these are not delivered on the default events
+   * endpoint, hence the separate loop. Same since/timeout semantics as
+   * events().
+   */
+  diskEvents(since: number, signal?: AbortSignal): Promise<SyncthingEvent[]> {
+    return this.get(`/rest/events/disk?since=${since}`, signal)
+  }
+
   /** Pauses *this node's* connection to the given device. */
   pauseDevice(deviceId: string, signal?: AbortSignal): Promise<void> {
     return this.send('POST', `/rest/system/pause?device=${encodeURIComponent(deviceId)}`, undefined, signal)

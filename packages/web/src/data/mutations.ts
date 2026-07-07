@@ -7,6 +7,7 @@ import type {
   FolderFailedItems,
   FolderIgnores,
   FolderType,
+  RecentChangesView,
   VersioningType,
 } from '@clusterfuck/shared'
 import { PROXY_BASE } from './proxyBase'
@@ -51,6 +52,11 @@ export function setAllFoldersPaused(paused: boolean): Promise<void> {
 /** Cluster-wide: triggers a rescan of every folder on every registered node. */
 export function rescanAllFolders(): Promise<void> {
   return call('POST', '/api/folders/all/rescan')
+}
+
+/** The merged recent-changes feed, newest first (bounded, in-memory on the proxy). */
+export function getRecentChanges(): Promise<RecentChangesView> {
+  return getJson('/api/changes')
 }
 
 /** Every registered node's global bandwidth limits (KiB/s, 0 = unlimited). */
