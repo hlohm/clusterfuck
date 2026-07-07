@@ -1,5 +1,7 @@
 import type {
   ClusterModel,
+  DeviceOptions,
+  DeviceOptionsView,
   FolderAdvancedOptions,
   FolderConflicts,
   FolderFailedItems,
@@ -580,6 +582,57 @@ export class ClusterStateManager {
   removeShare(deviceId: string, folderId: string, shareDeviceId: string): Promise<void> {
     return this.patchFolder(deviceId, folderId, (f) => {
       f.devices = f.devices.filter((d) => d.deviceID !== shareDeviceId)
+    })
+  }
+
+  /**
+   * How every registered node that references this device currently has it
+   * configured — the on-demand read behind the device-options editor. Same
+   * fan-out set as pause/remove (never the device's own self-entry), with
+   * per-node errors captured rather than failing the whole call.
+   */
+  async getDeviceOptions(deviceId: string): Promise<DeviceOptionsView> {
+    const targets = this.nodesReferencing(deviceId)
+    const nodes = await Promise.all(
+      targets.map(async ({ nodeId, client }) => {
+        const myID = this.snapshots.find((s) => s.nodeId === nodeId)?.myID ?? nodeId
+        try {
+          const d = await client.deviceConfig(deviceId)
+          return {
+            nodeId: myID,
+            options: {
+              name: d.name ?? '',
+              addresses: d.addresses ?? ['dynamic'],
+              compression: d.compression ?? 'metadata',
+              introducer: d.introducer ?? false,
+              autoAcceptFolders: d.autoAcceptFolders ?? false,
+              maxSendKbps: d.maxSendKbps ?? 0,
+              maxRecvKbps: d.maxRecvKbps ?? 0,
+            },
+          }
+        } catch (err) {
+          return { nodeId: myID, error: (err as Error).message }
+        }
+      }),
+    )
+    return { deviceId, nodes }
+  }
+
+  /**
+   * Applies the same device options on every registered node that references
+   * the device — the write half of getDeviceOptions, same scope as
+   * setDevicePaused. Element-scoped PATCH per node (no read-modify-write),
+   * so fields we don't model (paused, allowedNetworks, ...) are untouched.
+   */
+  setDeviceOptions(deviceId: string, options: DeviceOptions): Promise<void> {
+    return this.enqueueMutation(async () => {
+      const targets = this.nodesReferencing(deviceId)
+      if (targets.length === 0) throw new NotManagedError(deviceId)
+
+      const results = await Promise.allSettled(
+        targets.map(({ client }) => client.patchDeviceConfig(deviceId, options)),
+      )
+      await this.finishFanOut(`updating options for ${deviceId}`, targets, results)
     })
   }
 

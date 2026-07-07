@@ -211,6 +211,54 @@ export interface ClusterModel {
   pendingFolders: PendingFolder[]
 }
 
+/** Syncthing's per-device compression settings (what to compress on the wire). */
+export const COMPRESSION_LEVELS = ['metadata', 'always', 'never'] as const
+export type CompressionLevel = (typeof COMPRESSION_LEVELS)[number]
+
+export function isCompressionLevel(value: unknown): value is CompressionLevel {
+  return (COMPRESSION_LEVELS as readonly unknown[]).includes(value)
+}
+
+/**
+ * The editable options of one device *entry* — i.e. how one registered node
+ * has a peer configured, not a property of the peer itself. Every field maps
+ * 1:1 to Syncthing's device config. `compression` is kept verbatim on read
+ * and restricted to COMPRESSION_LEVELS on write (same stance as
+ * FolderAdvancedOptions' minDiskFree unit).
+ */
+export interface DeviceOptions {
+  name: string
+  /** Dial addresses; `dynamic` means discovery. */
+  addresses: string[]
+  compression: string
+  /** This peer may introduce its own peers to us. */
+  introducer: boolean
+  /** Automatically accept folders this peer offers. */
+  autoAcceptFolders: boolean
+  /** Per-device send rate limit in KiB/s; 0 = unlimited. */
+  maxSendKbps: number
+  /** Per-device receive rate limit in KiB/s; 0 = unlimited. */
+  maxRecvKbps: number
+}
+
+/** One registered node's own configuration of the device; `error` set when it couldn't be read. */
+export interface NodeDeviceOptions {
+  /** The registered node whose config this entry lives in (its own device ID). */
+  nodeId: DeviceId
+  options?: DeviceOptions
+  error?: string
+}
+
+/**
+ * How every registered node currently configures one device — on-demand, not
+ * part of ClusterModel: entries can differ per node and only matter when a
+ * device is being edited.
+ */
+export interface DeviceOptionsView {
+  deviceId: DeviceId
+  nodes: NodeDeviceOptions[]
+}
+
 /**
  * One node's `.stignore` patterns for a folder — the raw lines, not the
  * expanded form. `error` is set (and `patterns` empty) when that node's

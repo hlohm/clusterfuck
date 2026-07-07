@@ -1,5 +1,12 @@
 import { createServer, type IncomingMessage, type ServerResponse, type Server } from 'node:http'
-import { isMinDiskFreeUnit, isVersioningType, MIN_DISK_FREE_UNITS, VERSIONING_TYPES } from '@clusterfuck/shared'
+import {
+  COMPRESSION_LEVELS,
+  isCompressionLevel,
+  isMinDiskFreeUnit,
+  isVersioningType,
+  MIN_DISK_FREE_UNITS,
+  VERSIONING_TYPES,
+} from '@clusterfuck/shared'
 import { InvalidTargetError, NotManagedError, type ClusterStateManager } from './clusterState.ts'
 import { SYNCTHING_FOLDER_TYPES, type SyncthingFolderType } from './syncthing/types.ts'
 import { PROXY_VERSION } from './version.ts'
@@ -195,6 +202,70 @@ async function handleRequest(
       await manager.removeNode(decodeURIComponent(parts[2]!))
       sendJson(res, 200, { ok: true })
       return
+    }
+
+    // GET/PUT /api/devices/:deviceId/options — how every referencing
+    // registered node has this device configured / apply the same options on
+    // all of them (same fan-out scope as pause/remove; never the device's
+    // own self-entry).
+    if (parts.length === 4 && parts[0] === 'api' && parts[1] === 'devices' && parts[3] === 'options') {
+      const deviceId = decodeURIComponent(parts[2]!)
+      if (method === 'GET') {
+        sendJson(res, 200, await manager.getDeviceOptions(deviceId))
+        return
+      }
+      if (method === 'PUT') {
+        const body = (await readJsonBody(req)) as
+          | {
+              name?: unknown
+              addresses?: unknown
+              compression?: unknown
+              introducer?: unknown
+              autoAcceptFolders?: unknown
+              maxSendKbps?: unknown
+              maxRecvKbps?: unknown
+            }
+          | undefined
+        if (typeof body?.name !== 'string') {
+          sendJson(res, 400, { error: 'name must be a string (may be empty to show the device ID)' })
+          return
+        }
+        if (
+          !Array.isArray(body.addresses) ||
+          body.addresses.length === 0 ||
+          !body.addresses.every((a) => typeof a === 'string' && a !== '')
+        ) {
+          sendJson(res, 400, {
+            error: 'addresses must be a non-empty array of non-empty strings (use ["dynamic"] for discovery)',
+          })
+          return
+        }
+        if (!isCompressionLevel(body.compression)) {
+          sendJson(res, 400, { error: `compression must be one of: ${COMPRESSION_LEVELS.join(', ')}` })
+          return
+        }
+        if (typeof body.introducer !== 'boolean' || typeof body.autoAcceptFolders !== 'boolean') {
+          sendJson(res, 400, { error: 'introducer and autoAcceptFolders must be booleans' })
+          return
+        }
+        const validKbps = (v: unknown): v is number =>
+          typeof v === 'number' && Number.isInteger(v) && v >= 0
+        if (!validKbps(body.maxSendKbps) || !validKbps(body.maxRecvKbps)) {
+          sendJson(res, 400, { error: 'maxSendKbps and maxRecvKbps must be integers >= 0 (0 = unlimited)' })
+          return
+        }
+        await manager.setDeviceOptions(deviceId, {
+          name: body.name,
+          addresses: body.addresses,
+          compression: body.compression,
+          introducer: body.introducer,
+          autoAcceptFolders: body.autoAcceptFolders,
+          maxSendKbps: body.maxSendKbps,
+          maxRecvKbps: body.maxRecvKbps,
+        })
+        sendJson(res, 200, { ok: true })
+        return
+      }
     }
 
     // POST /api/devices/:deviceId/pause|resume — ":deviceId" of "all" means
