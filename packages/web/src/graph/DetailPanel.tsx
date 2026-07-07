@@ -170,6 +170,34 @@ function DeviceActions({ device }: { device: Device }) {
           Remove device
         </button>
       </div>
+      {device.managed && (
+        <div className="detail-panel__action-row">
+          <button
+            className="detail-panel__button--warning"
+            disabled={busy}
+            onClick={() =>
+              run(
+                `Restart Syncthing on ${device.name}? It comes back on its own after a few seconds.`,
+                () => mutations.restartNode(device.id, 'restart'),
+              )
+            }
+          >
+            Restart Syncthing
+          </button>
+          <button
+            className="detail-panel__button--danger"
+            disabled={busy}
+            onClick={() =>
+              run(
+                `Shut down Syncthing on ${device.name}? It will NOT come back until started on the machine itself — this tool can't start it again.`,
+                () => mutations.restartNode(device.id, 'shutdown'),
+              )
+            }
+          >
+            Shut down
+          </button>
+        </div>
+      )}
       {error && <div className="detail-panel__error">{error}</div>}
     </div>
   )

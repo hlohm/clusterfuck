@@ -174,8 +174,13 @@ tabs. Mapped from the GUI's actual surface, in priority order.
 - [x] Pause all / resume all (devices or folders) — one mutation, one refresh
       for the whole batch; a partial failure still applies to and refreshes
       the rest, reported by node→target label (capped)
-- [ ] Rescan all; restart/shutdown a node's Syncthing; upgrade orchestration
-      (one node at a time, health-checked)
+- [x] Rescan all (one batch, one refresh — same shape as pause all);
+      restart/shutdown a node's Syncthing (per node, confirmation-gated;
+      shutdown warns it can't be undone from here — a connection dropping
+      mid-restart is treated as success, since Syncthing may exit before the
+      response gets out)
+- [ ] Upgrade orchestration (one node at a time, health-checked) — split out
+      of the line above; a longer-running stateful workflow, not a fan-out
 - [ ] Config drift detection: same folder configured differently across nodes
       (label/type/versioning mismatches), asymmetric shares (A shares with B,
       B doesn't share back), with suggested fixes — the genuinely novel

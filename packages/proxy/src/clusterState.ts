@@ -389,6 +389,41 @@ export class ClusterStateManager {
     })
   }
 
+  /** Triggers a rescan of every folder on every registered node — cluster-wide, one refresh for the batch. */
+  rescanAllFolders(): Promise<void> {
+    return this.enqueueMutation(async () => {
+      const jobs: { label: string; run: () => Promise<void> }[] = []
+      for (const snap of this.snapshots) {
+        const entry = this.clients.find((c) => c.nodeId === snap.nodeId)
+        if (!entry) continue
+        const { client } = entry
+        for (const f of snap.folders) {
+          jobs.push({ label: `${snap.nodeId}/${f.id}`, run: () => client.rescanFolder(f.id) })
+        }
+      }
+      await this.runBulk('rescan all folders', jobs)
+    })
+  }
+
+  /**
+   * Restarts (or shuts down) one registered node's Syncthing process. The
+   * node going away mid-call is expected — Syncthing acks the request and
+   * then exits, but a race can drop the connection first, which must not
+   * read as "the restart failed". A shutdown node does NOT come back until
+   * started out-of-band; the UI's confirmation says so.
+   */
+  restartNode(deviceId: string, action: 'restart' | 'shutdown'): Promise<void> {
+    return this.enqueueMutation(async () => {
+      const client = this.clientForDevice(deviceId)
+      try {
+        await (action === 'restart' ? client.restart() : client.shutdown())
+      } catch (err) {
+        if (!/connection failed/.test((err as Error).message)) throw err
+      }
+      await this.refreshAfterMutation()
+    })
+  }
+
   rescanFolder(deviceId: string, folderId: string): Promise<void> {
     return this.enqueueMutation(async () => {
       await this.clientForDevice(deviceId).rescanFolder(folderId)

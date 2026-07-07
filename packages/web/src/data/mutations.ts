@@ -47,6 +47,16 @@ export function setAllFoldersPaused(paused: boolean): Promise<void> {
   return call('POST', `/api/folders/all/${paused ? 'pause' : 'resume'}`)
 }
 
+/** Cluster-wide: triggers a rescan of every folder on every registered node. */
+export function rescanAllFolders(): Promise<void> {
+  return call('POST', '/api/folders/all/rescan')
+}
+
+/** Restarts (or shuts down) one registered node's Syncthing. Shutdown does not come back on its own. */
+export function restartNode(deviceId: string, action: 'restart' | 'shutdown'): Promise<void> {
+  return call('POST', `/api/nodes/${encodeURIComponent(deviceId)}/${action}`)
+}
+
 /** Registers a new node with the proxy, persisted server-side (cluster.json). */
 export function registerNode(id: string, url: string, apiKey: string): Promise<void> {
   return call('POST', '/api/nodes', { id, url, apiKey })

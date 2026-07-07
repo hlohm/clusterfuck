@@ -157,6 +157,13 @@ Listens on `PORT` (default `4000`). Routes:
   capped to 5 shown).
 - `POST /api/folders/all/pause` / `.../resume` — same, but for every folder on
   every registered node that has it.
+- `POST /api/folders/all/rescan` — triggers a rescan of every folder on every
+  registered node (same batch/reporting shape as pause all).
+- `POST /api/nodes/:deviceId/restart` / `.../shutdown` — restarts or shuts
+  down that one node's Syncthing process. Restart comes back on its own;
+  shutdown does **not** (start it on the machine itself). The connection
+  dropping mid-call is treated as success — Syncthing may exit before its
+  response gets out — but an explicit HTTP error still fails.
 
 **Pending devices & folders (the cluster-wide "inbox"):** surfaced as
 `pendingDevices`/`pendingFolders` on the `ClusterModel` itself (merged across

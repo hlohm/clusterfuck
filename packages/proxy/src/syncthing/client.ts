@@ -141,6 +141,16 @@ export class SyncthingClient {
     return this.send('POST', `/rest/db/scan?folder=${encodeURIComponent(folderId)}`, undefined, signal)
   }
 
+  /** Restarts this node's Syncthing process (it comes back on its own). */
+  restart(signal?: AbortSignal): Promise<void> {
+    return this.send('POST', '/rest/system/restart', undefined, signal)
+  }
+
+  /** Shuts this node's Syncthing down — it does NOT come back until started out-of-band. */
+  shutdown(signal?: AbortSignal): Promise<void> {
+    return this.send('POST', '/rest/system/shutdown', undefined, signal)
+  }
+
   /** On a `sendonly` folder: push this node's local version out, overriding remote changes. */
   overrideFolder(folderId: string, signal?: AbortSignal): Promise<void> {
     return this.send('POST', `/rest/db/override?folder=${encodeURIComponent(folderId)}`, undefined, signal)
