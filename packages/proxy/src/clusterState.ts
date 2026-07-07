@@ -586,6 +586,30 @@ export class ClusterStateManager {
   }
 
   /**
+   * PNG QR code of a device's ID, rendered by the first reachable registered
+   * node's own /qr/ endpoint (any node can render it — the image is a pure
+   * function of the text). Restricted to IDs actually in the model so this
+   * can't be used as a render-anything proxy. Read-only, not serialized
+   * through the mutation chain.
+   */
+  async getDeviceQr(deviceId: string): Promise<Buffer> {
+    const known =
+      this.model.devices.some((d) => d.id === deviceId) ||
+      this.model.pendingDevices.some((d) => d.deviceId === deviceId)
+    if (!known) throw new InvalidTargetError(`${deviceId} is not a device in this cluster`)
+
+    let lastError: Error = new NotManagedError(deviceId)
+    for (const { client } of this.clients) {
+      try {
+        return await client.qrPng(deviceId)
+      } catch (err) {
+        lastError = err as Error
+      }
+    }
+    throw lastError
+  }
+
+  /**
    * How every registered node that references this device currently has it
    * configured — the on-demand read behind the device-options editor. Same
    * fan-out set as pause/remove (never the device's own self-entry), with

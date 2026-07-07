@@ -57,6 +57,11 @@ Listens on `PORT` (default `4000`). Routes:
   device as a peer from *every* registered node that has it configured (never
   from the device's own config — there's no "remove yourself"). Syncthing
   also drops it from any folder it was shared on for that node.
+- `GET /api/devices/:deviceId/qr` — PNG QR code of the device ID, relayed
+  from the first reachable registered node's own `/qr/` GUI endpoint (the
+  same renderer Syncthing's web UI uses — no QR library here). Restricted to
+  device IDs actually present in the model (configured or pending), so it
+  can't be used to render arbitrary text; 400 otherwise.
 - `GET /api/devices/:deviceId/options` — how every registered node that
   references the device currently has it configured: `{ "deviceId": "...",
   "nodes": [{ "nodeId": "<node device ID>", "options": { "name": "...",

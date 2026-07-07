@@ -164,7 +164,10 @@ tabs. Mapped from the GUI's actual surface, in priority order.
       differ per node), with a "nodes disagree" warning; applying writes one
       set of options to every referencing node (same fan-out scope as
       pause/remove) via Syncthing's element-scoped PATCH
-- [ ] Device identity: show ID/QR for any managed node
+- [x] Device identity: show ID/QR for any device — copy button (0.4.6) plus
+      a toggleable QR image; the proxy relays the PNG from a registered
+      node's own `/qr/` GUI endpoint (the same one Syncthing's UI uses), so
+      neither proxy nor frontend needs a QR library
 
 ### Cluster operations
 

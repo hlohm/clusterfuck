@@ -161,6 +161,16 @@ export class SyncthingClient {
     return this.send('POST', `/rest/db/ignores?folder=${encodeURIComponent(folderId)}`, { ignore: patterns }, signal)
   }
 
+  /**
+   * PNG QR code for arbitrary text, rendered by this node's own GUI server —
+   * the same `/qr/` endpoint Syncthing's web UI uses for device IDs. Not
+   * under /rest, but authenticated with the same API key.
+   */
+  async qrPng(text: string, signal?: AbortSignal): Promise<Buffer> {
+    const res = await this.request('GET', `/qr/?text=${encodeURIComponent(text)}`, undefined, signal)
+    return Buffer.from(await res.arrayBuffer())
+  }
+
   folderConfig(folderId: string, signal?: AbortSignal): Promise<ConfigFolder> {
     return this.get(`/rest/config/folders/${encodeURIComponent(folderId)}`, signal)
   }

@@ -160,6 +160,11 @@ function installFakeCluster(delayMs = 0, failOn?: { host: string; pathname: stri
       }
       return jsonResponse({})
     }
+    if (url.pathname === '/qr/' && method === 'GET') {
+      // Fake PNG bytes tagged with the rendering host + text, so a test can
+      // assert which node served it and for what content.
+      return new Response(`png:${url.host}:${url.searchParams.get('text')}`, { status: 200 })
+    }
     if (url.pathname === '/rest/db/browse' && method === 'GET') {
       // One conflict copy on st-a only, nested a level down.
       return jsonResponse(
@@ -603,6 +608,23 @@ describe('ClusterStateManager mutations', () => {
     // The GET-modify-PUT must carry the untouched fields through.
     expect(folder.id).toBe('f1')
     expect(folder.devices).toEqual([{ deviceID: 'DEVICE-A' }, { deviceID: 'DEVICE-B' }])
+  })
+
+  it('relays a device-ID QR from the first reachable node, falling back when one fails', async () => {
+    const { manager } = installFakeCluster()
+    await refreshed(manager)
+    expect((await manager.getDeviceQr('DEVICE-B')).toString()).toBe('png:a.test:DEVICE-B')
+
+    const failing = installFakeCluster(0, { host: 'a.test', pathname: '/qr/' })
+    await refreshed(failing.manager)
+    expect((await failing.manager.getDeviceQr('DEVICE-B')).toString()).toBe('png:b.test:DEVICE-B')
+  })
+
+  it('refuses to render a QR for text that is not a device in the model', async () => {
+    const { manager } = installFakeCluster()
+    await refreshed(manager)
+
+    await expect(manager.getDeviceQr('https://evil.example/phish')).rejects.toThrow(InvalidTargetError)
   })
 
   it("reads device options from every referencing node — never the device's own self-entry", async () => {

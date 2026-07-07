@@ -4,6 +4,17 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.4.11]
+
+- **Device identity QR** (ROADMAP.md Phase 5 Device management): the device
+  detail's ID line gains a Show QR toggle. New route
+  `GET /api/devices/:deviceId/qr` relays the PNG from a registered node's
+  own `/qr/` GUI endpoint (the same renderer Syncthing's web UI uses), with
+  fallback across nodes — no QR library added to proxy or frontend. IDs are
+  validated against the model so the route can't render arbitrary text.
+  Completes the "device identity" roadmap item started by 0.4.6's copy
+  button.
+
 ## [0.4.10]
 
 - **Edit device options** (ROADMAP.md Phase 5 Device management): name,
