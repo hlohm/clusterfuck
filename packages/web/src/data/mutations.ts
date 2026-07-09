@@ -1,5 +1,6 @@
 import type {
   BandwidthLimitsView,
+  CompletionHistoryView,
   DeviceOptions,
   DeviceOptionsView,
   FolderAdvancedOptions,
@@ -53,6 +54,11 @@ export function setAllFoldersPaused(paused: boolean): Promise<void> {
 /** Cluster-wide: triggers a rescan of every folder on every registered node. */
 export function rescanAllFolders(): Promise<void> {
   return call('POST', '/api/folders/all/rescan')
+}
+
+/** Recent per-share completion samples — the overview sparklines' data (bounded, in-memory on the proxy). */
+export function getCompletionHistory(): Promise<CompletionHistoryView> {
+  return getJson('/api/history/completion')
 }
 
 /** The merged recent-changes feed, newest first (bounded, in-memory on the proxy). */

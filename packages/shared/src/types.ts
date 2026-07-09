@@ -274,6 +274,28 @@ export interface DeviceOptionsView {
   nodes: NodeDeviceOptions[]
 }
 
+/** One completion sample; `t` is epoch milliseconds. */
+export interface CompletionPoint {
+  t: number
+  pct: number
+}
+
+/** One share's recent completion history — the data behind an overview sparkline. */
+export interface ShareCompletionSeries {
+  folderId: FolderId
+  deviceId: DeviceId
+  points: CompletionPoint[]
+}
+
+/**
+ * Recent completion history for every share, sampled by the proxy on its
+ * refresh cycle (bounded, in-memory — a sparkline's worth, not a metrics
+ * store). On-demand, not part of ClusterModel.
+ */
+export interface CompletionHistoryView {
+  series: ShareCompletionSeries[]
+}
+
 export type UpgradeNodeStatus =
   | 'pending'
   | 'checking'

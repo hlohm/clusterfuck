@@ -111,6 +111,13 @@ async function handleRequest(
     return
   }
 
+  // Recent per-share completion samples — the overview sparklines' data.
+  // Same in-memory/bounded stance as /api/changes.
+  if (url.pathname === '/api/history/completion' && method === 'GET') {
+    sendJson(res, 200, manager.getCompletionHistory())
+    return
+  }
+
   if (url.pathname === '/api/events' && method === 'GET') {
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',

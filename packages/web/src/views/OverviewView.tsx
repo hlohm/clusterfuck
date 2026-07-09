@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import type {
   BandwidthLimitsView,
   ClusterModel,
+  CompletionHistoryView,
+  CompletionPoint,
   Device,
   PendingDevice,
   RecentChangesView,
@@ -27,6 +29,7 @@ import { AcceptPendingDeviceDialog, AcceptPendingFolderDialog, type PendingFolde
 import { useAsyncAction } from '../data/useAsyncAction'
 import * as mutations from '../data/mutations'
 import { formatBytes, formatRate } from '../format'
+import { sparklineGeometry } from './sparkline'
 
 export interface OverviewViewProps {
   cluster: ClusterModel
@@ -227,6 +230,29 @@ function BandwidthSection({ cluster }: { cluster: ClusterModel }) {
         {error && <div className="detail-panel__error cluster-actions__error">{error}</div>}
       </article>
     </section>
+  )
+}
+
+/**
+ * Tiny single-series completion line for a folder-card row. Fixed 0–100
+ * y-domain (see sparkline.ts), accent-colored — text next to it stays in
+ * text tokens, the line alone carries no information color couldn't lose.
+ */
+function Sparkline({ points }: { points: CompletionPoint[] }) {
+  const geometry = sparklineGeometry(points, 60, 18)
+  if (!geometry) return null
+  return (
+    <svg
+      className="sparkline"
+      viewBox="0 0 60 18"
+      width={60}
+      height={18}
+      role="img"
+      aria-label={geometry.label}
+    >
+      <title>{geometry.label}</title>
+      <path d={geometry.d} />
+    </svg>
   )
 }
 
@@ -666,6 +692,32 @@ function NodeCard({
 }
 
 export function OverviewView({ cluster, onOpenShare, isLive }: OverviewViewProps) {
+  // Sparkline data: fetched (and refreshed) quietly — history is
+  // supplementary; a fetch failure just means cards render without lines.
+  const [history, setHistory] = useState<CompletionHistoryView>()
+  useEffect(() => {
+    if (!isLive) {
+      setHistory(undefined)
+      return
+    }
+    let cancelled = false
+    const load = () =>
+      mutations
+        .getCompletionHistory()
+        .then((h) => {
+          if (!cancelled) setHistory(h)
+        })
+        .catch(() => undefined)
+    void load()
+    const timer = setInterval(load, 30_000)
+    return () => {
+      cancelled = true
+      clearInterval(timer)
+    }
+  }, [isLive])
+  const seriesFor = (folderId: string, deviceId: string) =>
+    history?.series.find((s) => s.folderId === folderId && s.deviceId === deviceId)?.points
+
   const health = clusterHealth(cluster)
   const transfer = clusterTransferTotals(cluster)
   const outBps = cluster.connections.reduce((sum, c) => sum + (c.outBps ?? 0), 0)
@@ -805,24 +857,28 @@ export function OverviewView({ cluster, onOpenShare, isLive }: OverviewViewProps
                   {worst && <StatusBadge state={worst} />}
                 </header>
                 <ul className="folder-card__shares">
-                  {shares.map((share) => (
-                    <li key={share.deviceId}>
-                      <span className="folder-card__device">
-                        {deviceById.get(share.deviceId)?.name ?? share.deviceId}
-                      </span>
-                      <span className="folder-card__type">
-                        {FOLDER_TYPE_STYLE[share.type].label}
-                      </span>
-                      {share.completionPct !== undefined && share.completionPct < 100 ? (
-                        <span className="folder-card__completion">
-                          <CompletionMeter pct={share.completionPct} />
-                          <span className="folder-card__pct">{share.completionPct}%</span>
+                  {shares.map((share) => {
+                    const points = seriesFor(share.folderId, share.deviceId)
+                    return (
+                      <li key={share.deviceId}>
+                        <span className="folder-card__device">
+                          {deviceById.get(share.deviceId)?.name ?? share.deviceId}
                         </span>
-                      ) : (
-                        <StatusBadge state={share.state} />
-                      )}
-                    </li>
-                  ))}
+                        <span className="folder-card__type">
+                          {FOLDER_TYPE_STYLE[share.type].label}
+                        </span>
+                        {points && <Sparkline points={points} />}
+                        {share.completionPct !== undefined && share.completionPct < 100 ? (
+                          <span className="folder-card__completion">
+                            <CompletionMeter pct={share.completionPct} />
+                            <span className="folder-card__pct">{share.completionPct}%</span>
+                          </span>
+                        ) : (
+                          <StatusBadge state={share.state} />
+                        )}
+                      </li>
+                    )
+                  })}
                 </ul>
               </article>
             )
