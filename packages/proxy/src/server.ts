@@ -807,8 +807,8 @@ async function handleRequest(
   }
 
   // Anything that isn't /api/* falls to the SPA build, when one is present
-  // (unknown paths serve index.html — the app owns its own routing).
-  if (!isApi && method === 'GET' && staticHandler !== undefined && staticHandler(url.pathname, res)) {
+  // (unknown extensionless paths serve index.html — the app owns its routing).
+  if (!isApi && method === 'GET' && staticHandler !== undefined && (await staticHandler(url.pathname, res))) {
     return
   }
 

@@ -7,6 +7,16 @@ import { createStaticHandler } from './static.ts'
 
 const port = Number(process.env.PORT ?? 4000)
 const webOrigin = process.env.CLUSTERFUCK_WEB_ORIGIN ?? 'http://localhost:5173'
+if (webOrigin === '*') {
+  // Every web request is credentialed now (the auth cookie), and browsers
+  // reject Allow-Origin '*' combined with credentials — so a wildcard here
+  // silently breaks every cross-origin fetch. It was never a documented
+  // value, but fail loudly rather than mysteriously.
+  console.warn(
+    "[clusterfuck-proxy] WARNING: CLUSTERFUCK_WEB_ORIGIN='*' cannot work with credentialed " +
+      'requests (browsers reject it) — set the exact origin the web app is served from.',
+  )
+}
 
 const auth = createAuth(process.env.CLUSTERFUCK_TOKEN)
 if (!auth.enabled) {

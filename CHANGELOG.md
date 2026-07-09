@@ -4,6 +4,26 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.4.24]
+
+- **Fixed: a tied label vote produced a one-click rename to an arbitrary
+  winner** (code review of 0.4.20). With no majority (e.g. two nodes
+  "Photos", two "Pics") the drift finding now carries only a "pick one
+  yourself" suggestion, honoring DriftFix's contract that human-choice
+  cases stay text-only.
+- **Static-serving hardening** (code review of 0.4.22): malformed
+  percent-encoding (`GET /%`) is a 404 instead of a `decodeURIComponent`
+  500; a missing file *with an extension* (a stale hashed asset after a
+  redeploy) is a hard 404 instead of index.html masquerading as JavaScript;
+  reads are async (`fs.promises`) so a large asset can't stall the event
+  loop that fans out SSE frames; one `statSync(..., { throwIfNoEntry:
+  false })` replaces the exists/stat pair (no TOCTOU throw); hashed
+  `/assets/*` get `Cache-Control: immutable` while index.html always
+  revalidates.
+- The proxy warns at startup when `CLUSTERFUCK_WEB_ORIGIN='*'` — browsers
+  reject wildcard origins for credentialed requests, so that value can't
+  work with cookie auth.
+
 ## [0.4.23]
 
 - **Fixed: losing your session wedged the app until a manual reload** (code

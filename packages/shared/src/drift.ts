@@ -86,6 +86,10 @@ function labelDrift(
   const entries = [...byLabel.entries()].sort((a, b) => b[1].length - a[1].length)
   const [majorityLabel, majorityDevices] = entries[0]!
   const outliers = entries.slice(1).flatMap(([, devices]) => devices)
+  // A tied vote has no majority — the sort's "winner" would just be
+  // first-insertion order, and auto-renaming half the cluster to a coin-flip
+  // label is exactly the human-choice case DriftFix promises to exclude.
+  const tie = entries.length > 1 && entries[0]![1].length === entries[1]![1].length
   return [
     {
       kind: 'label',
@@ -94,8 +98,10 @@ function labelDrift(
       message: `Folder is labeled differently across nodes: ${entries
         .map(([label, devices]) => `“${label}” (${devices.map(ctx.nameFor).join(', ')})`)
         .join(' vs ')}`,
-      suggestion: `Rename it to “${majorityLabel}” on ${outliers.map(ctx.nameFor).join(', ')}`,
-      fix: { kind: 'set-label', label: majorityLabel, deviceIds: outliers },
+      suggestion: tie
+        ? 'No label has a majority — pick one and rename the others via the folder detail'
+        : `Rename it to “${majorityLabel}” on ${outliers.map(ctx.nameFor).join(', ')}`,
+      ...(tie ? {} : { fix: { kind: 'set-label' as const, label: majorityLabel, deviceIds: outliers } }),
       deviceIds: [...majorityDevices, ...outliers],
     },
   ]
