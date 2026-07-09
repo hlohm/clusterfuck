@@ -971,6 +971,20 @@ button {
   color: var(--text);
 }
 
+.event-log__filters {
+  padding: 4px 12px;
+}
+
+.event-log__data {
+  display: block;
+  color: var(--text);
+  font-family: monospace;
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .recent-changes__empty {
   margin: 4px 12px 10px;
   font-size: 12px;

@@ -4,6 +4,16 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.4.19]
+
+- **Raw event log** (ROADMAP.md Phase 5 Observability — the section's last
+  item): every Syncthing event both proxy event loops receive (default +
+  disk streams) now also lands in a bounded in-memory log (last 300),
+  merged across nodes and served newest-first at `GET /api/events/log`
+  (`?types=`, `?node=`, `?limit=` filters). The Overview gains an Event log
+  card with client-side type/node filtering and the raw payload shown
+  per row — the diagnostic view behind the friendlier recent-changes feed.
+
 ## [0.4.18]
 
 - **Completion sparklines** (ROADMAP.md Phase 5 Observability): the

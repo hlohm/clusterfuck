@@ -118,6 +118,29 @@ async function handleRequest(
     return
   }
 
+  // The merged raw event log, newest first. ?types=a,b narrows to those
+  // event types, ?node=<device ID> to one node, ?limit=N caps the count.
+  // (Distinct from GET /api/events, the SSE model stream.)
+  if (url.pathname === '/api/events/log' && method === 'GET') {
+    const typesParam = url.searchParams.get('types')
+    const limitParam = url.searchParams.get('limit')
+    const limit = limitParam !== null ? Number(limitParam) : undefined
+    if (limit !== undefined && (!Number.isInteger(limit) || limit < 1)) {
+      sendJson(res, 400, { error: 'limit must be a positive integer' })
+      return
+    }
+    sendJson(
+      res,
+      200,
+      manager.getEventLog({
+        types: typesParam !== null ? new Set(typesParam.split(',').filter((t) => t !== '')) : undefined,
+        nodeId: url.searchParams.get('node') ?? undefined,
+        limit,
+      }),
+    )
+    return
+  }
+
   if (url.pathname === '/api/events' && method === 'GET') {
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',

@@ -223,8 +223,11 @@ tabs. Mapped from the GUI's actual surface, in priority order.
       in-memory buffer on the proxy, served newest-first at `/api/changes`
       and shown as an on-demand Overview card. A glance, not an audit log —
       empty after a proxy restart by design
-- [ ] Raw event log (all event types, filterable) — split out of the line
-      above; the changes feed covers the common "what just happened" case
+- [x] Raw event log (all event types, filterable) — everything both per-node
+      event loops receive (default + disk streams), merged newest-first into
+      a bounded in-memory buffer; `GET /api/events/log` with `types`/`node`/
+      `limit` filters, plus an Overview card with type/node filtering. With
+      this, Phase 5 Observability is complete
 - [x] Completion history/sparklines on the overview tiles — the proxy
       samples each share's completion on its refresh cycle (≥30s apart,
       last ~120 points, in-memory like the changes feed) and serves it at
