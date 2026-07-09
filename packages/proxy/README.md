@@ -109,7 +109,10 @@ Listens on `PORT` (default `4000`). Routes:
   version. Both pass Syncthing's own error through if the folder type doesn't
   match.
 - `PATCH /api/folders/:folderId/devices/:deviceId` body
-  `{ "type": "sendonly" }` — changes that folder's type on that node.
+  `{ "type": "sendonly", "label": "Photos" }` (at least one of the two) —
+  changes that folder's type and/or label on that node, in one config
+  round-trip. Labels are per-node, which is exactly what the drift
+  detector's rename fix edits.
 - `PUT /api/folders/:folderId/devices/:deviceId/versioning` body
   `{ "type": "simple", "params": { "keep": "5" }, "cleanupIntervalS": 3600 }`
   (`params`/`cleanupIntervalS` optional) — sets that folder's file-versioning

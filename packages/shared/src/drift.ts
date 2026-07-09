@@ -14,6 +14,18 @@ import type { ClusterModel, DeviceId, FolderId, FolderVersioning, Share } from '
 
 export type DriftKind = 'label' | 'versioning' | 'no-writer' | 'no-reader' | 'asymmetric-share' | 'missing-folder'
 
+/**
+ * A machine-applicable resolution for a finding — only present when the fix
+ * maps 1:1 onto an existing, safe mutation. Findings that need a human
+ * choice (which node should be the writer, what path a pending folder gets)
+ * carry only the textual suggestion.
+ */
+export type DriftFix =
+  /** Set these nodes' copies of the folder to the (majority) label. */
+  | { kind: 'set-label'; label: string; deviceIds: DeviceId[] }
+  /** Add `addDevice` to the folder's share list on `onDevice` — the share-back half of an asymmetric pair. */
+  | { kind: 'add-share'; onDevice: DeviceId; addDevice: DeviceId }
+
 export interface DriftFinding {
   kind: DriftKind
   folderId: FolderId
@@ -21,8 +33,9 @@ export interface DriftFinding {
   severity: 'info' | 'warning'
   /** What disagrees, with the disagreeing values/devices spelled out (device *names*, for display). */
   message: string
-  /** A concrete way to resolve it — advisory text, not an auto-applied action. */
+  /** A concrete way to resolve it, always present as text; `fix` is the one-click form when one exists. */
   suggestion: string
+  fix?: DriftFix
   /** The devices involved, so the UI can deep-link. */
   deviceIds: DeviceId[]
 }
@@ -82,6 +95,7 @@ function labelDrift(
         .map(([label, devices]) => `“${label}” (${devices.map(ctx.nameFor).join(', ')})`)
         .join(' vs ')}`,
       suggestion: `Rename it to “${majorityLabel}” on ${outliers.map(ctx.nameFor).join(', ')}`,
+      fix: { kind: 'set-label', label: majorityLabel, deviceIds: outliers },
       deviceIds: [...majorityDevices, ...outliers],
     },
   ]
@@ -195,6 +209,7 @@ function asymmetricShares(folderId: FolderId, shares: Share[], ctx: DriftContext
           severity: 'warning',
           message: `${from} shares the folder with ${to}, but ${to} doesn't share it back`,
           suggestion: `Add ${from} to the folder's share list on ${to} (or remove ${to} from it on ${from})`,
+          fix: { kind: 'add-share', onDevice: target, addDevice: share.deviceId },
           deviceIds: [share.deviceId, target],
         })
       }

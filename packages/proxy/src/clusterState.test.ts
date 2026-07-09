@@ -613,6 +613,20 @@ describe('ClusterStateManager mutations', () => {
     expect(folder.versioning.params).toEqual({})
   })
 
+  it('renames a folder on one node via updateFolder, leaving the type untouched', async () => {
+    const { manager, calls } = installFakeCluster()
+    await refreshed(manager)
+    calls.length = 0
+
+    await manager.updateFolder('DEVICE-A', 'f1', { label: 'Ledger' })
+
+    const put = calls.find((c) => c.method === 'PUT' && c.url === '/rest/config/folders/f1')
+    const folder = JSON.parse(put!.body!) as { label: string; type: string }
+    expect(put!.host).toBe('a.test')
+    expect(folder.label).toBe('Ledger')
+    expect(folder.type).toBe('sendreceive')
+  })
+
   it('sets advanced options on the folder config without disturbing the rest of it', async () => {
     const { manager, calls } = installFakeCluster()
     await refreshed(manager)

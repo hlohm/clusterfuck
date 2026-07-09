@@ -582,8 +582,18 @@ export class ClusterStateManager {
   }
 
   setFolderType(deviceId: string, folderId: string, type: SyncthingFolderType): Promise<void> {
+    return this.updateFolder(deviceId, folderId, { type })
+  }
+
+  /** Updates a folder's editable metadata on one node — one GET-modify-PUT even when both fields change. */
+  updateFolder(
+    deviceId: string,
+    folderId: string,
+    fields: { type?: SyncthingFolderType; label?: string },
+  ): Promise<void> {
     return this.patchFolder(deviceId, folderId, (f) => {
-      f.type = type
+      if (fields.type !== undefined) f.type = fields.type
+      if (fields.label !== undefined) f.label = fields.label
     })
   }
 

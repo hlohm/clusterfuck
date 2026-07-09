@@ -191,8 +191,11 @@ tabs. Mapped from the GUI's actual surface, in priority order.
       B doesn't share back), with suggested fixes — the genuinely novel
       cluster-level feature a single-node GUI cannot have. Pure logic in
       `@clusterfuck/shared` (`detectDrift()`), surfaced as an Overview
-      section; works on fixtures too. Suggested fixes are advisory text —
-      one-click apply is a possible follow-up. Type checks flag only the
+      section; works on fixtures too. Suggested fixes are advisory text,
+      plus a one-click **Apply fix** (live source) where the fix maps onto
+      an existing safe mutation: label drift (rename outliers to the
+      majority) and asymmetric shares (add the missing share-back entry) —
+      findings needing a human choice stay text-only. Type checks flag only the
       genuinely broken all-sendonly / all-receiveonly cases, since pairwise
       type differences are normal topology; `Share` gained `label` (each
       node's own label) to make label drift detectable at all

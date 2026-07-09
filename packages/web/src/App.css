@@ -991,6 +991,10 @@ button {
   color: var(--text);
 }
 
+.drift-row__fix {
+  padding: 2px 0 6px 24px;
+}
+
 .drift-badge {
   flex: 0 0 auto;
   font-size: 13px;

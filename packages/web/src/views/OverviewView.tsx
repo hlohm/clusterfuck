@@ -5,6 +5,8 @@ import type {
   CompletionHistoryView,
   CompletionPoint,
   Device,
+  DriftFinding,
+  DriftFix,
   EventLogView,
   PendingDevice,
   RecentChangesView,
@@ -254,6 +256,80 @@ function Sparkline({ points }: { points: CompletionPoint[] }) {
       <title>{geometry.label}</title>
       <path d={geometry.d} />
     </svg>
+  )
+}
+
+/**
+ * One drift finding: the deep-linking row, plus — when the finding carries a
+ * machine-applicable fix and the source is live — an Apply-fix button that
+ * runs the corresponding existing mutation(s), confirmation-gated like every
+ * other mutation. Own busy/error state per row.
+ */
+function DriftRow({
+  cluster,
+  finding,
+  isLive,
+  onOpenShare,
+}: {
+  cluster: ClusterModel
+  finding: DriftFinding
+  isLive?: boolean
+  onOpenShare?: (share: Share) => void
+}) {
+  const { busy, error, run } = useAsyncAction()
+  const deviceById = new Map(cluster.devices.map((d) => [d.id, d]))
+  const nameFor = (id: string) => deviceById.get(id)?.name ?? id
+  const folderLabel = cluster.folders.find((f) => f.id === finding.folderId)?.label ?? finding.folderId
+  const target = cluster.shares.find(
+    (s) => s.folderId === finding.folderId && finding.deviceIds.includes(s.deviceId),
+  )
+
+  const applyFix = (fix: DriftFix) => {
+    if (fix.kind === 'set-label') {
+      run(
+        `Rename the folder to “${fix.label}” on ${fix.deviceIds.map(nameFor).join(', ')}?`,
+        async () => {
+          // Sequential on purpose: the proxy serializes folder edits anyway,
+          // and a failure should stop before touching the remaining nodes.
+          for (const deviceId of fix.deviceIds) {
+            await mutations.setFolderLabel(deviceId, finding.folderId, fix.label)
+          }
+        },
+      )
+    } else {
+      run(
+        `Add ${nameFor(fix.addDevice)} to "${folderLabel}"'s share list on ${nameFor(fix.onDevice)}?`,
+        () => mutations.addShare(fix.onDevice, finding.folderId, fix.addDevice),
+      )
+    }
+  }
+
+  return (
+    <li className="drift-row">
+      <button className="attention-list__row" onClick={() => target && onOpenShare?.(target)}>
+        <span
+          className={`drift-badge drift-badge--${finding.severity}`}
+          title={finding.severity === 'warning' ? 'Probably broken' : 'Legal, but worth knowing'}
+        >
+          {finding.severity === 'warning' ? '⚠' : 'ℹ'}
+        </span>
+        <strong>{folderLabel}</strong>
+        <span className="attention-list__device">{finding.message}</span>
+        <span className="attention-list__message">Fix: {finding.suggestion}</span>
+      </button>
+      {isLive && finding.fix && (
+        <div className="detail-panel__action-row drift-row__fix">
+          <button
+            className="detail-panel__button--primary"
+            disabled={busy}
+            onClick={() => applyFix(finding.fix!)}
+          >
+            Apply fix
+          </button>
+        </div>
+      )}
+      {error && <div className="detail-panel__error">{error}</div>}
+    </li>
   )
 }
 
@@ -892,28 +968,15 @@ export function OverviewView({ cluster, onOpenShare, isLive }: OverviewViewProps
         <section className="overview__section">
           <h3>Config drift</h3>
           <ul className="attention-list">
-            {drift.map((finding, i) => {
-              const folderLabel =
-                cluster.folders.find((f) => f.id === finding.folderId)?.label ?? finding.folderId
-              const target = cluster.shares.find(
-                (s) => s.folderId === finding.folderId && finding.deviceIds.includes(s.deviceId),
-              )
-              return (
-                <li key={`${finding.kind}:${finding.folderId}:${i}`}>
-                  <button className="attention-list__row" onClick={() => target && onOpenShare?.(target)}>
-                    <span
-                      className={`drift-badge drift-badge--${finding.severity}`}
-                      title={finding.severity === 'warning' ? 'Probably broken' : 'Legal, but worth knowing'}
-                    >
-                      {finding.severity === 'warning' ? '⚠' : 'ℹ'}
-                    </span>
-                    <strong>{folderLabel}</strong>
-                    <span className="attention-list__device">{finding.message}</span>
-                    <span className="attention-list__message">Fix: {finding.suggestion}</span>
-                  </button>
-                </li>
-              )
-            })}
+            {drift.map((finding, i) => (
+              <DriftRow
+                key={`${finding.kind}:${finding.folderId}:${i}`}
+                cluster={cluster}
+                finding={finding}
+                isLive={isLive}
+                onOpenShare={onOpenShare}
+              />
+            ))}
           </ul>
         </section>
       )}

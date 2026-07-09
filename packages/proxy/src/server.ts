@@ -473,15 +473,28 @@ async function handleRequest(
         return
       }
 
+      // PATCH body { type?, label? } — at least one; both applied in one
+      // config round-trip. label may be empty (Syncthing then shows the id).
       if (method === 'PATCH' && parts.length === 5) {
-        const body = (await readJsonBody(req)) as { type?: unknown } | undefined
-        if (!isFolderType(body?.type)) {
+        const body = (await readJsonBody(req)) as { type?: unknown; label?: unknown } | undefined
+        if (body?.type !== undefined && !isFolderType(body.type)) {
           sendJson(res, 400, {
             error: `type must be one of: ${SYNCTHING_FOLDER_TYPES.join(', ')}`,
           })
           return
         }
-        await manager.setFolderType(deviceId, folderId, body.type)
+        if (body?.label !== undefined && typeof body.label !== 'string') {
+          sendJson(res, 400, { error: 'label must be a string' })
+          return
+        }
+        if (body?.type === undefined && body?.label === undefined) {
+          sendJson(res, 400, { error: 'at least one of type, label is required' })
+          return
+        }
+        await manager.updateFolder(deviceId, folderId, {
+          type: body.type as SyncthingFolderType | undefined,
+          label: body.label as string | undefined,
+        })
         sendJson(res, 200, { ok: true })
         return
       }

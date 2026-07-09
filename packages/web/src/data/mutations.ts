@@ -178,6 +178,15 @@ export function setFolderType(deviceId: string, folderId: string, type: FolderTy
   )
 }
 
+/** Renames this node's copy of the folder (labels are per-node; see drift detection). */
+export function setFolderLabel(deviceId: string, folderId: string, label: string): Promise<void> {
+  return call(
+    'PATCH',
+    `/api/folders/${encodeURIComponent(folderId)}/devices/${encodeURIComponent(deviceId)}`,
+    { label },
+  )
+}
+
 /** Sets this folder's file-versioning config on one node; `type: 'none'` turns versioning off. */
 export function setFolderVersioning(
   deviceId: string,

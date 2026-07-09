@@ -53,6 +53,28 @@ describe('OverviewView', () => {
     expect(screen.getByRole('heading', { name: 'coldstore' })).toBeInTheDocument()
   })
 
+  it('applies an asymmetric-share drift fix through the existing addShare mutation, once confirmed', () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const addShare = vi.spyOn(mutations, 'addShare').mockResolvedValue(undefined)
+    render(<OverviewView cluster={edgeCases} isLive />)
+
+    // The vault-doesn't-share-back findings carry a one-click fix when live.
+    const fixButtons = screen.getAllByRole('button', { name: 'Apply fix' })
+    expect(fixButtons.length).toBeGreaterThanOrEqual(2)
+    // Rows render warnings (asymmetric) before infos (label), so the first
+    // Apply fix belongs to an asymmetric-share finding on vault's copy.
+    fixButtons[0]!.click()
+
+    expect(addShare).toHaveBeenCalledWith('device-vault', 'ledger', expect.any(String))
+    confirmSpy.mockRestore()
+    addShare.mockRestore()
+  })
+
+  it('offers no Apply fix on fixtures (mutations need the live source)', () => {
+    render(<OverviewView cluster={edgeCases} />)
+    expect(screen.queryByRole('button', { name: 'Apply fix' })).not.toBeInTheDocument()
+  })
+
   it("surfaces the fixture's deliberate config drift with suggested fixes, deep-linking on click", () => {
     const onOpenShare = vi.fn()
     render(<OverviewView cluster={edgeCases} onOpenShare={onOpenShare} />)

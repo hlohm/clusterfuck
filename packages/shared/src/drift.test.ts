@@ -56,6 +56,8 @@ describe('detectDrift: label drift', () => {
     expect(findings[0]!.message).toContain('“Photos” (alpha, beta)')
     expect(findings[0]!.message).toContain('“photos-old” (gamma)')
     expect(findings[0]!.suggestion).toContain('“Photos” on gamma')
+    // The one-click form: rename exactly the outliers to the majority label.
+    expect(findings[0]!.fix).toEqual({ kind: 'set-label', label: 'Photos', deviceIds: ['c'] })
   })
 
   it('treats a share without its own label as agreeing with the folder label', () => {
@@ -151,6 +153,19 @@ describe('detectDrift: asymmetric shares', () => {
       "alpha shares the folder with beta, but beta doesn't share it back",
     )
     expect(findings[0]!.deviceIds).toEqual(['a', 'b'])
+    // The one-click form: add A back on B's copy (B's config is the one missing the entry).
+    expect(findings[0]!.fix).toEqual({ kind: 'add-share', onDevice: 'b', addDevice: 'a' })
+  })
+
+  it('offers no one-click fix where a human choice is needed (missing folder, type pathologies, versioning)', () => {
+    const missing = cluster([share({ deviceId: 'a', sharedWith: ['a', 'b'] })])
+    expect(detectDrift(missing).find((f) => f.kind === 'missing-folder')!.fix).toBeUndefined()
+
+    const allSend = cluster([
+      share({ deviceId: 'a', type: 'sendonly' }),
+      share({ deviceId: 'b', type: 'sendonly' }),
+    ])
+    expect(detectDrift(allSend).find((f) => f.kind === 'no-reader')!.fix).toBeUndefined()
   })
 
   it('flags A sharing with a managed B that does not have the folder at all', () => {

@@ -4,6 +4,19 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.4.20]
+
+- **One-click drift fixes** (follow-up promised in 0.4.13): drift findings
+  whose fix maps onto an existing safe mutation now carry a
+  machine-applicable `fix` payload and an **Apply fix** button (live source
+  only, confirmation-gated): label drift renames the outlier nodes' copies
+  to the majority label, and an asymmetric share adds the missing
+  share-back entry on the node that lacks it. Findings that need a human
+  choice (which node becomes the writer, what path a missing folder gets)
+  deliberately stay text-only. The folder PATCH route accepts `label`
+  alongside `type` (labels are per-node — the same fact that makes label
+  drift detectable makes it fixable per node).
+
 ## [0.4.19]
 
 - **Raw event log** (ROADMAP.md Phase 5 Observability — the section's last
