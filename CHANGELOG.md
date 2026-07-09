@@ -4,6 +4,19 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.4.18]
+
+- **Completion sparklines** (ROADMAP.md Phase 5 Observability): the
+  Overview's folder cards now draw a tiny completion-over-time line per
+  share, next to the existing meter. The proxy samples each share's
+  completion on its refresh cycle — at most one point per 30s, last 120
+  points (~1.5h), in-memory like the recent-changes feed — served at
+  `GET /api/history/completion` and fetched quietly by the Overview every
+  30s (live source only; a fetch failure just means no lines). The y-scale
+  is a fixed 0–100%: rescaling to a series' own min/max would turn a
+  99→100% wiggle into a cliff. Completes the Phase 5 Observability section
+  except the raw event log.
+
 ## [0.4.17]
 
 - **Upgrade orchestration** (ROADMAP.md Phase 5 Cluster operations — the

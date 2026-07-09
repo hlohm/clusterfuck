@@ -1,6 +1,7 @@
 import type {
   BandwidthLimitsView,
   ClusterModel,
+  CompletionHistoryView,
   DeviceOptions,
   DeviceOptionsView,
   FolderAdvancedOptions,
@@ -14,6 +15,7 @@ import type {
 import { aggregateCluster, type NodeSnapshot } from './aggregate.ts'
 import { ChangeBuffer, mapDiskEvent } from './changes.ts'
 import { collectConflictPaths } from './conflicts.ts'
+import { CompletionHistory } from './history.ts'
 import { computeRates, type RateSamples } from './rates.ts'
 import { fetchNodeSnapshot } from './snapshot.ts'
 import { executeUpgradeRun, newUpgradeRun, type UpgradeTarget } from './upgrade.ts'
@@ -77,6 +79,8 @@ export class ClusterStateManager {
   private rateSamples: RateSamples = new Map()
   /** Bounded, in-memory recent-changes feed, merged across every node's disk-events stream. */
   private readonly changes = new ChangeBuffer(200)
+  /** Recent per-share completion samples for the overview sparklines. */
+  private readonly history = new CompletionHistory()
   private readonly upgradePollMs: number
   private readonly upgradeTimeoutMs: number
   /** The current (or most recent) upgrade sweep — one at a time, in memory only. */
@@ -295,8 +299,10 @@ export class ClusterStateManager {
   }
 
   private applyModel(snapshots: NodeSnapshot[], model: ClusterModel): void {
-    const rated = computeRates(model.connections, this.rateSamples, Date.now())
+    const now = Date.now()
+    const rated = computeRates(model.connections, this.rateSamples, now)
     this.rateSamples = rated.samples
+    this.history.record(model.shares, now)
     this.snapshots = snapshots
     this.model = { ...model, connections: rated.connections }
     for (const fn of this.subscribers) fn(this.model)
@@ -972,6 +978,11 @@ export class ClusterStateManager {
   /** The merged recent-changes feed, newest first. */
   getRecentChanges(): RecentChangesView {
     return { changes: this.changes.list() }
+  }
+
+  /** Recent completion history for every share — the sparkline data, sampled on the refresh cycle. */
+  getCompletionHistory(): CompletionHistoryView {
+    return this.history.view()
   }
 
   /** The current or most recent upgrade sweep, if any. Progress mutates in place, so pollers see it live. */

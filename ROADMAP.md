@@ -225,7 +225,11 @@ tabs. Mapped from the GUI's actual surface, in priority order.
       empty after a proxy restart by design
 - [ ] Raw event log (all event types, filterable) — split out of the line
       above; the changes feed covers the common "what just happened" case
-- [ ] Completion history/sparklines on the overview tiles
+- [x] Completion history/sparklines on the overview tiles — the proxy
+      samples each share's completion on its refresh cycle (≥30s apart,
+      last ~120 points, in-memory like the changes feed) and serves it at
+      `/api/history/completion`; the Overview's folder cards draw a tiny
+      fixed-0–100 sparkline per share (honest scale: no min/max rescaling)
 
 ### Foundations these need
 

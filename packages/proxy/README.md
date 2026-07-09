@@ -38,6 +38,12 @@ Listens on `PORT` (default `4000`). Routes:
   `/rest/events/disk` stream into a bounded in-memory buffer (last 200) —
   a "what just happened" glance, not a persisted audit log; empty after a
   proxy restart.
+- `GET /api/history/completion` — recent completion samples per share, for
+  the overview sparklines: `{ "series": [{ "folderId": "...", "deviceId":
+  "...", "points": [{ "t": 1720000000000, "pct": 63 }] }] }`. Sampled on the
+  proxy's refresh cycle (at most one point per share per 30s, last 120
+  points ≈ 1.5h); in-memory and bounded like `/api/changes` — a sparkline's
+  worth, not a metrics store.
 - `GET /api/health` — liveness check.
 - `GET /api/version` — `{ "version": "x.y.z" }` from this process's own
   `package.json`. Compare against the frontend build's version (shown next to
