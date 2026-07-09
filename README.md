@@ -150,29 +150,36 @@ Proxy environment variables:
 | `CLUSTERFUCK_CONFIG` | `./cluster.json` | Path to the nodes config (relative to cwd) — the proxy also writes to this file when nodes are registered/removed at runtime |
 | `CLUSTERFUCK_WEB_ORIGIN` | `http://localhost:5173` | CORS allow-origin — the URL the SPA is served from (only needed when the SPA calls the proxy cross-origin) |
 
-**2. Web** — build the static bundle and serve it from any static host/CDN:
+**2. Web** — build the static bundle:
 
 ```sh
 pnpm --filter @clusterfuck/web build   # -> packages/web/dist
 ```
 
-The SPA reaches the proxy via **relative `/api/*`** paths by default, so the
-simplest deployment puts the static files and the proxy behind one origin with
-a reverse proxy routing `/api/*` to the proxy (and everything else to the
-static files). If instead the SPA is served from a different origin than the
-proxy, build with `VITE_PROXY_URL` set to the proxy's base URL and set
-`CLUSTERFUCK_WEB_ORIGIN` on the proxy to the SPA's origin:
+The **simplest deployment is one process**: the proxy serves the built web
+app itself (it picks up `packages/web/dist` automatically, or
+`CLUSTERFUCK_WEB_DIST`), so the SPA and the API share one origin and nothing
+else needs configuring. Alternatively serve `dist/` from any static
+host/CDN — the SPA reaches the proxy via relative `/api/*` paths, so either
+put both behind one reverse-proxied origin, or build with `VITE_PROXY_URL`
+set to the proxy's base URL and set `CLUSTERFUCK_WEB_ORIGIN` on the proxy to
+the SPA's exact origin (never `*` — cookies don't work with wildcards):
 
 ```sh
 VITE_PROXY_URL=https://proxy.example pnpm --filter @clusterfuck/web build
 ```
 
-> **Security:** the proxy holds your Syncthing API keys and has **no
-> authentication** — anyone who can reach it can read cluster state and perform
-> management actions. Only expose it on a trusted network or behind your own
-> auth (e.g. an authenticating reverse proxy). Proxy auth is a tracked roadmap
-> item. `cluster.json`, `.env.local`, and `*.local.md` are gitignored; never
-> commit real endpoints or keys.
+> **Security:** the proxy holds your Syncthing API keys, and its API can
+> read and mutate every registered node. **Auth is opt-in:** set
+> `CLUSTERFUCK_TOKEN` to a long random string and every request requires it
+> — browsers sign in once per device with the token (cookie thereafter),
+> scripts send it as a `Authorization: Bearer` header. See
+> [docs/HOW-AUTH-WORKS.md](docs/HOW-AUTH-WORKS.md) for how it works and its
+> limits. Without the token the proxy is **open** (it warns at startup) —
+> never expose that beyond a trusted network. The proxy speaks plain HTTP
+> either way; put HTTPS (reverse proxy, VPN) in front before crossing
+> untrusted networks. `cluster.json`, `.env.local`, and `*.local.md` are
+> gitignored; never commit real endpoints or keys.
 
 ## Development
 
