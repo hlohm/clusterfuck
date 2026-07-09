@@ -15,9 +15,12 @@ import type {
 } from '@clusterfuck/shared'
 import { PROXY_BASE } from './proxyBase'
 
+// credentials: 'include' carries the auth session cookie even when the proxy
+// is on another origin (a no-op same-origin, where cookies flow by default).
 async function call(method: string, path: string, body?: unknown): Promise<void> {
   const res = await fetch(`${PROXY_BASE}${path}`, {
     method,
+    credentials: 'include',
     headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
     body: body !== undefined ? JSON.stringify(body) : undefined,
   })
@@ -29,7 +32,7 @@ async function call(method: string, path: string, body?: unknown): Promise<void>
 
 /** GET variant of `call` for the few routes that return data, not just `{ ok }`. */
 async function getJson<T>(path: string): Promise<T> {
-  const res = await fetch(`${PROXY_BASE}${path}`)
+  const res = await fetch(`${PROXY_BASE}${path}`, { credentials: 'include' })
   if (!res.ok) {
     const data = (await res.json().catch(() => undefined)) as { error?: string } | undefined
     throw new Error(data?.error ?? `GET ${path} failed (HTTP ${res.status})`)

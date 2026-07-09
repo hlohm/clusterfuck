@@ -26,7 +26,9 @@ export function useLiveCluster(enabled: boolean): LiveCluster {
     setStatus('connecting')
     setError(undefined)
 
-    const source = new EventSource(`${PROXY_BASE}/api/events`)
+    // withCredentials sends the auth session cookie on a cross-origin proxy;
+    // same-origin it changes nothing (EventSource always sends those).
+    const source = new EventSource(`${PROXY_BASE}/api/events`, { withCredentials: true })
 
     source.onopen = () => setError(undefined)
 

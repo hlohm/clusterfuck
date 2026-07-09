@@ -68,8 +68,12 @@ keys), so there's a thin proxy between them:
 - **`packages/proxy`** holds the API keys, polls each node's REST API plus its
   `/rest/events` stream, aggregates the per-node views into one normalized
   cluster model, and serves it read-only over HTTP + SSE (plus the Phase 3
-  mutation routes). See [`packages/proxy/README.md`](packages/proxy/README.md)
-  for the full route list.
+  mutation routes). Set `CLUSTERFUCK_TOKEN` to require auth: a shared token,
+  entered once per browser (cookie thereafter) or sent as a Bearer header by
+  scripts. With the web app built, the proxy serves it too — production is
+  one process on one origin. See
+  [`packages/proxy/README.md`](packages/proxy/README.md) for the full route
+  list and auth details.
 - **`packages/web`** is the React + TypeScript SPA (Vite, React Flow).
 - **`packages/shared`** (`@clusterfuck/shared`) is the normalized `ClusterModel`
   and its pure logic — the one contract both sides import, so types never drift.
