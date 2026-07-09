@@ -4,8 +4,11 @@ The plan is phased and each phase is independently shippable. We don't start
 management until the visualization reads cleanly, and we don't chase
 cluster-wide parity until per-node actions are proven safe.
 
-**Status:** Phases 1–4 are done. Phase 5 (cluster-wide parity with the
-Syncthing web GUI) is in progress, worked through in priority order.
+**Status:** Phases 1–4 are done. Phase 5's four feature sections (folder
+management, device management, cluster operations, observability) are
+**complete**; what remains of Phase 5 is its foundations — auth on the proxy
+and Syncthing 2.x support — both flagged decisions to settle before building
+(and auth is the hard gate for 1.0 and Phase 6).
 
 Legend: `[x]` shipped · `[ ]` not yet · **(next)** = prioritized for the next
 iteration.

@@ -34,11 +34,22 @@ manage devices and folders across every node from one place.
 - **Live, read-only cluster state** aggregated from every node and pushed to the
   browser over Server-Sent Events.
 - **Management actions** (against a live cluster): pause/resume devices and
-  folders, change folder type, set file-versioning (trashcan/simple/staggered/
-  external) per node, view/edit each node's ignore patterns (with a
-  diff-across-nodes indicator), rescan, add/remove shares, and create new
-  devices and folders across a chosen set of nodes — each behind a confirmation
-  or preview.
+  folders, change folder type and label, set file-versioning (trashcan/simple/
+  staggered/external), advanced folder options (rescan interval, watcher, min
+  disk free) and ignore patterns per node (with a diff-across-nodes
+  indicator), rescan, add/remove shares (with per-share encryption passwords),
+  edit device options (addresses, compression, introducer, auto-accept,
+  per-device rate limits) across every referencing node, and create new
+  devices and folders across a chosen set of nodes — each behind a
+  confirmation or preview.
+- **Cluster operations:** pause/resume/rescan everything in one action,
+  restart or shut down a node's Syncthing, node-global bandwidth caps
+  (per node or all nodes), and health-checked upgrade orchestration — every
+  node, strictly one at a time, aborting if a node doesn't come back.
+- **Observability:** live transfer rates per link (estimated from Syncthing's
+  cumulative counters), per-share completion sparklines, a cluster-merged
+  recent-changes feed, a filterable raw event log, per-node system status,
+  and a device-ID QR relayed from Syncthing's own renderer.
 
 See **[ROADMAP.md](ROADMAP.md)** for what's shipped and what's planned (the goal
 is cluster-wide parity with the Syncthing web GUI).

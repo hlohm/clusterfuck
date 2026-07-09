@@ -4,6 +4,15 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.4.21]
+
+- Docs refresh, no code changes: README's feature list now covers the
+  0.4.8–0.4.20 additions (advanced folder options, device options, QR,
+  cluster operations incl. upgrades and bandwidth caps, the observability
+  suite, one-click drift fixes); ROADMAP/CLAUDE.md status lines state that
+  Phase 5's four feature sections are complete and only the flagged
+  foundations (proxy auth, Syncthing 2.x) remain.
+
 ## [0.4.20]
 
 - **One-click drift fixes** (follow-up promised in 0.4.13): drift findings
