@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { ClusterModel } from '@clusterfuck/shared'
+import { getAuthStatus } from './auth'
+import { notifyUnauthorized } from './http'
 import { PROXY_BASE } from './proxyBase'
 
 export type LiveStatus = 'connecting' | 'live' | 'error'
@@ -44,6 +46,16 @@ export function useLiveCluster(enabled: boolean): LiveCluster {
     source.onerror = () => {
       setStatus('error')
       setError('Lost connection to the proxy — retrying…')
+      // EventSource can't see HTTP statuses, so a 401 (session expired /
+      // token rotated) looks identical to a network drop — and per spec a
+      // 401 closes the stream for good, so "retrying…" would be a lie.
+      // Probe the uncredentialed status route to tell the two apart and
+      // route de-auth to the login gate.
+      void getAuthStatus()
+        .then((status) => {
+          if (status.required && !status.authorized) notifyUnauthorized()
+        })
+        .catch(() => undefined) // proxy actually unreachable — a real connection problem
     }
 
     return () => source.close()

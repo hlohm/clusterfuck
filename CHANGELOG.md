@@ -4,6 +4,24 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.4.23]
+
+- **Fixed: losing your session wedged the app until a manual reload** (code
+  review of 0.4.22's auth). The web app's fetch layer is now one shared
+  module (`data/http.ts`) with a global 401 hook: any request answered 401 —
+  cookie expired, token rotated — flips the app back to the login screen
+  instead of stranding it on inline "authentication required" errors. The
+  SSE stream (which can't see HTTP statuses, and which a 401 closes for
+  good despite the old "retrying…" message) now probes the auth status on
+  error to tell de-auth apart from a real connection drop, and reconnects
+  automatically after re-login.
+- **Fixed: Sign out silently did nothing when the session was already
+  invalid.** `POST /api/logout` is now auth-exempt (clearing a cookie needs
+  no valid session) and the button reloads into the auth gate even if the
+  request fails.
+- The drift rows reuse the Overview's device-name lookup instead of
+  rebuilding a per-row map on every render.
+
 ## [0.4.22]
 
 - **Auth on the proxy** (ROADMAP.md Phase 5 Foundations — the 1.0 gate):

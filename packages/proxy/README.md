@@ -48,7 +48,9 @@ beyond a trusted network.
 - `GET /api/auth/token` — `{ "token": "..." }`, **authorized callers only**:
   the GUI's "show access token" reveal for signing in on another browser
   (same stance as Syncthing's own GUI displaying its API key).
-- `POST /api/logout` — clears the session cookie.
+- `POST /api/logout` — clears the session cookie. Deliberately exempt from
+  the gate: a browser whose session was just revoked must still be able to
+  clear its cookie.
 
 ## Static web app
 
