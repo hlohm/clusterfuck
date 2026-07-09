@@ -121,15 +121,55 @@ describe('static SPA serving', () => {
 
       const index = await fetch(`${base}/`)
       expect(index.headers.get('content-type')).toContain('text/html')
+      expect(index.headers.get('cache-control')).toBe('no-cache')
       expect(await index.text()).toContain('cf')
 
+      // Hashed asset names are immutable content — cache them hard.
       const js = await fetch(`${base}/assets/app.js`)
       expect(js.headers.get('content-type')).toContain('javascript')
+      expect(js.headers.get('cache-control')).toContain('immutable')
 
       // Unknown non-API path -> SPA fallback, so the login screen can load anywhere.
       expect((await fetch(`${base}/some/app/route`)).status).toBe(200)
       // API misses stay hard 404s (the stale-proxy diagnostic).
       expect((await fetch(`${base}/api/definitely-not-a-route`, { headers: { Authorization: 'Bearer sekrit' } })).status).toBe(404)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it('hard-404s a missing file with an extension instead of masquerading index.html as it', async () => {
+    const root = makeWebRoot()
+    try {
+      const { server, base } = startServer(undefined, root)
+      running = server
+
+      // A stale hashed chunk after a redeploy must fail diagnosably, not
+      // parse HTML as JavaScript.
+      expect((await fetch(`${base}/assets/index-OLDHASH.js`)).status).toBe(404)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it('answers malformed percent-encoding with 404, not a decodeURIComponent 500', async () => {
+    const root = makeWebRoot()
+    try {
+      const { server, base } = startServer(undefined, root)
+      running = server
+
+      const port = Number(new URL(base).port)
+      for (const path of ['/%', '/%zz', '/%e0%a4']) {
+        const status = await new Promise<number>((resolve, reject) => {
+          request({ host: '127.0.0.1', port, path }, (res) => {
+            res.resume()
+            resolve(res.statusCode ?? 0)
+          })
+            .on('error', reject)
+            .end()
+        })
+        expect(status, path).toBe(404)
+      }
     } finally {
       rmSync(root, { recursive: true, force: true })
     }

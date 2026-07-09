@@ -67,6 +67,17 @@ describe('detectDrift: label drift', () => {
     ])
     expect(detectDrift(c).filter((f) => f.kind === 'label')).toEqual([])
   })
+
+  it('offers no one-click rename on a tied vote — an arbitrary winner is a human choice', () => {
+    const c = cluster([
+      share({ deviceId: 'a', label: 'Photos', sharedWith: ['a', 'b'] }),
+      share({ deviceId: 'b', label: 'Pics', sharedWith: ['a', 'b'] }),
+    ])
+
+    const finding = detectDrift(c).find((f) => f.kind === 'label')!
+    expect(finding.fix).toBeUndefined()
+    expect(finding.suggestion).toContain('No label has a majority')
+  })
 })
 
 describe('detectDrift: versioning drift', () => {
