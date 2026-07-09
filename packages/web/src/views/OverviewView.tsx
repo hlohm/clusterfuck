@@ -91,7 +91,13 @@ function AccessTokenRow() {
         <button
           className="detail-panel__link-button"
           onClick={() => {
-            void auth.logout().then(() => window.location.reload())
+            // Reload regardless: even if the POST fails (proxy restarting
+            // mid-click) the reload re-runs the auth gate, which is the
+            // state the user asked for.
+            void auth
+              .logout()
+              .catch(() => undefined)
+              .finally(() => window.location.reload())
           }}
         >
           Sign out
@@ -331,16 +337,17 @@ function DriftRow({
   cluster,
   finding,
   isLive,
+  nameFor,
   onOpenShare,
 }: {
   cluster: ClusterModel
   finding: DriftFinding
   isLive?: boolean
+  /** Passed from the parent, which already has the deviceById map — no per-row rebuild. */
+  nameFor: (id: string) => string
   onOpenShare?: (share: Share) => void
 }) {
   const { busy, error, run } = useAsyncAction()
-  const deviceById = new Map(cluster.devices.map((d) => [d.id, d]))
-  const nameFor = (id: string) => deviceById.get(id)?.name ?? id
   const folderLabel = cluster.folders.find((f) => f.id === finding.folderId)?.label ?? finding.folderId
   const target = cluster.shares.find(
     (s) => s.folderId === finding.folderId && finding.deviceIds.includes(s.deviceId),
@@ -952,6 +959,7 @@ export function OverviewView({ cluster, onOpenShare, isLive }: OverviewViewProps
   const inBps = cluster.connections.reduce((sum, c) => sum + (c.inBps ?? 0), 0)
   const drift = detectDrift(cluster)
   const deviceById = new Map(cluster.devices.map((d) => [d.id, d]))
+  const nameFor = (id: string) => deviceById.get(id)?.name ?? id
 
   const online = health.deviceCounts.connected + health.deviceCounts['this-device']
   const foldersIdle = health.folderCounts.idle
@@ -1036,6 +1044,7 @@ export function OverviewView({ cluster, onOpenShare, isLive }: OverviewViewProps
                 cluster={cluster}
                 finding={finding}
                 isLive={isLive}
+                nameFor={nameFor}
                 onOpenShare={onOpenShare}
               />
             ))}

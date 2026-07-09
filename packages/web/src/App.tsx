@@ -16,6 +16,7 @@ import { TableView } from './views/TableView'
 import { AddDeviceDialog, AddFolderDialog, RegisterNodeDialog } from './views/AddDialogs'
 import { LoginScreen } from './views/LoginScreen'
 import { getAuthStatus } from './data/auth'
+import { setUnauthorizedListener } from './data/http'
 
 const LIVE_SOURCE_ID = '__live__'
 
@@ -37,6 +38,11 @@ function App() {
     getAuthStatus()
       .then((status) => setAuthState(status.required && !status.authorized ? 'login' : 'ready'))
       .catch(() => setAuthState('ready'))
+    // Sessions don't last forever: the cookie expires (30d) and rotating the
+    // token revokes it instantly. Any 401 from any request flips the app
+    // back to the login gate instead of stranding it on inline errors.
+    setUnauthorizedListener(() => setAuthState('login'))
+    return () => setUnauthorizedListener(undefined)
   }, [])
 
   const [sourceId, setSourceId] = useState(FIXTURE_CLUSTERS[0]!.id)
@@ -46,7 +52,9 @@ function App() {
   const [dialog, setDialog] = useState<'device' | 'folder' | 'node' | null>(null)
 
   const isLive = sourceId === LIVE_SOURCE_ID
-  const live = useLiveCluster(isLive)
+  // Also gated on auth: while the login screen is up the stream would only
+  // collect 401s, and closing it here is what makes it reconnect after login.
+  const live = useLiveCluster(isLive && authState === 'ready')
 
   // A stale proxy process serving routes an updated frontend expects fails
   // with an opaque 404 — surfacing both versions makes that mismatch obvious

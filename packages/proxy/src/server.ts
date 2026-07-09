@@ -80,14 +80,16 @@ export function createHttpServer(
 
 /**
  * Routes reachable without credentials when auth is on: the login handshake
- * itself, and the health/version probes monitoring needs. Everything else
- * under /api — including the SSE stream — requires the token or the cookie.
+ * (logout included — clearing a cookie needs no valid session, and gating it
+ * would strand a browser whose session was just revoked), and the
+ * health/version probes monitoring needs. Everything else under /api —
+ * including the SSE stream — requires the token or the cookie.
  */
 function isAuthExempt(method: string, pathname: string): boolean {
   return (
     (method === 'GET' &&
       (pathname === '/api/health' || pathname === '/api/version' || pathname === '/api/auth')) ||
-    (method === 'POST' && pathname === '/api/login')
+    (method === 'POST' && (pathname === '/api/login' || pathname === '/api/logout'))
   )
 }
 

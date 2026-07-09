@@ -73,6 +73,17 @@ describe('auth gating over HTTP', () => {
     expect(await status.json()).toEqual({ required: true, authorized: false })
   })
 
+  it('lets an already-invalid session log out — logout is exempt and clears the cookie', async () => {
+    const { server, base } = startServer('sekrit')
+    running = server
+
+    // No/stale credential: a just-revoked browser must still be able to
+    // clear its cookie rather than being stranded behind the gate.
+    const res = await fetch(`${base}/api/logout`, { method: 'POST' })
+    expect(res.status).toBe(200)
+    expect(res.headers.get('set-cookie')).toContain('Max-Age=0')
+  })
+
   it('reveals the token only to an authorized caller', async () => {
     const { server, base } = startServer('sekrit')
     running = server
