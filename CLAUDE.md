@@ -16,8 +16,10 @@ the API keys; the browser never sees a key.
 ## Current state
 
 Phases 1–4 are **shipped** (fixtures → live read-only → per-node management →
-multi-view visual refresh); Phase 5 (cluster-wide Syncthing-GUI parity) is in
-progress. `ROADMAP.md` is the authoritative, itemized status — check it (and
+multi-view visual refresh), and Phase 5's (cluster-wide Syncthing-GUI parity)
+four feature sections are complete — its remaining foundations (proxy auth,
+Syncthing 2.x) are flagged decisions awaiting the owner's call.
+`ROADMAP.md` is the authoritative, itemized status — check it (and
 the current version in the root `package.json`) before assuming what exists.
 The monorepo is three workspace packages: `packages/shared` (the normalized
 model + pure logic), `packages/proxy` (Node/TS backend), `packages/web`
@@ -62,9 +64,10 @@ model + pure logic), `packages/proxy` (Node/TS backend), `packages/web`
 - **Every mutation is gated.** All mutation routes (Phase 3+) sit behind a
   confirmation or preview dialog in the UI, mirror Syncthing's own config/
   action model rather than inventing higher-level operations, fan out with
-  `allSettled` and report exactly which nodes failed. The proxy still has no
-  auth — never expose it beyond a trusted network until that ships (tracked
-  in ROADMAP.md's foundations).
+  `allSettled` and report exactly which nodes failed. Proxy auth is **opt-in**:
+  set `CLUSTERFUCK_TOKEN` and every `/api/*` route (bar the health/version/
+  login handshake) requires the token (Bearer header) or the login cookie —
+  never expose the proxy beyond a trusted network without it.
 
 ## Syncthing domain primer (you'll need this constantly)
 

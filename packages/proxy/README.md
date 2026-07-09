@@ -26,7 +26,39 @@ pnpm --filter @clusterfuck/proxy dev   # from the repo root
 pnpm dev
 ```
 
-Listens on `PORT` (default `4000`). Routes:
+Listens on `PORT` (default `4000`).
+
+## Auth
+
+Opt-in: set `CLUSTERFUCK_TOKEN` and every `/api/*` route requires it —
+except `GET /api/health`, `GET /api/version`, `GET /api/auth`, and
+`POST /api/login` (the handshake itself). Unset, the proxy runs open (a
+loud startup warning says so) — fine on localhost, never expose that
+beyond a trusted network.
+
+- **Scripts/curl:** send `Authorization: Bearer <token>` per request.
+- **Browsers:** the web app shows a login screen; `POST /api/login` body
+  `{ "token": "..." }` sets an HttpOnly `SameSite=Strict` session cookie
+  (the SSE stream authenticates through it — EventSource can't send
+  headers). The cookie value is a stateless HMAC derived from the token:
+  proxy restarts don't log anyone out, and rotating the token instantly
+  invalidates every outstanding session. No `Secure` attribute (plain-HTTP
+  LAN deployments are the norm) — put HTTPS in front if you need it.
+- `GET /api/auth` — `{ "required": bool, "authorized": bool }`, uncredentialed.
+- `GET /api/auth/token` — `{ "token": "..." }`, **authorized callers only**:
+  the GUI's "show access token" reveal for signing in on another browser
+  (same stance as Syncthing's own GUI displaying its API key).
+- `POST /api/logout` — clears the session cookie.
+
+## Static web app
+
+When `packages/web/dist` exists (run `pnpm build`), the proxy serves it —
+production is then one process on one origin, no CORS or cookie contortions.
+Unknown non-`/api` paths fall back to `index.html`; `/api/*` misses stay
+hard 404s (the stale-proxy diagnostic). Override the directory with
+`CLUSTERFUCK_WEB_DIST`; without a build the proxy is API-only, as before.
+
+## Routes
 
 - `GET /api/cluster` — current `ClusterModel` snapshot.
 - `GET /api/events` — Server-Sent Events stream; pushes a full snapshot on
@@ -109,7 +141,10 @@ Listens on `PORT` (default `4000`). Routes:
   version. Both pass Syncthing's own error through if the folder type doesn't
   match.
 - `PATCH /api/folders/:folderId/devices/:deviceId` body
-  `{ "type": "sendonly" }` — changes that folder's type on that node.
+  `{ "type": "sendonly", "label": "Photos" }` (at least one of the two) —
+  changes that folder's type and/or label on that node, in one config
+  round-trip. Labels are per-node, which is exactly what the drift
+  detector's rename fix edits.
 - `PUT /api/folders/:folderId/devices/:deviceId/versioning` body
   `{ "type": "simple", "params": { "keep": "5" }, "cleanupIntervalS": 3600 }`
   (`params`/`cleanupIntervalS` optional) — sets that folder's file-versioning

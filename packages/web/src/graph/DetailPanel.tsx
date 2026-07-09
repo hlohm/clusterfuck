@@ -28,6 +28,7 @@ import { FOLDER_TYPE_STYLE } from '../encoding/folderTypeStyle'
 import { FOLDER_STATE_STYLE } from '../encoding/folderStateStyle'
 import { DEVICE_STATE_STYLE } from '../encoding/deviceStateStyle'
 import { StatusBadge } from '../views/StatusBadge'
+import { CopyButton } from '../views/CopyButton'
 import { useAsyncAction } from '../data/useAsyncAction'
 import * as mutations from '../data/mutations'
 import { PROXY_BASE } from '../data/proxyBase'
@@ -987,23 +988,6 @@ function DeviceQr({ deviceId }: { deviceId: string }) {
           />
         ))}
     </div>
-  )
-}
-
-function CopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false)
-  return (
-    <button
-      className="copy-button"
-      onClick={() => {
-        void navigator.clipboard.writeText(text).then(() => {
-          setCopied(true)
-          setTimeout(() => setCopied(false), 1500)
-        })
-      }}
-    >
-      {copied ? 'Copied' : 'Copy'}
-    </button>
   )
 }
 

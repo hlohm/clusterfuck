@@ -4,8 +4,11 @@ The plan is phased and each phase is independently shippable. We don't start
 management until the visualization reads cleanly, and we don't chase
 cluster-wide parity until per-node actions are proven safe.
 
-**Status:** Phases 1–4 are done. Phase 5 (cluster-wide parity with the
-Syncthing web GUI) is in progress, worked through in priority order.
+**Status:** Phases 1–4 are done. Phase 5's four feature sections (folder
+management, device management, cluster operations, observability) are
+**complete**; what remains of Phase 5 is its foundations — auth on the proxy
+and Syncthing 2.x support — both flagged decisions to settle before building
+(and auth is the hard gate for 1.0 and Phase 6).
 
 Legend: `[x]` shipped · `[ ]` not yet · **(next)** = prioritized for the next
 iteration.
@@ -191,8 +194,11 @@ tabs. Mapped from the GUI's actual surface, in priority order.
       B doesn't share back), with suggested fixes — the genuinely novel
       cluster-level feature a single-node GUI cannot have. Pure logic in
       `@clusterfuck/shared` (`detectDrift()`), surfaced as an Overview
-      section; works on fixtures too. Suggested fixes are advisory text —
-      one-click apply is a possible follow-up. Type checks flag only the
+      section; works on fixtures too. Suggested fixes are advisory text,
+      plus a one-click **Apply fix** (live source) where the fix maps onto
+      an existing safe mutation: label drift (rename outliers to the
+      majority) and asymmetric shares (add the missing share-back entry) —
+      findings needing a human choice stay text-only. Type checks flag only the
       genuinely broken all-sendonly / all-receiveonly cases, since pairwise
       type differences are normal topology; `Share` gained `label` (each
       node's own label) to make label drift detectable at all
@@ -238,7 +244,15 @@ tabs. Mapped from the GUI's actual surface, in priority order.
 
 - [x] Node registration UI (add a node's URL + API key at runtime,
       persisted server-side) — replaces editing `cluster.json` by hand
-- [ ] Auth on the proxy the moment it's exposed beyond localhost
+- [x] Auth on the proxy the moment it's exposed beyond localhost — opt-in
+      shared token (`CLUSTERFUCK_TOKEN`): scripts send it as a Bearer header,
+      browsers exchange it once at a login screen for an HttpOnly
+      `SameSite=Strict` cookie (stateless HMAC of the token, so restarts
+      don't log anyone out and rotating the token revokes every session).
+      The GUI can reveal/copy the token for signing in elsewhere
+      (authorized-only, like Syncthing's own API-key display) and sign out.
+      The proxy also serves the built web app (`packages/web/dist`, or
+      `CLUSTERFUCK_WEB_DIST`) so production is one process on one origin
 - [ ] Syncthing 2.x REST support (currently targets 1.x)
 
 ## Phase 6 — Multi-cluster (2.0, parked)

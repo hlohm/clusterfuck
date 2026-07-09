@@ -14,6 +14,8 @@ import { Logo } from './Logo'
 import { OverviewView } from './views/OverviewView'
 import { TableView } from './views/TableView'
 import { AddDeviceDialog, AddFolderDialog, RegisterNodeDialog } from './views/AddDialogs'
+import { LoginScreen } from './views/LoginScreen'
+import { getAuthStatus } from './data/auth'
 
 const LIVE_SOURCE_ID = '__live__'
 
@@ -26,6 +28,17 @@ const VIEWS: { id: ViewId; label: string }[] = [
 ]
 
 function App() {
+  // Auth gate: 'checking' until /api/auth answers; 'login' while the proxy
+  // requires a token this browser doesn't have; 'ready' otherwise. An
+  // unreachable proxy counts as ready — fixtures must stay browsable with no
+  // proxy running, and the live view has its own connectivity errors.
+  const [authState, setAuthState] = useState<'checking' | 'login' | 'ready'>('checking')
+  useEffect(() => {
+    getAuthStatus()
+      .then((status) => setAuthState(status.required && !status.authorized ? 'login' : 'ready'))
+      .catch(() => setAuthState('ready'))
+  }, [])
+
   const [sourceId, setSourceId] = useState(FIXTURE_CLUSTERS[0]!.id)
   const [view, setView] = useState<ViewId>('graph')
   const [graphMode, setGraphMode] = useState<GraphMode>('nodes')
@@ -69,6 +82,13 @@ function App() {
   const openShare = (share: Share) => {
     setSelection({ kind: 'share', folderId: share.folderId, deviceId: share.deviceId })
     setView('graph')
+  }
+
+  if (authState === 'checking') {
+    return <div className="app__empty">Checking access…</div>
+  }
+  if (authState === 'login') {
+    return <LoginScreen onAuthorized={() => setAuthState('ready')} />
   }
 
   return (

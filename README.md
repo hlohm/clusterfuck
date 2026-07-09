@@ -34,11 +34,22 @@ manage devices and folders across every node from one place.
 - **Live, read-only cluster state** aggregated from every node and pushed to the
   browser over Server-Sent Events.
 - **Management actions** (against a live cluster): pause/resume devices and
-  folders, change folder type, set file-versioning (trashcan/simple/staggered/
-  external) per node, view/edit each node's ignore patterns (with a
-  diff-across-nodes indicator), rescan, add/remove shares, and create new
-  devices and folders across a chosen set of nodes — each behind a confirmation
-  or preview.
+  folders, change folder type and label, set file-versioning (trashcan/simple/
+  staggered/external), advanced folder options (rescan interval, watcher, min
+  disk free) and ignore patterns per node (with a diff-across-nodes
+  indicator), rescan, add/remove shares (with per-share encryption passwords),
+  edit device options (addresses, compression, introducer, auto-accept,
+  per-device rate limits) across every referencing node, and create new
+  devices and folders across a chosen set of nodes — each behind a
+  confirmation or preview.
+- **Cluster operations:** pause/resume/rescan everything in one action,
+  restart or shut down a node's Syncthing, node-global bandwidth caps
+  (per node or all nodes), and health-checked upgrade orchestration — every
+  node, strictly one at a time, aborting if a node doesn't come back.
+- **Observability:** live transfer rates per link (estimated from Syncthing's
+  cumulative counters), per-share completion sparklines, a cluster-merged
+  recent-changes feed, a filterable raw event log, per-node system status,
+  and a device-ID QR relayed from Syncthing's own renderer.
 
 See **[ROADMAP.md](ROADMAP.md)** for what's shipped and what's planned (the goal
 is cluster-wide parity with the Syncthing web GUI).
@@ -57,8 +68,12 @@ keys), so there's a thin proxy between them:
 - **`packages/proxy`** holds the API keys, polls each node's REST API plus its
   `/rest/events` stream, aggregates the per-node views into one normalized
   cluster model, and serves it read-only over HTTP + SSE (plus the Phase 3
-  mutation routes). See [`packages/proxy/README.md`](packages/proxy/README.md)
-  for the full route list.
+  mutation routes). Set `CLUSTERFUCK_TOKEN` to require auth: a shared token,
+  entered once per browser (cookie thereafter) or sent as a Bearer header by
+  scripts. With the web app built, the proxy serves it too — production is
+  one process on one origin. See
+  [`packages/proxy/README.md`](packages/proxy/README.md) for the full route
+  list and auth details.
 - **`packages/web`** is the React + TypeScript SPA (Vite, React Flow).
 - **`packages/shared`** (`@clusterfuck/shared`) is the normalized `ClusterModel`
   and its pure logic — the one contract both sides import, so types never drift.

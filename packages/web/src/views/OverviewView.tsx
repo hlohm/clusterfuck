@@ -5,6 +5,8 @@ import type {
   CompletionHistoryView,
   CompletionPoint,
   Device,
+  DriftFinding,
+  DriftFix,
   EventLogView,
   PendingDevice,
   RecentChangesView,
@@ -29,6 +31,8 @@ import { StatusBadge } from './StatusBadge'
 import { AcceptPendingDeviceDialog, AcceptPendingFolderDialog, type PendingFolderOffer } from './PendingDialogs'
 import { useAsyncAction } from '../data/useAsyncAction'
 import * as mutations from '../data/mutations'
+import * as auth from '../data/auth'
+import { CopyButton } from './CopyButton'
 import { formatBytes, formatRate } from '../format'
 import { sparklineGeometry } from './sparkline'
 
@@ -37,6 +41,65 @@ export interface OverviewViewProps {
   onOpenShare?: (share: Share) => void
   /** Cluster-wide actions only make sense against the live proxy, never fixtures. */
   isLive?: boolean
+}
+
+/**
+ * The auth affordances the GUI owes an admin: reveal/copy the shared access
+ * token so another browser can sign in (authorized-only route — same stance
+ * as Syncthing's GUI showing its API key), and sign this browser out.
+ * Renders nothing when the proxy has no auth configured.
+ */
+function AccessTokenRow() {
+  const [required, setRequired] = useState(false)
+  const [token, setToken] = useState<string>()
+  const [error, setError] = useState<string>()
+
+  useEffect(() => {
+    auth
+      .getAuthStatus()
+      .then((status) => setRequired(status.required))
+      .catch(() => setRequired(false))
+  }, [])
+
+  if (!required) return null
+
+  return (
+    <div className="cluster-actions__row">
+      <span className="cluster-actions__label">Access</span>
+      <div className="detail-panel__action-row">
+        {token === undefined ? (
+          <button
+            title="Reveal the shared access token — paste it on other browsers/devices to sign in there."
+            onClick={() =>
+              auth
+                .getToken()
+                .then(setToken)
+                .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Failed'))
+            }
+          >
+            Show access token
+          </button>
+        ) : (
+          <>
+            <code className="access-token">{token}</code>
+            <CopyButton text={token} />
+            <button className="detail-panel__link-button" onClick={() => setToken(undefined)}>
+              Hide
+            </button>
+          </>
+        )}
+        <button
+          className="detail-panel__link-button"
+          onClick={() => {
+            void auth.logout().then(() => window.location.reload())
+          }}
+        >
+          Sign out
+        </button>
+      </div>
+      {error && <div className="detail-panel__error">{error}</div>}
+    </div>
+  )
 }
 
 /** The first cluster-wide (as opposed to per-device/per-folder) mutations — see ROADMAP.md Phase 5. */
@@ -112,6 +175,7 @@ function ClusterActions() {
               </button>
             </div>
           </div>
+          <AccessTokenRow />
         </div>
         {error && <div className="detail-panel__error cluster-actions__error">{error}</div>}
       </article>
@@ -254,6 +318,80 @@ function Sparkline({ points }: { points: CompletionPoint[] }) {
       <title>{geometry.label}</title>
       <path d={geometry.d} />
     </svg>
+  )
+}
+
+/**
+ * One drift finding: the deep-linking row, plus — when the finding carries a
+ * machine-applicable fix and the source is live — an Apply-fix button that
+ * runs the corresponding existing mutation(s), confirmation-gated like every
+ * other mutation. Own busy/error state per row.
+ */
+function DriftRow({
+  cluster,
+  finding,
+  isLive,
+  onOpenShare,
+}: {
+  cluster: ClusterModel
+  finding: DriftFinding
+  isLive?: boolean
+  onOpenShare?: (share: Share) => void
+}) {
+  const { busy, error, run } = useAsyncAction()
+  const deviceById = new Map(cluster.devices.map((d) => [d.id, d]))
+  const nameFor = (id: string) => deviceById.get(id)?.name ?? id
+  const folderLabel = cluster.folders.find((f) => f.id === finding.folderId)?.label ?? finding.folderId
+  const target = cluster.shares.find(
+    (s) => s.folderId === finding.folderId && finding.deviceIds.includes(s.deviceId),
+  )
+
+  const applyFix = (fix: DriftFix) => {
+    if (fix.kind === 'set-label') {
+      run(
+        `Rename the folder to “${fix.label}” on ${fix.deviceIds.map(nameFor).join(', ')}?`,
+        async () => {
+          // Sequential on purpose: the proxy serializes folder edits anyway,
+          // and a failure should stop before touching the remaining nodes.
+          for (const deviceId of fix.deviceIds) {
+            await mutations.setFolderLabel(deviceId, finding.folderId, fix.label)
+          }
+        },
+      )
+    } else {
+      run(
+        `Add ${nameFor(fix.addDevice)} to "${folderLabel}"'s share list on ${nameFor(fix.onDevice)}?`,
+        () => mutations.addShare(fix.onDevice, finding.folderId, fix.addDevice),
+      )
+    }
+  }
+
+  return (
+    <li className="drift-row">
+      <button className="attention-list__row" onClick={() => target && onOpenShare?.(target)}>
+        <span
+          className={`drift-badge drift-badge--${finding.severity}`}
+          title={finding.severity === 'warning' ? 'Probably broken' : 'Legal, but worth knowing'}
+        >
+          {finding.severity === 'warning' ? '⚠' : 'ℹ'}
+        </span>
+        <strong>{folderLabel}</strong>
+        <span className="attention-list__device">{finding.message}</span>
+        <span className="attention-list__message">Fix: {finding.suggestion}</span>
+      </button>
+      {isLive && finding.fix && (
+        <div className="detail-panel__action-row drift-row__fix">
+          <button
+            className="detail-panel__button--primary"
+            disabled={busy}
+            onClick={() => applyFix(finding.fix!)}
+          >
+            Apply fix
+          </button>
+        </div>
+      )}
+      {error && <div className="detail-panel__error">{error}</div>}
+    </li>
   )
 }
 
@@ -892,28 +1030,15 @@ export function OverviewView({ cluster, onOpenShare, isLive }: OverviewViewProps
         <section className="overview__section">
           <h3>Config drift</h3>
           <ul className="attention-list">
-            {drift.map((finding, i) => {
-              const folderLabel =
-                cluster.folders.find((f) => f.id === finding.folderId)?.label ?? finding.folderId
-              const target = cluster.shares.find(
-                (s) => s.folderId === finding.folderId && finding.deviceIds.includes(s.deviceId),
-              )
-              return (
-                <li key={`${finding.kind}:${finding.folderId}:${i}`}>
-                  <button className="attention-list__row" onClick={() => target && onOpenShare?.(target)}>
-                    <span
-                      className={`drift-badge drift-badge--${finding.severity}`}
-                      title={finding.severity === 'warning' ? 'Probably broken' : 'Legal, but worth knowing'}
-                    >
-                      {finding.severity === 'warning' ? '⚠' : 'ℹ'}
-                    </span>
-                    <strong>{folderLabel}</strong>
-                    <span className="attention-list__device">{finding.message}</span>
-                    <span className="attention-list__message">Fix: {finding.suggestion}</span>
-                  </button>
-                </li>
-              )
-            })}
+            {drift.map((finding, i) => (
+              <DriftRow
+                key={`${finding.kind}:${finding.folderId}:${i}`}
+                cluster={cluster}
+                finding={finding}
+                isLive={isLive}
+                onOpenShare={onOpenShare}
+              />
+            ))}
           </ul>
         </section>
       )}

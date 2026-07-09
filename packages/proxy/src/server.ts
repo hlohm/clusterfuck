@@ -1,4 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse, type Server } from 'node:http'
+import type { Auth } from './auth.ts'
+import type { StaticHandler } from './static.ts'
 import {
   COMPRESSION_LEVELS,
   isCompressionLevel,
@@ -46,10 +48,16 @@ function sendJson(res: ServerResponse, status: number, body: unknown): void {
 
 /**
  * Minimal HTTP surface: no framework, hand-matched routes. Read-only routes
- * from Phase 2 plus Phase 3's per-node/per-folder mutation routes — no
- * cluster-wide actions and no auth, per the confirmed Phase 3 decisions.
+ * from Phase 2, the mutation routes from Phase 3 on, optional shared-token
+ * auth (Phase 5 foundations), and static serving of the built SPA so
+ * production is one process on one origin.
  */
-export function createHttpServer(manager: ClusterStateManager, allowedOrigin: string): Server {
+export function createHttpServer(
+  manager: ClusterStateManager,
+  allowedOrigin: string,
+  auth: Auth,
+  staticHandler?: StaticHandler,
+): Server {
   // One subscription serializes each new model once and fans the same frame
   // out to every SSE client, instead of stringifying per client per change.
   const sseClients = new Set<ServerResponse>()
@@ -61,11 +69,26 @@ export function createHttpServer(manager: ClusterStateManager, allowedOrigin: st
 
   return createServer((req, res) => {
     res.setHeader('Access-Control-Allow-Origin', allowedOrigin)
-    handleRequest(req, res, manager, sseClients).catch((err: unknown) => {
+    // Cookies across a split-origin deployment need the explicit opt-in.
+    res.setHeader('Access-Control-Allow-Credentials', 'true')
+    handleRequest(req, res, manager, sseClients, auth, staticHandler).catch((err: unknown) => {
       console.error('[clusterfuck-proxy] unhandled request error:', err)
       if (!res.headersSent) sendJson(res, 500, { error: 'internal error' })
     })
   })
+}
+
+/**
+ * Routes reachable without credentials when auth is on: the login handshake
+ * itself, and the health/version probes monitoring needs. Everything else
+ * under /api — including the SSE stream — requires the token or the cookie.
+ */
+function isAuthExempt(method: string, pathname: string): boolean {
+  return (
+    (method === 'GET' &&
+      (pathname === '/api/health' || pathname === '/api/version' || pathname === '/api/auth')) ||
+    (method === 'POST' && pathname === '/api/login')
+  )
 }
 
 async function handleRequest(
@@ -73,17 +96,78 @@ async function handleRequest(
   res: ServerResponse,
   manager: ClusterStateManager,
   sseClients: Set<ServerResponse>,
+  auth: Auth,
+  staticHandler?: StaticHandler,
 ): Promise<void> {
   const method = req.method ?? 'GET'
   const url = new URL(req.url ?? '/', 'http://internal')
   const parts = url.pathname.split('/').filter(Boolean)
+  const isApi = url.pathname === '/api' || url.pathname.startsWith('/api/')
 
   if (method === 'OPTIONS') {
     res.writeHead(204, {
-      'Access-Control-Allow-Methods': 'GET,POST,PATCH,DELETE,OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type,Authorization',
     })
     res.end()
+    return
+  }
+
+  // The auth gate — before any routing. Static files stay reachable (the
+  // login screen has to load from somewhere).
+  const authorized = auth.isAuthorized(req)
+  if (auth.enabled && isApi && !authorized && !isAuthExempt(method, url.pathname)) {
+    sendJson(res, 401, { error: 'authentication required' })
+    return
+  }
+
+  // Whether this deployment needs a login, and whether this caller has one —
+  // the SPA's first question on load.
+  if (url.pathname === '/api/auth' && method === 'GET') {
+    sendJson(res, 200, { required: auth.enabled, authorized })
+    return
+  }
+
+  // Exchange the shared token for the HttpOnly session cookie (EventSource
+  // can't send an Authorization header, but it sends cookies).
+  if (url.pathname === '/api/login' && method === 'POST') {
+    if (!auth.enabled) {
+      sendJson(res, 400, { error: 'authentication is not enabled on this proxy' })
+      return
+    }
+    let body: unknown
+    try {
+      body = await readJsonBody(req)
+    } catch {
+      sendJson(res, 400, { error: 'request body is not valid JSON' })
+      return
+    }
+    const token = (body as { token?: unknown } | undefined)?.token
+    if (typeof token !== 'string' || !auth.tokenMatches(token)) {
+      sendJson(res, 401, { error: 'invalid token' })
+      return
+    }
+    auth.setSessionCookie(res)
+    sendJson(res, 200, { ok: true })
+    return
+  }
+
+  if (url.pathname === '/api/logout' && method === 'POST') {
+    auth.clearSessionCookie(res)
+    sendJson(res, 200, { ok: true })
+    return
+  }
+
+  // The GUI's "retrieve the token" reveal — authorized callers only (the
+  // gate above already enforced that), mirroring Syncthing's own GUI
+  // showing its API key in settings. 404 when auth is off: there is no
+  // token to reveal.
+  if (url.pathname === '/api/auth/token' && method === 'GET') {
+    if (!auth.enabled) {
+      sendJson(res, 404, { error: 'authentication is not enabled on this proxy' })
+      return
+    }
+    sendJson(res, 200, { token: auth.token })
     return
   }
 
@@ -473,15 +557,28 @@ async function handleRequest(
         return
       }
 
+      // PATCH body { type?, label? } — at least one; both applied in one
+      // config round-trip. label may be empty (Syncthing then shows the id).
       if (method === 'PATCH' && parts.length === 5) {
-        const body = (await readJsonBody(req)) as { type?: unknown } | undefined
-        if (!isFolderType(body?.type)) {
+        const body = (await readJsonBody(req)) as { type?: unknown; label?: unknown } | undefined
+        if (body?.type !== undefined && !isFolderType(body.type)) {
           sendJson(res, 400, {
             error: `type must be one of: ${SYNCTHING_FOLDER_TYPES.join(', ')}`,
           })
           return
         }
-        await manager.setFolderType(deviceId, folderId, body.type)
+        if (body?.label !== undefined && typeof body.label !== 'string') {
+          sendJson(res, 400, { error: 'label must be a string' })
+          return
+        }
+        if (body?.type === undefined && body?.label === undefined) {
+          sendJson(res, 400, { error: 'at least one of type, label is required' })
+          return
+        }
+        await manager.updateFolder(deviceId, folderId, {
+          type: body.type as SyncthingFolderType | undefined,
+          label: body.label as string | undefined,
+        })
         sendJson(res, 200, { ok: true })
         return
       }
@@ -704,6 +801,12 @@ async function handleRequest(
     const message = (err as Error).message
     console.error('[clusterfuck-proxy] mutation failed:', message)
     sendJson(res, 502, { error: message })
+    return
+  }
+
+  // Anything that isn't /api/* falls to the SPA build, when one is present
+  // (unknown paths serve index.html — the app owns its own routing).
+  if (!isApi && method === 'GET' && staticHandler !== undefined && staticHandler(url.pathname, res)) {
     return
   }
 

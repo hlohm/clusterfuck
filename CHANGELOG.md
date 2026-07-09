@@ -4,6 +4,47 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.4.22]
+
+- **Auth on the proxy** (ROADMAP.md Phase 5 Foundations — the 1.0 gate):
+  opt-in shared token via `CLUSTERFUCK_TOKEN`. Scripts authenticate with
+  `Authorization: Bearer <token>`; browsers enter the token once at a new
+  login screen and get an HttpOnly `SameSite=Strict` session cookie (the
+  SSE stream rides it, since EventSource can't send headers). The cookie is
+  a stateless HMAC of the token — restarts don't log sessions out, rotating
+  the token revokes them all. Timing-safe comparisons throughout. The
+  Overview's cluster-actions card gains an **Access** row: reveal/copy the
+  token for signing in on another browser (authorized-only route,
+  `GET /api/auth/token`) and Sign out. Unset, the proxy runs open exactly
+  as before, with a loud startup warning.
+- **The proxy serves the built web app** (`packages/web/dist`, override with
+  `CLUSTERFUCK_WEB_DIST`): production is one process on one origin, so
+  cookies need no CORS/SameSite contortions. SPA fallback for non-API
+  paths; `/api/*` misses stay hard 404s (the stale-proxy diagnostic);
+  path-traversal refused. Without a build the proxy stays API-only.
+
+## [0.4.21]
+
+- Docs refresh, no code changes: README's feature list now covers the
+  0.4.8–0.4.20 additions (advanced folder options, device options, QR,
+  cluster operations incl. upgrades and bandwidth caps, the observability
+  suite, one-click drift fixes); ROADMAP/CLAUDE.md status lines state that
+  Phase 5's four feature sections are complete and only the flagged
+  foundations (proxy auth, Syncthing 2.x) remain.
+
+## [0.4.20]
+
+- **One-click drift fixes** (follow-up promised in 0.4.13): drift findings
+  whose fix maps onto an existing safe mutation now carry a
+  machine-applicable `fix` payload and an **Apply fix** button (live source
+  only, confirmation-gated): label drift renames the outlier nodes' copies
+  to the majority label, and an asymmetric share adds the missing
+  share-back entry on the node that lacks it. Findings that need a human
+  choice (which node becomes the writer, what path a missing folder gets)
+  deliberately stay text-only. The folder PATCH route accepts `label`
+  alongside `type` (labels are per-node — the same fact that makes label
+  drift detectable makes it fixable per node).
+
 ## [0.4.19]
 
 - **Raw event log** (ROADMAP.md Phase 5 Observability — the section's last
