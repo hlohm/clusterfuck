@@ -64,9 +64,10 @@ model + pure logic), `packages/proxy` (Node/TS backend), `packages/web`
 - **Every mutation is gated.** All mutation routes (Phase 3+) sit behind a
   confirmation or preview dialog in the UI, mirror Syncthing's own config/
   action model rather than inventing higher-level operations, fan out with
-  `allSettled` and report exactly which nodes failed. The proxy still has no
-  auth — never expose it beyond a trusted network until that ships (tracked
-  in ROADMAP.md's foundations).
+  `allSettled` and report exactly which nodes failed. Proxy auth is **opt-in**:
+  set `CLUSTERFUCK_TOKEN` and every `/api/*` route (bar the health/version/
+  login handshake) requires the token (Bearer header) or the login cookie —
+  never expose the proxy beyond a trusted network without it.
 
 ## Syncthing domain primer (you'll need this constantly)
 

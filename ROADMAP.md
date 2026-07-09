@@ -244,7 +244,15 @@ tabs. Mapped from the GUI's actual surface, in priority order.
 
 - [x] Node registration UI (add a node's URL + API key at runtime,
       persisted server-side) — replaces editing `cluster.json` by hand
-- [ ] Auth on the proxy the moment it's exposed beyond localhost
+- [x] Auth on the proxy the moment it's exposed beyond localhost — opt-in
+      shared token (`CLUSTERFUCK_TOKEN`): scripts send it as a Bearer header,
+      browsers exchange it once at a login screen for an HttpOnly
+      `SameSite=Strict` cookie (stateless HMAC of the token, so restarts
+      don't log anyone out and rotating the token revokes every session).
+      The GUI can reveal/copy the token for signing in elsewhere
+      (authorized-only, like Syncthing's own API-key display) and sign out.
+      The proxy also serves the built web app (`packages/web/dist`, or
+      `CLUSTERFUCK_WEB_DIST`) so production is one process on one origin
 - [ ] Syncthing 2.x REST support (currently targets 1.x)
 
 ## Phase 6 — Multi-cluster (2.0, parked)

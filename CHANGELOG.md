@@ -4,6 +4,25 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.4.22]
+
+- **Auth on the proxy** (ROADMAP.md Phase 5 Foundations — the 1.0 gate):
+  opt-in shared token via `CLUSTERFUCK_TOKEN`. Scripts authenticate with
+  `Authorization: Bearer <token>`; browsers enter the token once at a new
+  login screen and get an HttpOnly `SameSite=Strict` session cookie (the
+  SSE stream rides it, since EventSource can't send headers). The cookie is
+  a stateless HMAC of the token — restarts don't log sessions out, rotating
+  the token revokes them all. Timing-safe comparisons throughout. The
+  Overview's cluster-actions card gains an **Access** row: reveal/copy the
+  token for signing in on another browser (authorized-only route,
+  `GET /api/auth/token`) and Sign out. Unset, the proxy runs open exactly
+  as before, with a loud startup warning.
+- **The proxy serves the built web app** (`packages/web/dist`, override with
+  `CLUSTERFUCK_WEB_DIST`): production is one process on one origin, so
+  cookies need no CORS/SameSite contortions. SPA fallback for non-API
+  paths; `/api/*` misses stay hard 404s (the stale-proxy diagnostic);
+  path-traversal refused. Without a build the proxy stays API-only.
+
 ## [0.4.21]
 
 - Docs refresh, no code changes: README's feature list now covers the

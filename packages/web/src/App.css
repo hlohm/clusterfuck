@@ -924,6 +924,57 @@ button {
   color: var(--accent);
 }
 
+.login {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+}
+
+.login__card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(360px, 90vw);
+  padding: 28px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface, var(--bg));
+}
+
+.login__brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.login__brand h1 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.login__hint {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.login__card input {
+  font: inherit;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+}
+
+.access-token {
+  font-size: 11px;
+  overflow-wrap: anywhere;
+  max-width: 420px;
+}
+
 .sparkline {
   flex: 0 0 auto;
   display: block;

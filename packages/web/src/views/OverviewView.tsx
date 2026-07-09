@@ -31,6 +31,8 @@ import { StatusBadge } from './StatusBadge'
 import { AcceptPendingDeviceDialog, AcceptPendingFolderDialog, type PendingFolderOffer } from './PendingDialogs'
 import { useAsyncAction } from '../data/useAsyncAction'
 import * as mutations from '../data/mutations'
+import * as auth from '../data/auth'
+import { CopyButton } from './CopyButton'
 import { formatBytes, formatRate } from '../format'
 import { sparklineGeometry } from './sparkline'
 
@@ -39,6 +41,65 @@ export interface OverviewViewProps {
   onOpenShare?: (share: Share) => void
   /** Cluster-wide actions only make sense against the live proxy, never fixtures. */
   isLive?: boolean
+}
+
+/**
+ * The auth affordances the GUI owes an admin: reveal/copy the shared access
+ * token so another browser can sign in (authorized-only route — same stance
+ * as Syncthing's GUI showing its API key), and sign this browser out.
+ * Renders nothing when the proxy has no auth configured.
+ */
+function AccessTokenRow() {
+  const [required, setRequired] = useState(false)
+  const [token, setToken] = useState<string>()
+  const [error, setError] = useState<string>()
+
+  useEffect(() => {
+    auth
+      .getAuthStatus()
+      .then((status) => setRequired(status.required))
+      .catch(() => setRequired(false))
+  }, [])
+
+  if (!required) return null
+
+  return (
+    <div className="cluster-actions__row">
+      <span className="cluster-actions__label">Access</span>
+      <div className="detail-panel__action-row">
+        {token === undefined ? (
+          <button
+            title="Reveal the shared access token — paste it on other browsers/devices to sign in there."
+            onClick={() =>
+              auth
+                .getToken()
+                .then(setToken)
+                .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Failed'))
+            }
+          >
+            Show access token
+          </button>
+        ) : (
+          <>
+            <code className="access-token">{token}</code>
+            <CopyButton text={token} />
+            <button className="detail-panel__link-button" onClick={() => setToken(undefined)}>
+              Hide
+            </button>
+          </>
+        )}
+        <button
+          className="detail-panel__link-button"
+          onClick={() => {
+            void auth.logout().then(() => window.location.reload())
+          }}
+        >
+          Sign out
+        </button>
+      </div>
+      {error && <div className="detail-panel__error">{error}</div>}
+    </div>
+  )
 }
 
 /** The first cluster-wide (as opposed to per-device/per-folder) mutations — see ROADMAP.md Phase 5. */
@@ -114,6 +175,7 @@ function ClusterActions() {
               </button>
             </div>
           </div>
+          <AccessTokenRow />
         </div>
         {error && <div className="detail-panel__error cluster-actions__error">{error}</div>}
       </article>
