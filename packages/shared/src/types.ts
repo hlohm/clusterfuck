@@ -274,6 +274,25 @@ export interface DeviceOptionsView {
   nodes: NodeDeviceOptions[]
 }
 
+/**
+ * One raw Syncthing event as observed on one registered node — an entry of
+ * the cluster-wide event log. `data` is Syncthing's own payload, untouched.
+ */
+export interface ClusterEvent {
+  /** The registered node the event happened on (its own device ID). */
+  nodeId: DeviceId
+  /** Syncthing's per-node event id — unique per node, not across the cluster. */
+  id: number
+  type: string
+  time: string
+  data: unknown
+}
+
+/** The merged event log, newest first — on-demand, bounded, in-memory (like the changes feed). */
+export interface EventLogView {
+  events: ClusterEvent[]
+}
+
 /** One completion sample; `t` is epoch milliseconds. */
 export interface CompletionPoint {
   t: number

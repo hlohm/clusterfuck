@@ -5,6 +5,7 @@ import type {
   CompletionHistoryView,
   CompletionPoint,
   Device,
+  EventLogView,
   PendingDevice,
   RecentChangesView,
   Share,
@@ -346,6 +347,95 @@ function UpgradeSection({ cluster }: { cluster: ClusterModel }) {
         </div>
         {loadError && <div className="detail-panel__error cluster-actions__error">{loadError}</div>}
         {error && <div className="detail-panel__error cluster-actions__error">{error}</div>}
+      </article>
+    </section>
+  )
+}
+
+/**
+ * The raw event log — every Syncthing event both proxy event loops receive,
+ * merged newest-first. The diagnostic view behind the friendlier
+ * recent-changes feed; filtering is client-side over the (bounded) buffer.
+ */
+function EventLogSection({ cluster }: { cluster: ClusterModel }) {
+  const [view, setView] = useState<EventLogView>()
+  const [loading, setLoading] = useState(false)
+  const [loadError, setLoadError] = useState<string>()
+  const [typeFilter, setTypeFilter] = useState('')
+  const [nodeFilter, setNodeFilter] = useState('')
+
+  const deviceById = new Map(cluster.devices.map((d) => [d.id, d]))
+  const managed = cluster.devices.filter((d) => d.managed)
+
+  const load = () => {
+    setLoading(true)
+    setLoadError(undefined)
+    mutations
+      .getEventLog()
+      .then(setView)
+      .catch((err: unknown) => setLoadError(err instanceof Error ? err.message : 'Failed to load'))
+      .finally(() => setLoading(false))
+  }
+
+  const filtered = (view?.events ?? []).filter(
+    (e) =>
+      (typeFilter === '' || e.type.toLowerCase().includes(typeFilter.toLowerCase())) &&
+      (nodeFilter === '' || e.nodeId === nodeFilter),
+  )
+
+  return (
+    <section className="overview__section">
+      <article className="folder-card">
+        <header className="folder-card__header">
+          <h4>Event log</h4>
+          <button className="detail-panel__link-button" disabled={loading} onClick={load}>
+            {loading ? 'Loading…' : view ? 'Reload' : 'Load'}
+          </button>
+        </header>
+        {view && (
+          <>
+            <div className="detail-panel__action-row event-log__filters">
+              <input
+                type="text"
+                placeholder="Filter by event type…"
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+              />
+              <select value={nodeFilter} onChange={(e) => setNodeFilter(e.target.value)}>
+                <option value="">All nodes</option>
+                {managed.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {filtered.length === 0 ? (
+              <p className="recent-changes__empty">
+                {view.events.length === 0
+                  ? 'No events buffered yet (the log starts empty on a proxy restart).'
+                  : 'No events match the filter.'}
+              </p>
+            ) : (
+              <ul className="recent-changes event-log">
+                {filtered.map((event, i) => (
+                  <li key={`${event.nodeId}:${event.id}:${i}`}>
+                    <span className="recent-changes__time">
+                      {new Date(event.time).toLocaleTimeString()}
+                    </span>{' '}
+                    <strong>{event.type}</strong>
+                    <span className="recent-changes__detail">
+                      {' '}
+                      on {deviceById.get(event.nodeId)?.name ?? event.nodeId}
+                    </span>
+                    <span className="event-log__data">{JSON.stringify(event.data)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
+        )}
+        {loadError && <div className="detail-panel__error cluster-actions__error">{loadError}</div>}
       </article>
     </section>
   )
@@ -774,6 +864,7 @@ export function OverviewView({ cluster, onOpenShare, isLive }: OverviewViewProps
       {isLive && <BandwidthSection cluster={cluster} />}
       {isLive && <UpgradeSection cluster={cluster} />}
       {isLive && <RecentChangesSection cluster={cluster} />}
+      {isLive && <EventLogSection cluster={cluster} />}
 
       {health.attention.length > 0 && (
         <section className="overview__section">

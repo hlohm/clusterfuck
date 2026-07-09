@@ -2,6 +2,7 @@ import type {
   BandwidthLimitsView,
   CompletionHistoryView,
   DeviceOptions,
+  EventLogView,
   DeviceOptionsView,
   FolderAdvancedOptions,
   FolderConflicts,
@@ -54,6 +55,11 @@ export function setAllFoldersPaused(paused: boolean): Promise<void> {
 /** Cluster-wide: triggers a rescan of every folder on every registered node. */
 export function rescanAllFolders(): Promise<void> {
   return call('POST', '/api/folders/all/rescan')
+}
+
+/** The merged raw event log, newest first (bounded, in-memory). Filtering is done client-side; the API also accepts ?types/?node/?limit. */
+export function getEventLog(): Promise<EventLogView> {
+  return getJson('/api/events/log')
 }
 
 /** Recent per-share completion samples — the overview sparklines' data (bounded, in-memory on the proxy). */

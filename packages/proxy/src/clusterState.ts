@@ -4,6 +4,7 @@ import type {
   CompletionHistoryView,
   DeviceOptions,
   DeviceOptionsView,
+  EventLogView,
   FolderAdvancedOptions,
   FolderConflicts,
   FolderFailedItems,
@@ -15,6 +16,7 @@ import type {
 import { aggregateCluster, type NodeSnapshot } from './aggregate.ts'
 import { ChangeBuffer, mapDiskEvent } from './changes.ts'
 import { collectConflictPaths } from './conflicts.ts'
+import { EventLog } from './eventLog.ts'
 import { CompletionHistory } from './history.ts'
 import { computeRates, type RateSamples } from './rates.ts'
 import { fetchNodeSnapshot } from './snapshot.ts'
@@ -81,6 +83,8 @@ export class ClusterStateManager {
   private readonly changes = new ChangeBuffer(200)
   /** Recent per-share completion samples for the overview sparklines. */
   private readonly history = new CompletionHistory()
+  /** Raw event log — everything both event loops receive, merged. */
+  private readonly eventLog = new EventLog(300)
   private readonly upgradePollMs: number
   private readonly upgradeTimeoutMs: number
   /** The current (or most recent) upgrade sweep — one at a time, in memory only. */
@@ -985,6 +989,16 @@ export class ClusterStateManager {
     return this.history.view()
   }
 
+  /** The merged raw event log, newest first, optionally narrowed by type/node. */
+  getEventLog(filter?: { types?: Set<string>; nodeId?: string; limit?: number }): EventLogView {
+    return this.eventLog.list(filter)
+  }
+
+  /** The node's own device ID for log attribution; falls back to the config label until the first snapshot lands. */
+  private deviceIdFor(entry: ClientEntry): string {
+    return this.snapshots.find((s) => s.nodeId === entry.nodeId)?.myID ?? entry.nodeId
+  }
+
   /** The current or most recent upgrade sweep, if any. Progress mutates in place, so pollers see it live. */
   getUpgradeRun(): UpgradeRun | undefined {
     return this.upgradeRun
@@ -1033,9 +1047,9 @@ export class ClusterStateManager {
         const events = await entry.client.diskEvents(since)
         if (events.length > 0) {
           since = events[events.length - 1]!.id
-          const nodeDeviceId =
-            this.snapshots.find((s) => s.nodeId === entry.nodeId)?.myID ?? entry.nodeId
+          const nodeDeviceId = this.deviceIdFor(entry)
           for (const event of events) {
+            this.eventLog.push(nodeDeviceId, event)
             const change = mapDiskEvent(event, nodeDeviceId)
             if (change) this.changes.push(change)
           }
@@ -1075,6 +1089,8 @@ export class ClusterStateManager {
         const events = await entry.client.events(since)
         if (events.length > 0) {
           since = events[events.length - 1]!.id
+          const nodeDeviceId = this.deviceIdFor(entry)
+          for (const event of events) this.eventLog.push(nodeDeviceId, event)
           if (events.some((e) => RELEVANT_EVENT_TYPES.has(e.type))) {
             await this.refresh()
           }

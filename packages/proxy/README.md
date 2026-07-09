@@ -44,6 +44,13 @@ Listens on `PORT` (default `4000`). Routes:
   proxy's refresh cycle (at most one point per share per 30s, last 120
   points ≈ 1.5h); in-memory and bounded like `/api/changes` — a sparkline's
   worth, not a metrics store.
+- `GET /api/events/log` — the merged raw event log, newest first: every
+  Syncthing event the proxy's per-node event loops receive (default and
+  disk streams alike), with the raw `data` payload untouched. Query params:
+  `?types=StateChanged,FolderSummary` (comma-separated), `?node=<device
+  ID>`, `?limit=N`. Bounded (last 300) and in-memory — a diagnostic glance,
+  not an audit trail. Distinct from `GET /api/events`, the SSE model
+  stream.
 - `GET /api/health` — liveness check.
 - `GET /api/version` — `{ "version": "x.y.z" }` from this process's own
   `package.json`. Compare against the frontend build's version (shown next to
