@@ -261,11 +261,11 @@ A polish pass on legibility and layout before calling the UI stable for 1.0
 — requested by the owner (2026-07-09), worked as its own leg so feature
 items don't absorb ad-hoc UI changes.
 
-- [ ] **Folder editing view legibility** — the per-node share editor in the
-      folder detail is dense: make the detail panel **re-sizable** (drag
-      handle, width persisted locally), and turn **Versioning** and
-      **Advanced** into fold-out sections, collapsed by default, so the
-      common actions stay above the fold.
+- [x] **Folder editing view legibility** — the detail sidebar is re-sizable
+      (drag the divider, or focus it and use arrow keys; width persisted per
+      browser, clamped 260–640px), and Versioning/Advanced are `<details>`
+      fold-outs, collapsed by default, each summarizing its current config
+      in the collapsed header so folding loses no information.
 - [ ] **React Flow attribution legibility** — the attribution link in the
       graph's corner is illegible in dark mode; restyle it (theme-aware
       color) so it's readable on both surfaces. Keep the attribution —

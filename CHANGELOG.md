@@ -4,6 +4,17 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.4.26]
+
+- **Folder editing view legibility** (ROADMAP "UI design refinement",
+  first item): the graph view's detail sidebar is now **re-sizable** — drag
+  the divider (or focus it and use ←/→), width persisted per browser — and
+  the per-share **Versioning** and **Advanced** editors are fold-outs,
+  collapsed by default with a one-line summary of the current config in the
+  header, so pause/rescan/type and the share list stay above the fold.
+  New `data/localPrefs.ts` localStorage helper (namespaced, corrupt-value
+  safe) shared by the upcoming overview-layout persistence.
+
 ## [0.4.25]
 
 - Docs: **[docs/HOW-AUTH-WORKS.md](docs/HOW-AUTH-WORKS.md)** — a
