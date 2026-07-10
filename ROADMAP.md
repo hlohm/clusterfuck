@@ -255,6 +255,28 @@ tabs. Mapped from the GUI's actual surface, in priority order.
       `CLUSTERFUCK_WEB_DIST`) so production is one process on one origin
 - [ ] Syncthing 2.x REST support (currently targets 1.x)
 
+## UI design refinement (pre-1.0)
+
+A polish pass on legibility and layout before calling the UI stable for 1.0
+— requested by the owner (2026-07-09), worked as its own leg so feature
+items don't absorb ad-hoc UI changes.
+
+- [ ] **Folder editing view legibility** — the per-node share editor in the
+      folder detail is dense: make the detail panel **re-sizable** (drag
+      handle, width persisted locally), and turn **Versioning** and
+      **Advanced** into fold-out sections, collapsed by default, so the
+      common actions stay above the fold.
+- [ ] **React Flow attribution legibility** — the attribution link in the
+      graph's corner is illegible in dark mode; restyle it (theme-aware
+      color) so it's readable on both surfaces. Keep the attribution —
+      restyling, not removing.
+- [ ] **Overview sections fold-out & re-arrangeable** — every Overview
+      section (cluster actions, bandwidth, upgrades, recent changes, event
+      log, drift, attention, pending, nodes, folders) becomes collapsible,
+      and their order user-arrangeable, with both collapse state and order
+      persisted locally. Decide one mechanism (e.g. a section wrapper
+      component) rather than per-section one-offs.
+
 ## Phase 6 — Multi-cluster (2.0, parked)
 
 One clusterfuck instance managing several independent Syncthing clusters —

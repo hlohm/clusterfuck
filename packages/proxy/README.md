@@ -30,6 +30,8 @@ Listens on `PORT` (default `4000`).
 
 ## Auth
 
+(Plain-language explainer: [docs/HOW-AUTH-WORKS.md](../../docs/HOW-AUTH-WORKS.md).)
+
 Opt-in: set `CLUSTERFUCK_TOKEN` and every `/api/*` route requires it —
 except `GET /api/health`, `GET /api/version`, `GET /api/auth`, and
 `POST /api/login` (the handshake itself). Unset, the proxy runs open (a

@@ -4,6 +4,20 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.4.25]
+
+- Docs: **[docs/HOW-AUTH-WORKS.md](docs/HOW-AUTH-WORKS.md)** — a
+  non-programmer explainer of the auth system (why a token, why a cookie,
+  what the cookie actually contains, second browsers via the GUI reveal,
+  scripts, what stays open, session expiry, honest limits), companion to
+  HOW-IT-WORKS.md. The README's Security note no longer claims the proxy
+  has no authentication (it predated 0.4.22) and now leads with the
+  one-process deployment; CLAUDE.md's status line likewise catches up.
+- Roadmap: new **UI design refinement (pre-1.0)** leg — re-sizable folder
+  detail with fold-out Versioning/Advanced sections, a dark-mode-legible
+  React Flow attribution, and collapsible, re-arrangeable Overview
+  sections.
+
 ## [0.4.24]
 
 - **Fixed: a tied label vote produced a one-click rename to an arbitrary
