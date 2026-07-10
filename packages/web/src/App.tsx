@@ -17,8 +17,14 @@ import { AddDeviceDialog, AddFolderDialog, RegisterNodeDialog } from './views/Ad
 import { LoginScreen } from './views/LoginScreen'
 import { getAuthStatus } from './data/auth'
 import { setUnauthorizedListener } from './data/http'
+import { loadPref, savePref } from './data/localPrefs'
 
 const LIVE_SOURCE_ID = '__live__'
+
+/** Wide enough for the share editors, never wider than half a typical screen. */
+function clampSidebarWidth(width: number): number {
+  return Math.min(640, Math.max(260, Math.round(width)))
+}
 
 type ViewId = 'graph' | 'overview' | 'table'
 
@@ -90,6 +96,39 @@ function App() {
   const openShare = (share: Share) => {
     setSelection({ kind: 'share', folderId: share.folderId, deviceId: share.deviceId })
     setView('graph')
+  }
+
+  // Resizable detail sidebar (ROADMAP "UI design refinement"): drag the
+  // divider or focus it and use arrow keys; the width sticks per browser.
+  const [sidebarWidth, setSidebarWidth] = useState(() =>
+    clampSidebarWidth(loadPref('sidebarWidth', 300)),
+  )
+  const setAndSaveSidebarWidth = (width: number) => {
+    const clamped = clampSidebarWidth(width)
+    setSidebarWidth(clamped)
+    savePref('sidebarWidth', clamped)
+  }
+  const startSidebarResize = (event: React.PointerEvent) => {
+    event.preventDefault()
+    const startX = event.clientX
+    const startWidth = sidebarWidth
+    let latest = startWidth
+    const onMove = (move: PointerEvent) => {
+      // The sidebar sits right of the divider, so dragging left widens it.
+      latest = clampSidebarWidth(startWidth + (startX - move.clientX))
+      setSidebarWidth(latest)
+    }
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      savePref('sidebarWidth', latest)
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+  }
+  const resizeSidebarByKey = (event: React.KeyboardEvent) => {
+    if (event.key === 'ArrowLeft') setAndSaveSidebarWidth(sidebarWidth + 16)
+    if (event.key === 'ArrowRight') setAndSaveSidebarWidth(sidebarWidth - 16)
   }
 
   if (authState === 'checking') {
@@ -181,7 +220,16 @@ function App() {
                 />
               </GraphErrorBoundary>
             </div>
-            <div className="app__sidebar">
+            <div
+              className="app__resizer"
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="Resize detail panel"
+              tabIndex={0}
+              onPointerDown={startSidebarResize}
+              onKeyDown={resizeSidebarByKey}
+            />
+            <div className="app__sidebar" style={{ width: sidebarWidth }}>
               <DetailPanel
                 cluster={cluster}
                 selection={selection}

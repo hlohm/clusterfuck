@@ -411,8 +411,13 @@ function VersioningEditor({
   }
 
   return (
-    <div className="detail-panel__group">
-      <div className="detail-panel__group-label">Versioning</div>
+    // Fold-out, collapsed by default (ROADMAP "UI design refinement"): the
+    // summary keeps the current config readable without opening the editor.
+    <details className="detail-panel__group detail-panel__foldout">
+      <summary className="detail-panel__group-label">
+        Versioning
+        <span className="detail-panel__foldout-hint">{describeVersioning(current)}</span>
+      </summary>
       <label className="detail-panel__action-row">
         Strategy:
         <select value={type} disabled={busy} onChange={(event) => selectType(event.target.value as VersioningType)}>
@@ -453,7 +458,7 @@ function VersioningEditor({
         </button>
       </div>
       {error && <div className="detail-panel__error">{error}</div>}
-    </div>
+    </details>
   )
 }
 
@@ -476,8 +481,13 @@ function AdvancedOptionsEditor({
   const [fields, setFields] = useState(() => advancedFormFields(share.advanced))
 
   return (
-    <div className="detail-panel__group">
-      <div className="detail-panel__group-label">Advanced</div>
+    <details className="detail-panel__group detail-panel__foldout">
+      <summary className="detail-panel__group-label">
+        Advanced
+        {share.advanced && (
+          <span className="detail-panel__foldout-hint">{describeAdvanced(share.advanced)}</span>
+        )}
+      </summary>
       <label className="detail-panel__action-row">
         Rescan interval (s, 0 = off):
         <input
@@ -547,7 +557,7 @@ function AdvancedOptionsEditor({
         </button>
       </div>
       {error && <div className="detail-panel__error">{error}</div>}
-    </div>
+    </details>
   )
 }
 

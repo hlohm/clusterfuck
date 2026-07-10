@@ -290,12 +290,46 @@
 }
 
 .app__sidebar {
-  width: 300px;
+  width: 300px; /* overridden inline by the resizer */
   flex: 0 0 auto;
   border-left: 1px solid var(--border);
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+}
+
+.app__resizer {
+  flex: 0 0 6px;
+  cursor: col-resize;
+  /* The visible line is the sidebar's own border; this is just the grab area. */
+  margin-right: -6px;
+  z-index: 1;
+}
+
+.app__resizer:hover,
+.app__resizer:focus-visible {
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
+  outline: none;
+}
+
+.detail-panel__foldout > summary {
+  cursor: pointer;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.detail-panel__foldout-hint {
+  font-weight: 400;
+  font-size: 11px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detail-panel__foldout[open] .detail-panel__foldout-hint {
+  display: none; /* the open editor shows the full state — no need to repeat it */
 }
 
 /* ── Buttons & badges (shared) ──────────────────────────────────────── */
