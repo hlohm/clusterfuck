@@ -4,6 +4,19 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.4.29]
+
+- **Overview sections are collapsible and re-arrangeable** (ROADMAP "UI
+  design refinement", final item): every section below the KPI row —
+  cluster actions, bandwidth, upgrades, recent changes, event log, needs
+  attention, config drift, pending, nodes, folders — now renders in one
+  shared `OverviewSection` frame with a collapse toggle and move-up/down
+  controls. Collapse state and order persist per browser; a saved order
+  survives app upgrades (new sections slot into their default position
+  instead of shuffling the layout), and moves skip over currently-empty
+  sections. The pure layout logic (`sectionLayout.ts`) is unit-tested.
+  With this, the pre-1.0 UI refinement leg is complete.
+
 ## [0.4.28]
 
 - **Manage auth from the GUI** (ROADMAP Phase 5 foundations): a new Settings

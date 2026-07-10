@@ -38,13 +38,35 @@ describe('OverviewView', () => {
     const onOpenShare = vi.fn()
     render(<OverviewView cluster={edgeCases} onOpenShare={onOpenShare} />)
 
-    // The error share (ledger on satellite) is in the attention list.
-    expect(screen.getByText(/disk full/)).toBeInTheDocument()
-
-    screen.getAllByRole('button')[0]!.click()
+    // The error share (ledger on satellite) is in the attention list; click
+    // its own row (the first button on the page is now a section toggle).
+    screen.getByText(/disk full/).closest('button')!.click()
     expect(onOpenShare).toHaveBeenCalledWith(
       expect.objectContaining({ state: 'error', folderId: 'ledger' }),
     )
+  })
+
+  it('collapses a section on its header toggle and moves it with the arrow controls', () => {
+    window.localStorage.clear()
+    render(<OverviewView cluster={edgeCases} />)
+
+    // Collapse "Needs attention": its content disappears, the heading stays.
+    expect(screen.getByText(/disk full/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Needs attention' }))
+    expect(screen.queryByText(/disk full/)).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Needs attention' }))
+    expect(screen.getByText(/disk full/)).toBeInTheDocument()
+
+    // Move "Folders" above "Nodes" and check the heading order flips.
+    const headingOrder = () =>
+      screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)
+    expect(headingOrder().indexOf('Nodes')).toBeLessThan(headingOrder().indexOf('Folders'))
+    fireEvent.click(screen.getByRole('button', { name: 'Move Folders up' }))
+    expect(headingOrder().indexOf('Folders')).toBeLessThan(headingOrder().indexOf('Nodes'))
+
+    // The arrangement persisted.
+    expect(window.localStorage.getItem('clusterfuck.overviewLayout')).toContain('folders')
+    window.localStorage.clear() // don't leak the custom layout into other tests
   })
 
   it('renders a card per folder', () => {

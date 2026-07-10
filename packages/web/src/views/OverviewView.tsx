@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import type {
   BandwidthLimitsView,
   ClusterModel,
@@ -32,6 +32,15 @@ import { AcceptPendingDeviceDialog, AcceptPendingFolderDialog, type PendingFolde
 import { useAsyncAction } from '../data/useAsyncAction'
 import * as mutations from '../data/mutations'
 import { formatBytes, formatRate } from '../format'
+import { loadPref, savePref } from '../data/localPrefs'
+import { OverviewSection } from './OverviewSection'
+import {
+  EMPTY_LAYOUT,
+  moveSection,
+  normalizeOrder,
+  toggleCollapsed,
+  type SectionLayout,
+} from './sectionLayout'
 import { sparklineGeometry } from './sparkline'
 
 export interface OverviewViewProps {
@@ -46,11 +55,7 @@ function ClusterActions() {
   const { busy, error, run } = useAsyncAction()
 
   return (
-    <section className="overview__section">
-      <article className="folder-card">
-        <header className="folder-card__header">
-          <h4>Cluster actions</h4>
-        </header>
+    <article className="folder-card">
         <div className="cluster-actions__body">
           <div className="cluster-actions__row">
             <span className="cluster-actions__label">Devices</span>
@@ -116,8 +121,7 @@ function ClusterActions() {
           </div>
         </div>
         {error && <div className="detail-panel__error cluster-actions__error">{error}</div>}
-      </article>
-    </section>
+    </article>
   )
 }
 
@@ -156,11 +160,7 @@ function BandwidthSection({ cluster }: { cluster: ClusterModel }) {
   }
 
   return (
-    <section className="overview__section">
-      <article className="folder-card">
-        <header className="folder-card__header">
-          <h4>Bandwidth limits</h4>
-        </header>
+    <article className="folder-card">
         <div className="cluster-actions__body">
           {!view ? (
             <div className="detail-panel__action-row">
@@ -231,8 +231,7 @@ function BandwidthSection({ cluster }: { cluster: ClusterModel }) {
         </div>
         {loadError && <div className="detail-panel__error cluster-actions__error">{loadError}</div>}
         {error && <div className="detail-panel__error cluster-actions__error">{error}</div>}
-      </article>
-    </section>
+    </article>
   )
 }
 
@@ -376,14 +375,7 @@ function UpgradeSection({ cluster }: { cluster: ClusterModel }) {
   }, [run?.running])
 
   return (
-    <section className="overview__section">
-      <article className="folder-card">
-        <header className="folder-card__header">
-          <h4>Upgrades</h4>
-          <button className="detail-panel__link-button" onClick={load}>
-            {loaded ? 'Reload' : 'Load status'}
-          </button>
-        </header>
+    <article className="folder-card">
         <div className="cluster-actions__body">
           <div className="detail-panel__action-row">
             <button
@@ -397,6 +389,9 @@ function UpgradeSection({ cluster }: { cluster: ClusterModel }) {
               }
             >
               {run?.running ? 'Upgrade in progress…' : 'Upgrade all nodes'}
+            </button>
+            <button className="detail-panel__link-button" onClick={load}>
+              {loaded ? 'Reload' : 'Load status'}
             </button>
           </div>
           {run && (
@@ -424,8 +419,7 @@ function UpgradeSection({ cluster }: { cluster: ClusterModel }) {
         </div>
         {loadError && <div className="detail-panel__error cluster-actions__error">{loadError}</div>}
         {error && <div className="detail-panel__error cluster-actions__error">{error}</div>}
-      </article>
-    </section>
+    </article>
   )
 }
 
@@ -461,14 +455,12 @@ function EventLogSection({ cluster }: { cluster: ClusterModel }) {
   )
 
   return (
-    <section className="overview__section">
-      <article className="folder-card">
-        <header className="folder-card__header">
-          <h4>Event log</h4>
+    <article className="folder-card">
+        <div className="detail-panel__action-row event-log__filters">
           <button className="detail-panel__link-button" disabled={loading} onClick={load}>
             {loading ? 'Loading…' : view ? 'Reload' : 'Load'}
           </button>
-        </header>
+        </div>
         {view && (
           <>
             <div className="detail-panel__action-row event-log__filters">
@@ -513,8 +505,7 @@ function EventLogSection({ cluster }: { cluster: ClusterModel }) {
           </>
         )}
         {loadError && <div className="detail-panel__error cluster-actions__error">{loadError}</div>}
-      </article>
-    </section>
+    </article>
   )
 }
 
@@ -543,14 +534,12 @@ function RecentChangesSection({ cluster }: { cluster: ClusterModel }) {
   }
 
   return (
-    <section className="overview__section">
-      <article className="folder-card">
-        <header className="folder-card__header">
-          <h4>Recent changes</h4>
+    <article className="folder-card">
+        <div className="detail-panel__action-row event-log__filters">
           <button className="detail-panel__link-button" disabled={loading} onClick={load}>
             {loading ? 'Loading…' : view ? 'Reload' : 'Load'}
           </button>
-        </header>
+        </div>
         {view &&
           (view.changes.length === 0 ? (
             <p className="recent-changes__empty">
@@ -576,8 +565,7 @@ function RecentChangesSection({ cluster }: { cluster: ClusterModel }) {
             </ul>
           ))}
         {loadError && <div className="detail-panel__error cluster-actions__error">{loadError}</div>}
-      </article>
-    </section>
+    </article>
   )
 }
 
@@ -690,11 +678,8 @@ function PendingSection({ cluster, isLive }: { cluster: ClusterModel; isLive?: b
   const nameFor = (id: string) => deviceById.get(id)?.name ?? id
 
   return (
-    <section className="overview__section">
+    <>
       <article className="folder-card">
-        <header className="folder-card__header">
-          <h4>Pending</h4>
-        </header>
         <ul className="pending-list">
           {cluster.pendingDevices.map((pd) => (
             <PendingDeviceRow
@@ -744,7 +729,7 @@ function PendingSection({ cluster, isLive }: { cluster: ClusterModel; isLive?: b
           onClose={() => setFolderDialog(null)}
         />
       )}
-    </section>
+    </>
   )
 }
 
@@ -904,49 +889,27 @@ export function OverviewView({ cluster, onOpenShare, isLive }: OverviewViewProps
     .filter(Boolean)
     .join(', ')
 
-  return (
-    <div className="overview">
-      <div className="kpi-row">
-        <StatTile
-          label="Devices online"
-          value={`${online}/${cluster.devices.length}`}
-          detail={deviceDetail || undefined}
-        />
-        <StatTile
-          label="Folders up to date"
-          value={`${foldersIdle}/${cluster.folders.length}`}
-          detail={
-            health.folderCounts.syncing + health.folderCounts.scanning > 0
-              ? `${health.folderCounts.syncing + health.folderCounts.scanning} active`
-              : undefined
-          }
-        />
-        <StatTile
-          label="Out-of-sync items"
-          value={String(health.outOfSyncItems)}
-          detail={health.failedItems > 0 ? `${health.failedItems} failed` : undefined}
-        />
-        <StatTile label="Needs attention" value={String(health.attention.length)} />
-        <StatTile
-          label="Data transferred"
-          value={formatBytes(transfer.inBytesTotal + transfer.outBytesTotal)}
-          detail={
-            `↑${formatBytes(transfer.outBytesTotal)} / ↓${formatBytes(transfer.inBytesTotal)}` +
-            (outBps + inBps > 0 ? ` · now ↑${formatRate(outBps)} / ↓${formatRate(inBps)}` : '')
-          }
-          title="Cumulative for each connection's current session only — resets to 0 on disconnect or a restart, not a durable all-time total. A link between two managed nodes is counted from both ends."
-        />
-      </div>
+  // Section layout (ROADMAP "UI design refinement"): every section below the
+  // KPI row is collapsible and re-arrangeable, persisted per browser. A
+  // section with null content (fixture source, nothing pending, no drift)
+  // keeps its slot in the order but renders nothing.
+  const [layout, setLayout] = useState<SectionLayout>(() => loadPref('overviewLayout', EMPTY_LAYOUT))
+  const updateLayout = (next: SectionLayout) => {
+    setLayout(next)
+    savePref('overviewLayout', next)
+  }
 
-      {isLive && <ClusterActions />}
-      {isLive && <BandwidthSection cluster={cluster} />}
-      {isLive && <UpgradeSection cluster={cluster} />}
-      {isLive && <RecentChangesSection cluster={cluster} />}
-      {isLive && <EventLogSection cluster={cluster} />}
-
-      {health.attention.length > 0 && (
-        <section className="overview__section">
-          <h3>Needs attention</h3>
+  const sections: { id: string; title: string; content: ReactNode | null }[] = [
+    { id: 'actions', title: 'Cluster actions', content: isLive ? <ClusterActions /> : null },
+    { id: 'bandwidth', title: 'Bandwidth limits', content: isLive ? <BandwidthSection cluster={cluster} /> : null },
+    { id: 'upgrades', title: 'Upgrades', content: isLive ? <UpgradeSection cluster={cluster} /> : null },
+    { id: 'changes', title: 'Recent changes', content: isLive ? <RecentChangesSection cluster={cluster} /> : null },
+    { id: 'eventlog', title: 'Event log', content: isLive ? <EventLogSection cluster={cluster} /> : null },
+    {
+      id: 'attention',
+      title: 'Needs attention',
+      content:
+        health.attention.length > 0 ? (
           <ul className="attention-list">
             {health.attention.map((share) => (
               <li key={`${share.folderId}:${share.deviceId}`}>
@@ -963,12 +926,13 @@ export function OverviewView({ cluster, onOpenShare, isLive }: OverviewViewProps
               </li>
             ))}
           </ul>
-        </section>
-      )}
-
-      {drift.length > 0 && (
-        <section className="overview__section">
-          <h3>Config drift</h3>
+        ) : null,
+    },
+    {
+      id: 'drift',
+      title: 'Config drift',
+      content:
+        drift.length > 0 ? (
           <ul className="attention-list">
             {drift.map((finding, i) => (
               <DriftRow
@@ -981,13 +945,20 @@ export function OverviewView({ cluster, onOpenShare, isLive }: OverviewViewProps
               />
             ))}
           </ul>
-        </section>
-      )}
-
-      <PendingSection cluster={cluster} isLive={isLive} />
-
-      <section className="overview__section">
-        <h3>Nodes</h3>
+        ) : null,
+    },
+    {
+      id: 'pending',
+      title: 'Pending',
+      content:
+        cluster.pendingDevices.length > 0 || cluster.pendingFolders.length > 0 ? (
+          <PendingSection cluster={cluster} isLive={isLive} />
+        ) : null,
+    },
+    {
+      id: 'nodes',
+      title: 'Nodes',
+      content: (
         <div className="folder-cards">
           {cluster.devices.map((device) => (
             <NodeCard
@@ -999,10 +970,12 @@ export function OverviewView({ cluster, onOpenShare, isLive }: OverviewViewProps
             />
           ))}
         </div>
-      </section>
-
-      <section className="overview__section">
-        <h3>Folders</h3>
+      ),
+    },
+    {
+      id: 'folders',
+      title: 'Folders',
+      content: (
         <div className="folder-cards">
           {cluster.folders.map((folder) => {
             const shares = sharesByFolder(cluster, folder.id)
@@ -1041,7 +1014,71 @@ export function OverviewView({ cluster, onOpenShare, isLive }: OverviewViewProps
             )
           })}
         </div>
-      </section>
+      ),
+    },
+  ]
+  const sectionById = new Map(sections.map((s) => [s.id, s]))
+  const order = normalizeOrder(
+    layout.order,
+    sections.map((s) => s.id),
+  )
+  const visibleIds = order.filter((id) => sectionById.get(id)!.content !== null)
+
+  return (
+    <div className="overview">
+      <div className="kpi-row">
+        <StatTile
+          label="Devices online"
+          value={`${online}/${cluster.devices.length}`}
+          detail={deviceDetail || undefined}
+        />
+        <StatTile
+          label="Folders up to date"
+          value={`${foldersIdle}/${cluster.folders.length}`}
+          detail={
+            health.folderCounts.syncing + health.folderCounts.scanning > 0
+              ? `${health.folderCounts.syncing + health.folderCounts.scanning} active`
+              : undefined
+          }
+        />
+        <StatTile
+          label="Out-of-sync items"
+          value={String(health.outOfSyncItems)}
+          detail={health.failedItems > 0 ? `${health.failedItems} failed` : undefined}
+        />
+        <StatTile label="Needs attention" value={String(health.attention.length)} />
+        <StatTile
+          label="Data transferred"
+          value={formatBytes(transfer.inBytesTotal + transfer.outBytesTotal)}
+          detail={
+            `↑${formatBytes(transfer.outBytesTotal)} / ↓${formatBytes(transfer.inBytesTotal)}` +
+            (outBps + inBps > 0 ? ` · now ↑${formatRate(outBps)} / ↓${formatRate(inBps)}` : '')
+          }
+          title="Cumulative for each connection's current session only — resets to 0 on disconnect or a restart, not a durable all-time total. A link between two managed nodes is counted from both ends."
+        />
+      </div>
+
+      {order.map((id) => {
+        const section = sectionById.get(id)!
+        if (section.content === null) return null
+        return (
+          <OverviewSection
+            key={id}
+            title={section.title}
+            collapsed={layout.collapsed.includes(id)}
+            canMoveUp={visibleIds.indexOf(id) > 0}
+            canMoveDown={visibleIds.indexOf(id) < visibleIds.length - 1}
+            onToggle={() =>
+              updateLayout({ ...layout, collapsed: toggleCollapsed(layout.collapsed, id) })
+            }
+            onMove={(direction) =>
+              updateLayout({ ...layout, order: moveSection(order, id, direction, visibleIds) })
+            }
+          >
+            {section.content}
+          </OverviewSection>
+        )
+      })}
     </div>
   )
 }
