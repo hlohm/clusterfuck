@@ -1193,6 +1193,19 @@ button {
 
 /* ── Graph mode toggle (React Flow panel) ───────────────────────────── */
 
+/* React Flow's attribution ships a light chip with dark text — illegible on
+   the dark canvas. Restyle with the app's own theme variables (keep the
+   attribution itself; per the library's license terms removal needs a Pro
+   subscription, and credit is fair anyway). */
+.react-flow__attribution {
+  background: color-mix(in srgb, var(--bg) 75%, transparent);
+  border-radius: 4px;
+}
+
+.react-flow__attribution a {
+  color: var(--text);
+}
+
 .graph-mode {
   display: flex;
   gap: 2px;

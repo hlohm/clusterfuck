@@ -266,10 +266,9 @@ items don't absorb ad-hoc UI changes.
       browser, clamped 260–640px), and Versioning/Advanced are `<details>`
       fold-outs, collapsed by default, each summarizing its current config
       in the collapsed header so folding loses no information.
-- [ ] **React Flow attribution legibility** — the attribution link in the
-      graph's corner is illegible in dark mode; restyle it (theme-aware
-      color) so it's readable on both surfaces. Keep the attribution —
-      restyling, not removing.
+- [x] **React Flow attribution legibility** — the attribution chip now uses
+      the app's own theme variables (translucent `--bg` behind `--text`), so
+      it reads on both surfaces. Attribution kept, only restyled.
 - [ ] **Overview sections fold-out & re-arrangeable** — every Overview
       section (cluster actions, bandwidth, upgrades, recent changes, event
       log, drift, attention, pending, nodes, folders) becomes collapsible,

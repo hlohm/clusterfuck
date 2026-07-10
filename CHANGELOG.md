@@ -4,6 +4,13 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.4.27]
+
+- **React Flow attribution legible in dark mode** (ROADMAP "UI design
+  refinement"): the corner attribution now sits on a translucent chip of
+  the app's own background color with theme-aware text, instead of the
+  library's light-only default. Kept, only restyled.
+
 ## [0.4.26]
 
 - **Folder editing view legibility** (ROADMAP "UI design refinement",
