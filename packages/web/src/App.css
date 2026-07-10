@@ -1076,6 +1076,57 @@ button {
   color: var(--text);
 }
 
+/* ── Overview section frame (collapse + reorder) ────────────────────── */
+
+.overview-section__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.overview-section__toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: none;
+  padding: 2px 0;
+  cursor: pointer;
+  color: inherit;
+}
+
+.overview-section__toggle h3 {
+  margin: 0;
+}
+
+.overview-section__chevron {
+  color: var(--text);
+  font-size: 11px;
+  width: 12px;
+}
+
+.overview-section__move {
+  display: flex;
+  gap: 2px;
+}
+
+.overview-section__move-button {
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 1;
+  padding: 3px 6px;
+  cursor: pointer;
+}
+
+.overview-section__move-button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
 .drift-row__fix {
   padding: 2px 0 6px 24px;
 }

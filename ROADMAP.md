@@ -269,12 +269,13 @@ items don't absorb ad-hoc UI changes.
 - [x] **React Flow attribution legibility** — the attribution chip now uses
       the app's own theme variables (translucent `--bg` behind `--text`), so
       it reads on both surfaces. Attribution kept, only restyled.
-- [ ] **Overview sections fold-out & re-arrangeable** — every Overview
-      section (cluster actions, bandwidth, upgrades, recent changes, event
-      log, drift, attention, pending, nodes, folders) becomes collapsible,
-      and their order user-arrangeable, with both collapse state and order
-      persisted locally. Decide one mechanism (e.g. a section wrapper
-      component) rather than per-section one-offs.
+- [x] **Overview sections fold-out & re-arrangeable** — every section below
+      the KPI row renders through one `OverviewSection` wrapper: a header
+      bar with a collapse toggle and move-up/down controls. Collapse state
+      and order persist per browser; a saved order survives sections being
+      added in later builds (they slot into their default position), and
+      moves skip over currently-empty sections so they never look like
+      no-ops. Layout logic is pure and unit-tested (`sectionLayout.ts`).
 
 ## Phase 6 — Multi-cluster (2.0, parked)
 
