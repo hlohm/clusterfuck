@@ -245,14 +245,21 @@ tabs. Mapped from the GUI's actual surface, in priority order.
 - [x] Node registration UI (add a node's URL + API key at runtime,
       persisted server-side) — replaces editing `cluster.json` by hand
 - [x] Auth on the proxy the moment it's exposed beyond localhost — opt-in
-      shared token (`CLUSTERFUCK_TOKEN`): scripts send it as a Bearer header,
-      browsers exchange it once at a login screen for an HttpOnly
-      `SameSite=Strict` cookie (stateless HMAC of the token, so restarts
-      don't log anyone out and rotating the token revokes every session).
-      The GUI can reveal/copy the token for signing in elsewhere
-      (authorized-only, like Syncthing's own API-key display) and sign out.
-      The proxy also serves the built web app (`packages/web/dist`, or
-      `CLUSTERFUCK_WEB_DIST`) so production is one process on one origin
+      shared token: scripts send it as a Bearer header, browsers exchange it
+      once at a login screen for an HttpOnly `SameSite=Strict` cookie
+      (stateless HMAC of the token, so restarts don't log anyone out and
+      rotating the token revokes every session). The proxy also serves the
+      built web app (`packages/web/dist`, or `CLUSTERFUCK_WEB_DIST`) so
+      production is one process on one origin
+- [x] Manage auth from the GUI — a Settings overlay (⚙ in the header)
+      initialises auth on an open proxy, rotates the token, or auto-generates
+      a strong one; the token persists in a gitignored `auth.json` (raw, mode
+      0600, `CLUSTERFUCK_AUTH_CONFIG` to relocate) via `PUT /api/auth/token`.
+      `CLUSTERFUCK_TOKEN` stays **authoritative** when set — the GUI then only
+      reveals/copies it (read-only, like Syncthing's own API-key display) and
+      signs out. The GUI can never *disable* auth (that needs removing the
+      auth file + restarting the proxy, out-of-band), so a hijacked session
+      can't reopen the door
 - [ ] Syncthing 2.x REST support (currently targets 1.x)
 
 ## UI design refinement (pre-1.0)
@@ -276,7 +283,16 @@ items don't absorb ad-hoc UI changes.
       persisted locally. Decide one mechanism (e.g. a section wrapper
       component) rather than per-section one-offs.
 
-## Phase 6 — Multi-cluster (2.0, parked)
+## Phase 6 — Multi-cluster + multi-user (2.0, parked)
+
+The 2.0 jump bundles two features that reinforce each other: **multi-cluster**
+(one instance managing several independent Syncthing clusters) and
+**multi-user auth** (real accounts, not one shared token). Multi-cluster on
+its own is relatively mechanical; pairing it with multi-user — where "who can
+see/touch which cluster" becomes a real question — is what justifies a major
+version rather than a minor one (owner's call, 2026-07-11).
+
+### Multi-cluster
 
 One clusterfuck instance managing several independent Syncthing clusters —
 e.g. home + offsite + a friend's cluster you administer — with one UI and a
@@ -333,5 +349,28 @@ The normalized model already carries a cluster id + label, so
 - **Transition:** hard cutover of route paths at 2.0.0, or keep unprefixed
   routes as a deprecated alias for the default cluster during one MINOR
   release. Hard cutover is cleaner; alias eases self-hosted upgrades.
+
+### Multi-user auth
+
+1.0 ships **one shared token** — knowing it makes you the admin, no accounts.
+2.0 grows that into real users, which the GUI auth work (Settings overlay,
+`auth.json` store, `PUT /api/auth/token`) already lays the groundwork for: the
+overlay becomes the place accounts are created/managed, and the token store
+becomes a user store.
+
+- [ ] User records (name + password hash + role) persisted alongside the
+      token store, still gitignored, still raw-secret-free in the repo
+- [ ] Login exchanges username+password for the session cookie; the cookie
+      carries which user (not just "the token holder"), so revocation and an
+      audit trail of *who* did what become possible — both called out as
+      honest limits of the single-token model in `docs/HOW-AUTH-WORKS.md`
+- [ ] Roles at least read-only vs. admin; per-cluster access control is the
+      natural intersection with multi-cluster above (a user sees a subset of
+      clusters) — the reason the two features share the 2.0 jump
+
+**Decisions to settle:** whether to keep the shared-token path as a
+"single-user mode" alongside accounts (simplest self-host) or replace it
+outright at 2.0; password hashing choice (scrypt/argon2); whether roles are
+global or per-cluster from day one.
 
 See `docs/HOW-IT-WORKS.md` for the architectural context.

@@ -4,6 +4,27 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.4.28]
+
+- **Manage auth from the GUI** (ROADMAP Phase 5 foundations): a new Settings
+  overlay (⚙ in the header) makes the whole auth lifecycle click-driven —
+  **initialise** auth on an open proxy, **rotate** the token, or
+  **auto-generate** a strong one, no terminal or restart. New
+  `PUT /api/auth/token` (body `{ token }` to set, `{}` to generate; min 16
+  chars; 409 when env-managed) sets the token and signs the caller in with a
+  fresh cookie. The token persists in a gitignored `auth.json` (raw, mode
+  0600, written via temp-file rename; `CLUSTERFUCK_AUTH_CONFIG` to relocate)
+  when `CLUSTERFUCK_TOKEN` is unset — the env var stays **authoritative**,
+  and the GUI then only reveals/copies it and signs out (`GET /api/auth` now
+  also returns `managedByEnv`). The proxy's auth object became a stateful
+  manager so routes pick up rotation live. **Disabling** auth is deliberately
+  out-of-band (remove the auth file/env var + restart) — the GUI can tighten
+  the lock but never open it, so a hijacked session can't. The old Overview
+  "Access token" row moves into the overlay. Docs: proxy README auth section
+  + `PUT /api/auth/token`, a "Managing auth from the GUI" section in
+  `docs/HOW-AUTH-WORKS.md`, README security note, and a 2.0 **multi-user
+  auth** roadmap pillar paired with multi-cluster.
+
 ## [0.4.27]
 
 - **React Flow attribution legible in dark mode** (ROADMAP "UI design

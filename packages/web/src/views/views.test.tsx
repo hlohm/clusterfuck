@@ -53,21 +53,6 @@ describe('OverviewView', () => {
     expect(screen.getByRole('heading', { name: 'coldstore' })).toBeInTheDocument()
   })
 
-  it('reveals the access token on demand when the proxy has auth enabled', async () => {
-    const authModule = await import('../data/auth')
-    const statusSpy = vi
-      .spyOn(authModule, 'getAuthStatus')
-      .mockResolvedValue({ required: true, authorized: true })
-    const tokenSpy = vi.spyOn(authModule, 'getToken').mockResolvedValue('sekrit-token')
-    render(<OverviewView cluster={edgeCases} isLive />)
-
-    const show = await screen.findByRole('button', { name: 'Show access token' })
-    show.click()
-    expect(await screen.findByText('sekrit-token')).toBeInTheDocument()
-
-    statusSpy.mockRestore()
-    tokenSpy.mockRestore()
-  })
 
   it('applies an asymmetric-share drift fix through the existing addShare mutation, once confirmed', () => {
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)

@@ -15,6 +15,7 @@ import { OverviewView } from './views/OverviewView'
 import { TableView } from './views/TableView'
 import { AddDeviceDialog, AddFolderDialog, RegisterNodeDialog } from './views/AddDialogs'
 import { LoginScreen } from './views/LoginScreen'
+import { SettingsOverlay } from './views/SettingsOverlay'
 import { getAuthStatus } from './data/auth'
 import { setUnauthorizedListener } from './data/http'
 import { loadPref, savePref } from './data/localPrefs'
@@ -55,7 +56,7 @@ function App() {
   const [view, setView] = useState<ViewId>('graph')
   const [graphMode, setGraphMode] = useState<GraphMode>('nodes')
   const [selection, setSelection] = useState<Selection>(null)
-  const [dialog, setDialog] = useState<'device' | 'folder' | 'node' | null>(null)
+  const [dialog, setDialog] = useState<'device' | 'folder' | 'node' | 'settings' | null>(null)
 
   const isLive = sourceId === LIVE_SOURCE_ID
   // Also gated on auth: while the login screen is up the stream would only
@@ -183,6 +184,14 @@ function App() {
               {cluster && <button onClick={() => setDialog('folder')}>＋ Folder</button>}
             </div>
           )}
+          <button
+            className="app__settings"
+            title="Authentication settings"
+            aria-label="Authentication settings"
+            onClick={() => setDialog('settings')}
+          >
+            ⚙
+          </button>
           <label className="app__fixture-picker">
             Source:
             <select
@@ -250,6 +259,7 @@ function App() {
         )}
       </main>
 
+      {dialog === 'settings' && <SettingsOverlay onClose={() => setDialog(null)} />}
       {dialog === 'node' && <RegisterNodeDialog onClose={() => setDialog(null)} />}
       {cluster && dialog === 'device' && (
         <AddDeviceDialog cluster={cluster} onClose={() => setDialog(null)} />

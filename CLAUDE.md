@@ -19,8 +19,10 @@ Phases 1–4 are **shipped** (fixtures → live read-only → per-node managemen
 multi-view visual refresh), and Phase 5 (cluster-wide Syncthing-GUI parity)
 is complete except one foundation: **Syncthing 2.x support**, still a flagged
 decision awaiting the owner's call (proxy auth shipped in 0.4.22 — opt-in
-token, decided with the owner). A pre-1.0 UI-refinement pass is queued in
-the roadmap. `ROADMAP.md` is the authoritative, itemized status — check it (and
+token — and became fully GUI-managed in 0.4.28: initialise/rotate/generate
+from a Settings overlay, token persisted in a gitignored `auth.json`, with
+`CLUSTERFUCK_TOKEN` still authoritative when set). A pre-1.0 UI-refinement
+pass is queued in the roadmap. `ROADMAP.md` is the authoritative, itemized status — check it (and
 the current version in the root `package.json`) before assuming what exists.
 The monorepo is three workspace packages: `packages/shared` (the normalized
 model + pure logic), `packages/proxy` (Node/TS backend), `packages/web`
@@ -66,9 +68,13 @@ model + pure logic), `packages/proxy` (Node/TS backend), `packages/web`
   confirmation or preview dialog in the UI, mirror Syncthing's own config/
   action model rather than inventing higher-level operations, fan out with
   `allSettled` and report exactly which nodes failed. Proxy auth is **opt-in**:
-  set `CLUSTERFUCK_TOKEN` and every `/api/*` route (bar the health/version/
-  login handshake) requires the token (Bearer header) or the login cookie —
-  never expose the proxy beyond a trusted network without it.
+  a token turns on gating for every `/api/*` route (bar the health/version/
+  auth/login handshake), enforced via Bearer header or login cookie — never
+  expose the proxy beyond a trusted network without it. The token comes from
+  either `CLUSTERFUCK_TOKEN` (authoritative when set) or a gitignored
+  `auth.json` the GUI manages (Settings overlay: initialise/rotate/generate,
+  `PUT /api/auth/token`). The GUI can enable and rotate but **never disable**
+  auth — that requires removing the auth file/env var and restarting.
 
 ## Syncthing domain primer (you'll need this constantly)
 

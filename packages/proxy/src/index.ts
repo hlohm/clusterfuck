@@ -1,5 +1,6 @@
 import { join } from 'node:path'
 import { createAuth } from './auth.ts'
+import { loadAuthToken, saveAuthToken } from './authStore.ts'
 import { loadNodeConfig } from './config.ts'
 import { ClusterStateManager } from './clusterState.ts'
 import { createHttpServer } from './server.ts'
@@ -18,12 +19,27 @@ if (webOrigin === '*') {
   )
 }
 
-const auth = createAuth(process.env.CLUSTERFUCK_TOKEN)
+// Token precedence: CLUSTERFUCK_TOKEN env (authoritative) > persisted auth
+// file > none (open). A non-env-managed token set/rotated from the GUI is
+// persisted back to the file.
+const loaded = loadAuthToken()
+const auth = createAuth({
+  token: loaded.token,
+  managedByEnv: loaded.managedByEnv,
+  persist: (token) => {
+    try {
+      saveAuthToken(token)
+    } catch (err) {
+      console.error('[clusterfuck-proxy] failed to persist auth token:', (err as Error).message)
+    }
+  },
+})
 if (!auth.enabled) {
   console.warn(
-    '[clusterfuck-proxy] WARNING: no CLUSTERFUCK_TOKEN set — the proxy is UNAUTHENTICATED. ' +
+    '[clusterfuck-proxy] WARNING: no auth token set — the proxy is UNAUTHENTICATED. ' +
       'Anyone who can reach this port can read and mutate every registered node. ' +
-      'Set CLUSTERFUCK_TOKEN before exposing it beyond a trusted network.',
+      'Set a token from the app (Settings) or via CLUSTERFUCK_TOKEN before exposing it ' +
+      'beyond a trusted network.',
   )
 }
 

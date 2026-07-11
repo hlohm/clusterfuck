@@ -32,11 +32,25 @@ Listens on `PORT` (default `4000`).
 
 (Plain-language explainer: [docs/HOW-AUTH-WORKS.md](../../docs/HOW-AUTH-WORKS.md).)
 
-Opt-in: set `CLUSTERFUCK_TOKEN` and every `/api/*` route requires it —
-except `GET /api/health`, `GET /api/version`, `GET /api/auth`, and
-`POST /api/login` (the handshake itself). Unset, the proxy runs open (a
-loud startup warning says so) — fine on localhost, never expose that
-beyond a trusted network.
+Opt-in: configure a token and every `/api/*` route requires it — except
+`GET /api/health`, `GET /api/version`, `GET /api/auth`, and `POST /api/login`
+(the handshake itself). With no token the proxy runs open (a loud startup
+warning says so) — fine on localhost, never expose that beyond a trusted
+network.
+
+**Two ways to set the token, one authoritative:**
+
+- **`CLUSTERFUCK_TOKEN` env var** — when set (and non-empty), it wins. The
+  GUI treats auth as read-only (reveal/copy + sign out only); rotating means
+  changing the env var and restarting.
+- **`auth.json`** — when the env var is unset, the proxy reads/writes a
+  gitignored `auth.json` (raw token, `{ "token": "..." }`, written mode
+  0600 via a temp-file rename). This is what the GUI manages: it can
+  initialise auth on an open proxy, rotate, or auto-generate a strong token.
+  `CLUSTERFUCK_AUTH_CONFIG` overrides the path (default `./auth.json`,
+  relative to cwd). **Disabling auth is deliberately out-of-band:** the GUI
+  can't do it — delete `auth.json` (or unset the env var) and restart, so a
+  hijacked browser session can never reopen the door.
 
 - **Scripts/curl:** send `Authorization: Bearer <token>` per request.
 - **Browsers:** the web app shows a login screen; `POST /api/login` body
@@ -46,10 +60,20 @@ beyond a trusted network.
   proxy restarts don't log anyone out, and rotating the token instantly
   invalidates every outstanding session. No `Secure` attribute (plain-HTTP
   LAN deployments are the norm) — put HTTPS in front if you need it.
-- `GET /api/auth` — `{ "required": bool, "authorized": bool }`, uncredentialed.
+- `GET /api/auth` — `{ "required": bool, "authorized": bool, "managedByEnv":
+  bool }`, uncredentialed. `managedByEnv` tells the GUI whether it may manage
+  the token or must defer to the environment.
 - `GET /api/auth/token` — `{ "token": "..." }`, **authorized callers only**:
   the GUI's "show access token" reveal for signing in on another browser
   (same stance as Syncthing's own GUI displaying its API key).
+- `PUT /api/auth/token` — sets the token (initialise or rotate). Body
+  `{ "token": "..." }` sets that token (min 16 chars), or `{}` has the proxy
+  **generate** a strong one; the response `{ "token": "..." }` carries the
+  now-current value to display, and a fresh session cookie signs the caller
+  in. Persists to `auth.json`. Returns **409** when the token is
+  `managedByEnv` (change the env var instead), **400** on a too-short token.
+  When auth is currently *open* this route is ungated (that's how you turn it
+  on); once auth is enabled only a signed-in admin can rotate.
 - `POST /api/logout` — clears the session cookie. Deliberately exempt from
   the gate: a browser whose session was just revoked must still be able to
   clear its cookie.

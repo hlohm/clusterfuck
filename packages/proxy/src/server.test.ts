@@ -10,14 +10,19 @@ import { createStaticHandler } from './static.ts'
 
 /**
  * End-to-end over a real socket: a zero-node manager (never started, so no
- * event/poll loops), real auth, and a temp-dir web build.
+ * event/poll loops), real auth, and a temp-dir web build. `auth` accepts
+ * either a plain token (the common case) or the full createAuth options.
  */
-function startServer(token: string | undefined, webRoot?: string) {
+function startServer(
+  auth?: string | Parameters<typeof createAuth>[0],
+  webRoot?: string,
+) {
   const manager = new ClusterStateManager([], { clusterId: 'test', label: 'Test' })
+  const authOpts = typeof auth === 'string' || auth === undefined ? { token: auth } : auth
   const server = createHttpServer(
     manager,
     'http://localhost:5173',
-    createAuth(token),
+    createAuth(authOpts),
     webRoot !== undefined ? createStaticHandler(webRoot) : undefined,
   )
   server.listen(0)
@@ -70,7 +75,7 @@ describe('auth gating over HTTP', () => {
     expect((await fetch(`${base}/api/version`)).status).toBe(200)
     const status = await fetch(`${base}/api/auth`)
     expect(status.status).toBe(200)
-    expect(await status.json()).toEqual({ required: true, authorized: false })
+    expect(await status.json()).toEqual({ required: true, authorized: false, managedByEnv: false })
   })
 
   it('lets an already-invalid session log out — logout is exempt and clears the cookie', async () => {
@@ -98,9 +103,89 @@ describe('auth gating over HTTP', () => {
     running = server
 
     expect((await fetch(`${base}/api/cluster`)).status).toBe(200)
-    expect(await (await fetch(`${base}/api/auth`)).json()).toEqual({ required: false, authorized: true })
+    expect(await (await fetch(`${base}/api/auth`)).json()).toEqual({
+      required: false,
+      authorized: true,
+      managedByEnv: false,
+    })
     expect((await fetch(`${base}/api/login`, { method: 'POST', body: '{"token":"x"}' })).status).toBe(400)
     expect((await fetch(`${base}/api/auth/token`)).status).toBe(404)
+  })
+})
+
+describe('GUI token management (PUT /api/auth/token)', () => {
+  it('initialises auth from the open state, generating a token, and signs the caller in', async () => {
+    const persisted: string[] = []
+    const { server, base } = startServer({ persist: (t) => persisted.push(t) })
+    running = server
+
+    // Open: the PUT is reachable with no credentials to bootstrap auth.
+    const res = await fetch(`${base}/api/auth/token`, { method: 'PUT', body: '{}' })
+    expect(res.status).toBe(200)
+    const token = ((await res.json()) as { token: string }).token
+    expect(token.length).toBeGreaterThanOrEqual(16)
+    expect(persisted).toEqual([token])
+
+    // Now gated: the returned cookie authorizes, no credential does not.
+    const cookie = res.headers.get('set-cookie')!.split(';')[0]!
+    expect((await fetch(`${base}/api/cluster`)).status).toBe(401)
+    expect((await fetch(`${base}/api/cluster`, { headers: { cookie } })).status).toBe(200)
+    // And the generated token works as a bearer.
+    expect(
+      (await fetch(`${base}/api/cluster`, { headers: { Authorization: `Bearer ${token}` } })).status,
+    ).toBe(200)
+  })
+
+  it('accepts an explicit token and rejects one that is too short', async () => {
+    const { server, base } = startServer()
+    running = server
+
+    expect((await fetch(`${base}/api/auth/token`, { method: 'PUT', body: '{"token":"short"}' })).status).toBe(400)
+
+    const ok = await fetch(`${base}/api/auth/token`, {
+      method: 'PUT',
+      body: JSON.stringify({ token: 'a-nice-long-explicit-token' }),
+    })
+    expect(ok.status).toBe(200)
+    expect(((await ok.json()) as { token: string }).token).toBe('a-nice-long-explicit-token')
+  })
+
+  it('requires an authorized caller to rotate once auth is enabled', async () => {
+    const { server, base } = startServer('the-existing-token')
+    running = server
+
+    // Enabled + no credential: the gate blocks the rotate.
+    expect((await fetch(`${base}/api/auth/token`, { method: 'PUT', body: '{}' })).status).toBe(401)
+
+    const rotated = await fetch(`${base}/api/auth/token`, {
+      method: 'PUT',
+      headers: { Authorization: 'Bearer the-existing-token' },
+      body: JSON.stringify({ token: 'the-rotated-token-value' }),
+    })
+    expect(rotated.status).toBe(200)
+
+    // Rotation revokes the old token; the new one works.
+    expect(
+      (await fetch(`${base}/api/cluster`, { headers: { Authorization: 'Bearer the-existing-token' } })).status,
+    ).toBe(401)
+    expect(
+      (await fetch(`${base}/api/cluster`, { headers: { Authorization: 'Bearer the-rotated-token-value' } })).status,
+    ).toBe(200)
+  })
+
+  it('refuses to change an env-managed token (409) but still reports and reveals it', async () => {
+    const { server, base } = startServer({ token: 'env-token-value', managedByEnv: true })
+    running = server
+
+    const status = await (await fetch(`${base}/api/auth`)).json()
+    expect(status).toEqual({ required: true, authorized: false, managedByEnv: true })
+
+    const res = await fetch(`${base}/api/auth/token`, {
+      method: 'PUT',
+      headers: { Authorization: 'Bearer env-token-value' },
+      body: '{}',
+    })
+    expect(res.status).toBe(409)
   })
 })
 
