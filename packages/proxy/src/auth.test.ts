@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { createAuth } from './auth.ts'
+import { AuthError, createAuth, generateToken, MIN_TOKEN_LENGTH } from './auth.ts'
 
 function req(headers: Record<string, string> = {}): IncomingMessage {
   return { headers } as IncomingMessage
@@ -17,58 +17,105 @@ function res(): ServerResponse & { cookies: string[] } {
   } as unknown as ServerResponse & { cookies: string[] }
 }
 
-describe('createAuth disabled (no token configured)', () => {
+function cookieOf(auth: ReturnType<typeof createAuth>): string {
+  const r = res()
+  auth.setSessionCookie(r)
+  return r.cookies[0]!.split(';')[0]!
+}
+
+describe('createAuth disabled (no token)', () => {
   it('authorizes everything and never matches a login attempt', () => {
-    const auth = createAuth(undefined)
+    const auth = createAuth()
     expect(auth.enabled).toBe(false)
     expect(auth.isAuthorized(req())).toBe(true)
     expect(auth.tokenMatches('anything')).toBe(false)
 
-    expect(createAuth('').enabled).toBe(false)
+    expect(createAuth({ token: '' }).enabled).toBe(false)
   })
 })
 
 describe('createAuth enabled', () => {
-  const auth = createAuth('sekrit')
-
   it('accepts the exact bearer token and rejects wrong or differently-sized ones', () => {
-    expect(auth.isAuthorized(req({ authorization: 'Bearer sekrit' }))).toBe(true)
-    expect(auth.isAuthorized(req({ authorization: 'Bearer sekri' }))).toBe(false)
-    expect(auth.isAuthorized(req({ authorization: 'Bearer sekrit-and-then-some' }))).toBe(false)
-    expect(auth.isAuthorized(req({ authorization: 'Basic sekrit' }))).toBe(false)
+    const auth = createAuth({ token: 'sekrit-token-value' })
+    expect(auth.isAuthorized(req({ authorization: 'Bearer sekrit-token-value' }))).toBe(true)
+    expect(auth.isAuthorized(req({ authorization: 'Bearer sekrit-token-valu' }))).toBe(false)
+    expect(auth.isAuthorized(req({ authorization: 'Bearer sekrit-token-value-more' }))).toBe(false)
+    expect(auth.isAuthorized(req({ authorization: 'Basic sekrit-token-value' }))).toBe(false)
     expect(auth.isAuthorized(req())).toBe(false)
   })
 
   it('accepts the session cookie its own login flow sets, among other cookies', () => {
+    const auth = createAuth({ token: 'sekrit-token-value' })
     const r = res()
     auth.setSessionCookie(r)
     const cookie = r.cookies[0]!
     expect(cookie).toContain('HttpOnly')
     expect(cookie).toContain('SameSite=Strict')
 
-    const value = cookie.split(';')[0]! // "cf_session=<hmac>"
+    const value = cookie.split(';')[0]!
     expect(auth.isAuthorized(req({ cookie: `theme=dark; ${value}; other=1` }))).toBe(true)
     expect(auth.isAuthorized(req({ cookie: 'cf_session=wrong' }))).toBe(false)
   })
 
-  it('rotating the token invalidates previously-issued cookies', () => {
-    const r = res()
-    auth.setSessionCookie(r)
-    const oldCookie = r.cookies[0]!.split(';')[0]!
-
-    const rotated = createAuth('sekrit-2')
-    expect(rotated.isAuthorized(req({ cookie: oldCookie }))).toBe(false)
-  })
-
   it('clearSessionCookie expires the cookie immediately', () => {
+    const auth = createAuth({ token: 'sekrit-token-value' })
     const r = res()
     auth.clearSessionCookie(r)
     expect(r.cookies[0]).toContain('Max-Age=0')
   })
+})
 
-  it('matches login tokens timing-safely regardless of length', () => {
-    expect(auth.tokenMatches('sekrit')).toBe(true)
-    expect(auth.tokenMatches('nope')).toBe(false)
-    expect(auth.tokenMatches('')).toBe(false)
+describe('setToken (initialise / rotate)', () => {
+  it('enables auth from the open state and persists the new token', () => {
+    const persist = vi.fn()
+    const auth = createAuth({ persist })
+    expect(auth.enabled).toBe(false)
+    expect(auth.isAuthorized(req())).toBe(true)
+
+    auth.setToken('a-freshly-set-token')
+    expect(persist).toHaveBeenCalledWith('a-freshly-set-token')
+    expect(auth.enabled).toBe(true)
+    expect(auth.token).toBe('a-freshly-set-token')
+    // The new token now gates access, and its own cookie authorizes.
+    expect(auth.isAuthorized(req())).toBe(false)
+    expect(auth.isAuthorized(req({ cookie: cookieOf(auth) }))).toBe(true)
+  })
+
+  it('rotating invalidates cookies issued under the previous token', () => {
+    const auth = createAuth({ token: 'the-first-token-value' })
+    const oldCookie = cookieOf(auth)
+    expect(auth.isAuthorized(req({ cookie: oldCookie }))).toBe(true)
+
+    auth.setToken('the-second-token-value')
+    expect(auth.isAuthorized(req({ cookie: oldCookie }))).toBe(false)
+    expect(auth.isAuthorized(req({ cookie: cookieOf(auth) }))).toBe(true)
+    expect(auth.isAuthorized(req({ authorization: 'Bearer the-second-token-value' }))).toBe(true)
+  })
+
+  it('rejects a token shorter than the minimum', () => {
+    const auth = createAuth()
+    expect(() => auth.setToken('short')).toThrow(AuthError)
+    expect('x'.repeat(MIN_TOKEN_LENGTH).length).toBe(MIN_TOKEN_LENGTH)
+    expect(() => auth.setToken('x'.repeat(MIN_TOKEN_LENGTH))).not.toThrow()
+  })
+
+  it('refuses to change an env-managed token', () => {
+    const persist = vi.fn()
+    const auth = createAuth({ token: 'env-token-value', managedByEnv: true, persist })
+    expect(auth.managedByEnv).toBe(true)
+    expect(() => auth.setToken('a-new-long-token-value')).toThrow(AuthError)
+    expect(persist).not.toHaveBeenCalled()
+    // The env token still authorizes.
+    expect(auth.isAuthorized(req({ authorization: 'Bearer env-token-value' }))).toBe(true)
+  })
+})
+
+describe('generateToken', () => {
+  it('produces a long, url-safe, unique token', () => {
+    const a = generateToken()
+    const b = generateToken()
+    expect(a).not.toBe(b)
+    expect(a.length).toBeGreaterThanOrEqual(MIN_TOKEN_LENGTH)
+    expect(a).toMatch(/^[A-Za-z0-9_-]+$/)
   })
 })

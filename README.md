@@ -68,7 +68,8 @@ keys), so there's a thin proxy between them:
 - **`packages/proxy`** holds the API keys, polls each node's REST API plus its
   `/rest/events` stream, aggregates the per-node views into one normalized
   cluster model, and serves it read-only over HTTP + SSE (plus the Phase 3
-  mutation routes). Set `CLUSTERFUCK_TOKEN` to require auth: a shared token,
+  mutation routes). Auth is opt-in — turn it on from the app (Settings ⚙ →
+  Generate & enable) or by setting `CLUSTERFUCK_TOKEN`: a shared token,
   entered once per browser (cookie thereafter) or sent as a Bearer header by
   scripts. With the web app built, the proxy serves it too — production is
   one process on one origin. See
@@ -170,10 +171,13 @@ VITE_PROXY_URL=https://proxy.example pnpm --filter @clusterfuck/web build
 ```
 
 > **Security:** the proxy holds your Syncthing API keys, and its API can
-> read and mutate every registered node. **Auth is opt-in:** set
-> `CLUSTERFUCK_TOKEN` to a long random string and every request requires it
-> — browsers sign in once per device with the token (cookie thereafter),
-> scripts send it as a `Authorization: Bearer` header. See
+> read and mutate every registered node. **Auth is opt-in:** turn it on from
+> the app (Settings ⚙ → **Generate & enable**, which stores a token in a
+> gitignored `auth.json`) or by setting `CLUSTERFUCK_TOKEN` to a long random
+> string; then every request requires the token — browsers sign in once per
+> device (cookie thereafter), scripts send it as an `Authorization: Bearer`
+> header. The env var, when set, is authoritative and the GUI defers to it.
+> See
 > [docs/HOW-AUTH-WORKS.md](docs/HOW-AUTH-WORKS.md) for how it works and its
 > limits. Without the token the proxy is **open** (it warns at startup) —
 > never expose that beyond a trusted network. The proxy speaks plain HTTP

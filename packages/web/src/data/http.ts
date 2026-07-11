@@ -32,6 +32,11 @@ async function handleFailure(method: string, path: string, res: Response): Promi
 }
 
 export async function call(method: string, path: string, body?: unknown): Promise<void> {
+  await callJson(method, path, body)
+}
+
+/** `call` for routes that return a body (e.g. PUT /api/auth/token → `{ token }`). */
+export async function callJson<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(`${PROXY_BASE}${path}`, {
     method,
     credentials: 'include',
@@ -39,6 +44,7 @@ export async function call(method: string, path: string, body?: unknown): Promis
     body: body !== undefined ? JSON.stringify(body) : undefined,
   })
   if (!res.ok) await handleFailure(method, path, res)
+  return (await res.json()) as T
 }
 
 /** GET variant of `call` for the routes that return data, not just `{ ok }`. */

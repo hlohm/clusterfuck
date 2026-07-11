@@ -1,5 +1,5 @@
 import { createServer, type IncomingMessage, type ServerResponse, type Server } from 'node:http'
-import type { Auth } from './auth.ts'
+import { AuthError, generateToken, type Auth } from './auth.ts'
 import type { StaticHandler } from './static.ts'
 import {
   COMPRESSION_LEVELS,
@@ -123,10 +123,48 @@ async function handleRequest(
     return
   }
 
-  // Whether this deployment needs a login, and whether this caller has one —
+  // Whether this deployment needs a login, whether this caller has one, and
+  // whether the token is env-managed (so the GUI hides rotate/generate) —
   // the SPA's first question on load.
   if (url.pathname === '/api/auth' && method === 'GET') {
-    sendJson(res, 200, { required: auth.enabled, authorized })
+    sendJson(res, 200, { required: auth.enabled, authorized, managedByEnv: auth.managedByEnv })
+    return
+  }
+
+  // Initialise (from the open state) or rotate the token, optionally
+  // generating a strong one. Persists it and signs the caller in via the
+  // fresh cookie. When auth is disabled the gate above is bypassed, so this
+  // is reachable to bootstrap auth; when enabled it isn't exempt, so only a
+  // signed-in admin can rotate. 409 when the token is env-managed.
+  if (url.pathname === '/api/auth/token' && method === 'PUT') {
+    if (auth.managedByEnv) {
+      sendJson(res, 409, { error: 'the token is managed by the CLUSTERFUCK_TOKEN environment variable' })
+      return
+    }
+    let body: unknown
+    try {
+      body = await readJsonBody(req)
+    } catch {
+      sendJson(res, 400, { error: 'request body is not valid JSON' })
+      return
+    }
+    const provided = (body as { token?: unknown } | undefined)?.token
+    if (provided !== undefined && typeof provided !== 'string') {
+      sendJson(res, 400, { error: 'token must be a string' })
+      return
+    }
+    const next = provided ?? generateToken()
+    try {
+      auth.setToken(next)
+    } catch (err) {
+      if (err instanceof AuthError) {
+        sendJson(res, 400, { error: err.message })
+        return
+      }
+      throw err
+    }
+    auth.setSessionCookie(res)
+    sendJson(res, 200, { token: next })
     return
   }
 

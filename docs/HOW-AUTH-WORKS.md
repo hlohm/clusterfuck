@@ -15,12 +15,18 @@ moment the proxy is reachable from anywhere you don't fully trust (a shared
 LAN, a VPN with guests, the internet), it needs a lock.
 
 The lock is **opt-in**. Start the proxy with nothing configured and it
-behaves like it always did — open, with a loud warning in its log. Set one
-environment variable and everything is gated:
+behaves like it always did — open, with a loud warning in its log. There are
+two ways to turn the lock on:
 
-```sh
-CLUSTERFUCK_TOKEN='pick-a-long-random-string' pnpm --filter @clusterfuck/proxy start
-```
+- **From the app** — the easy path. Open Settings (the ⚙ in the header) and
+  hit "Generate & enable"; the proxy makes a strong token, stores it, and
+  shows it to you once to save. No terminal, no restart. (Details below in
+  [Managing auth from the GUI](#managing-auth-from-the-gui).)
+- **From the environment** — set one variable before starting the proxy:
+
+  ```sh
+  CLUSTERFUCK_TOKEN='pick-a-long-random-string' pnpm --filter @clusterfuck/proxy start
+  ```
 
 ## One token, not accounts
 
@@ -30,9 +36,12 @@ That's the same trust model as Syncthing's own GUI (one API key, one
 optional GUI password per node): this is a tool one person, or a few
 mutually-trusting people, run for themselves.
 
-The token is chosen by you (any long random string) and lives in the
-proxy's environment, next to the API keys it already guards. It is never
-written to `cluster.json` and never appears in the repo.
+The token is either generated for you or chosen by you (any long random
+string). It lives in one of two places: the `CLUSTERFUCK_TOKEN` environment
+variable, or — when you set it up from the app — a small `auth.json` file the
+proxy keeps next to the API keys it already guards, readable only by the
+proxy's own user. Either way it is never written to `cluster.json` and never
+appears in the repo (`auth.json` is gitignored).
 
 ## How a browser signs in
 
@@ -82,10 +91,48 @@ On any new browser or device you just paste the same token once at the
 login screen.
 
 Don't have the token at hand? Any browser that *is* signed in can retrieve
-it: the Overview's cluster-actions card has an **Access** row with a
-"Show access token" button (and a copy button). That reveal only works for
-an already-authorized session — the same stance as Syncthing's own GUI
-showing its API key in settings. **Sign out** lives next to it.
+it: open Settings (the ⚙ in the header) and use **Show token** (with a copy
+button). That reveal only works for an already-authorized session — the same
+stance as Syncthing's own GUI showing its API key in settings. **Sign out**
+lives in the same overlay.
+
+## Managing auth from the GUI
+
+Everything about the token lives behind the ⚙ **Settings** button in the
+header — no terminal needed for the common cases. What you see depends on the
+current state:
+
+**Auth is off (open proxy).** One button: **Generate & enable**. The proxy
+mints a strong random token, saves it to its `auth.json`, and immediately
+signs this browser in. It then shows the new token once, prominently, with a
+copy button — **save it now**; it's what you'll paste to sign in on your
+phone or another machine. (Prefer your own string? There's a field to type
+one instead — minimum 16 characters.)
+
+**Auth is on, and the proxy manages the token (the `auth.json` case).** You
+can:
+
+- **Show token** — reveal/copy the current token to sign in elsewhere.
+- **Generate new token** / **Enter new token…** — *rotate*. This is
+  confirmation-gated, because rotating is a master logout: the instant the
+  token changes, every other signed-in browser everywhere is kicked back to
+  the login screen (yours included, but you're handed the new token and kept
+  signed in). Use it if the token ever leaks, or on a schedule.
+- **Sign out** — clears just this browser's cookie.
+
+**Auth is on, but a person set `CLUSTERFUCK_TOKEN` (the environment case).**
+The environment always wins, so the app won't fight it: rotate and generate
+are hidden. You can still **Show token** and **Sign out**. To *change* an
+env-managed token, edit the variable and restart the proxy.
+
+### Turning auth back off
+
+There is deliberately **no "disable auth" button.** Going back to an open
+proxy means removing the token out-of-band — delete the proxy's `auth.json`
+(or unset `CLUSTERFUCK_TOKEN`) and restart it. That's a small inconvenience
+buying a real property: an attacker who hijacks a signed-in browser session
+still can't *open the lock* — they'd need shell access to the proxy's host.
+The GUI can tighten security (turn auth on, rotate) but never loosen it.
 
 ## Scripts and automation
 
