@@ -173,6 +173,47 @@ describe('GUI token management (PUT /api/auth/token)', () => {
     ).toBe(200)
   })
 
+  it('answers 500 and keeps the old token active when persisting fails', async () => {
+    const { server, base } = startServer({
+      token: 'the-existing-token',
+      persist: () => {
+        throw new Error('disk full')
+      },
+    })
+    running = server
+
+    const res = await fetch(`${base}/api/auth/token`, {
+      method: 'PUT',
+      headers: { Authorization: 'Bearer the-existing-token' },
+      body: JSON.stringify({ token: 'the-would-be-new-token' }),
+    })
+    expect(res.status).toBe(500)
+    expect(((await res.json()) as { error: string }).error).toContain('persist')
+
+    // The rotation did not happen: old token still works, new one doesn't.
+    expect(
+      (await fetch(`${base}/api/cluster`, { headers: { Authorization: 'Bearer the-existing-token' } })).status,
+    ).toBe(200)
+    expect(
+      (await fetch(`${base}/api/cluster`, { headers: { Authorization: 'Bearer the-would-be-new-token' } })).status,
+    ).toBe(401)
+
+    // Bootstrapping from open fails the same way — the proxy stays open
+    // instead of enabling a token that a restart would silently drop.
+    const openServer = startServer({
+      persist: () => {
+        throw new Error('disk full')
+      },
+    })
+    try {
+      const boot = await fetch(`${openServer.base}/api/auth/token`, { method: 'PUT', body: '{}' })
+      expect(boot.status).toBe(500)
+      expect((await fetch(`${openServer.base}/api/cluster`)).status).toBe(200)
+    } finally {
+      openServer.server.close()
+    }
+  })
+
   it('refuses to change an env-managed token (409) but still reports and reveals it', async () => {
     const { server, base } = startServer({ token: 'env-token-value', managedByEnv: true })
     running = server

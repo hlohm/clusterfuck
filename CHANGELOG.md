@@ -12,6 +12,21 @@ Versioning policy is in `CLAUDE.md`; the phased feature history is in
   still-open proxy) — so anyone who could reach the port could stream
   arbitrary data into proxy memory. Oversize declared lengths are rejected
   before reading; chunked transfers are cut off at the cap mid-stream.
+## [0.4.32]
+
+- **Fixed: setting/rotating the auth token no longer reports success when
+  the write to `auth.json` fails.** Previously the in-memory token changed
+  and the failure was only logged, so `PUT /api/auth/token` answered 200
+  with a token the next restart would silently revert — locking out anyone
+  who had discarded the old one. `setToken` now persists *before* mutating
+  state; on failure the route answers 500 and the previous token (and every
+  session under it) stays active.
+## [0.4.31]
+
+- Overview and Table views are horizontally centered (`margin-inline: auto`
+  on their max-width containers) instead of hugging the left edge on wide
+  windows. The table keeps its 1100px cap — it moved from the table element
+  to the `.table-view` container so the whole view centers as one block.
 
 ## [0.4.30]
 

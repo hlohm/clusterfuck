@@ -21,18 +21,15 @@ if (webOrigin === '*') {
 
 // Token precedence: CLUSTERFUCK_TOKEN env (authoritative) > persisted auth
 // file > none (open). A non-env-managed token set/rotated from the GUI is
-// persisted back to the file.
+// persisted back to the file. A persist failure must propagate: setToken
+// aborts without changing the active token, and the PUT route answers 500 —
+// swallowing it here would hand the caller a token that silently reverts on
+// the next restart.
 const loaded = loadAuthToken()
 const auth = createAuth({
   token: loaded.token,
   managedByEnv: loaded.managedByEnv,
-  persist: (token) => {
-    try {
-      saveAuthToken(token)
-    } catch (err) {
-      console.error('[clusterfuck-proxy] failed to persist auth token:', (err as Error).message)
-    }
-  },
+  persist: saveAuthToken,
 })
 if (!auth.enabled) {
   console.warn(
