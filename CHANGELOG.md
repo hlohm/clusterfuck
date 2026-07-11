@@ -4,6 +4,15 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.4.32]
+
+- **Fixed: setting/rotating the auth token no longer reports success when
+  the write to `auth.json` fails.** Previously the in-memory token changed
+  and the failure was only logged, so `PUT /api/auth/token` answered 200
+  with a token the next restart would silently revert — locking out anyone
+  who had discarded the old one. `setToken` now persists *before* mutating
+  state; on failure the route answers 500 and the previous token (and every
+  session under it) stays active.
 ## [0.4.31]
 
 - Overview and Table views are horizontally centered (`margin-inline: auto`

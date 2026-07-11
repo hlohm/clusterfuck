@@ -161,7 +161,14 @@ async function handleRequest(
         sendJson(res, 400, { error: err.message })
         return
       }
-      throw err
+      // Persisting to the auth file failed (disk full, permissions, …).
+      // setToken guarantees the active token is unchanged in that case, so
+      // say so — a 200 here would hand out a token that reverts on restart.
+      console.error('[clusterfuck-proxy] failed to persist auth token:', err)
+      sendJson(res, 500, {
+        error: 'failed to persist the token; the previous token (if any) is still active',
+      })
+      return
     }
     auth.setSessionCookie(res)
     sendJson(res, 200, { token: next })

@@ -99,6 +99,28 @@ describe('setToken (initialise / rotate)', () => {
     expect(() => auth.setToken('x'.repeat(MIN_TOKEN_LENGTH))).not.toThrow()
   })
 
+  it('leaves the token unchanged when persisting fails', () => {
+    const failingPersist = () => {
+      throw new Error('disk full')
+    }
+
+    // Rotation: the old token and its cookies must stay valid.
+    const auth = createAuth({ token: 'the-first-token-value', persist: failingPersist })
+    const oldCookie = cookieOf(auth)
+    expect(() => auth.setToken('the-second-token-value')).toThrow('disk full')
+    expect(auth.token).toBe('the-first-token-value')
+    expect(auth.isAuthorized(req({ cookie: oldCookie }))).toBe(true)
+    expect(auth.isAuthorized(req({ authorization: 'Bearer the-first-token-value' }))).toBe(true)
+    expect(auth.isAuthorized(req({ authorization: 'Bearer the-second-token-value' }))).toBe(false)
+
+    // Initialisation: the proxy must stay open rather than enable an
+    // in-memory-only token that a restart would silently drop.
+    const open = createAuth({ persist: failingPersist })
+    expect(() => open.setToken('a-freshly-set-token')).toThrow('disk full')
+    expect(open.enabled).toBe(false)
+    expect(open.isAuthorized(req())).toBe(true)
+  })
+
   it('refuses to change an env-managed token', () => {
     const persist = vi.fn()
     const auth = createAuth({ token: 'env-token-value', managedByEnv: true, persist })
