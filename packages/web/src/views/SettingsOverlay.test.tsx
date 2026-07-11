@@ -41,13 +41,20 @@ describe('SettingsOverlay', () => {
       authorized: true,
       managedByEnv: true,
     })
+    vi.spyOn(auth, 'getToken').mockResolvedValue('the-env-token')
     render(<SettingsOverlay onClose={vi.fn()} />)
 
     expect(await screen.findByText(/remove the proxy's auth file and restart/)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Generate new token' })).not.toBeInTheDocument()
     // Reveal + sign out remain available.
-    expect(screen.getByRole('button', { name: 'Show token' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Sign out' })).toBeInTheDocument()
+
+    // The reveal can be put away again without closing the dialog.
+    fireEvent.click(screen.getByRole('button', { name: 'Show token' }))
+    expect(await screen.findByText('the-env-token')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Hide' }))
+    expect(screen.queryByText('the-env-token')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Show token' })).toBeInTheDocument()
   })
 
   it('confirms before rotating, since it signs out other browsers', async () => {

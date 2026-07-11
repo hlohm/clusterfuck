@@ -71,3 +71,11 @@ export function moveSection(
 export function toggleCollapsed(collapsed: string[], id: string): string[] {
   return collapsed.includes(id) ? collapsed.filter((c) => c !== id) : [...collapsed, id]
 }
+
+/**
+ * Drops collapsed ids for sections that no longer exist, so a section
+ * removed in a later build doesn't haunt the persisted layout forever.
+ */
+export function pruneCollapsed(collapsed: string[], known: readonly string[]): string[] {
+  return collapsed.filter((id) => known.includes(id))
+}

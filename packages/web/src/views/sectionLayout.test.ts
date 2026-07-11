@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { moveSection, normalizeOrder, toggleCollapsed } from './sectionLayout'
+import { moveSection, normalizeOrder, pruneCollapsed, toggleCollapsed } from './sectionLayout'
 
 describe('normalizeOrder', () => {
   it('keeps a saved order and drops ids that no longer exist', () => {
@@ -42,5 +42,12 @@ describe('toggleCollapsed', () => {
   it('adds and removes ids', () => {
     expect(toggleCollapsed([], 'x')).toEqual(['x'])
     expect(toggleCollapsed(['x', 'y'], 'x')).toEqual(['y'])
+  })
+})
+
+describe('pruneCollapsed', () => {
+  it('drops ids of sections that no longer exist', () => {
+    expect(pruneCollapsed(['a', 'gone', 'b'], ['a', 'b', 'c'])).toEqual(['a', 'b'])
+    expect(pruneCollapsed([], ['a'])).toEqual([])
   })
 })
