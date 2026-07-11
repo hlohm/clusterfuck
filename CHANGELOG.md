@@ -4,6 +4,15 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.4.34]
+
+- **Fixed: a cancelled sidebar drag left the resize listeners attached.**
+  The graph view's divider only cleaned up its window-level `pointermove`/
+  `pointerup` listeners on `pointerup`; a `pointercancel` (touch drag
+  interrupted by a scroll gesture, browser takeover) never fired it, so the
+  sidebar kept resizing with every later pointer movement. The drag wiring
+  now lives in `sidebarResize.ts` (unit-tested) and detaches on both.
+
 ## [0.4.30]
 
 - **Fixed: the graph detail panel's "Show QR" button duplicated as you
