@@ -15,10 +15,33 @@ import { PROXY_VERSION } from './version.ts'
 
 /** Sentinel thrown by readJsonBody so the handler can answer 400, not 502. */
 class BodyParseError extends Error {}
+/** Sentinel thrown by readJsonBody past the size cap — answered with 413. */
+class BodyTooLargeError extends Error {}
+
+/**
+ * Generous for every JSON body this API takes (the largest is an ignore-
+ * patterns file). The cap matters because two body-reading routes are
+ * reachable without credentials — /api/login, and the token bootstrap on an
+ * open proxy — so unbounded buffering would let anyone who can reach the
+ * port exhaust the proxy's memory.
+ */
+const MAX_BODY_BYTES = 1024 * 1024
 
 async function readJsonBody(req: IncomingMessage): Promise<unknown> {
+  const tooLarge = new BodyTooLargeError(
+    `request body exceeds the ${MAX_BODY_BYTES}-byte limit`,
+  )
+  // Reject an honestly-declared oversize up front, before reading any of it.
+  const declared = Number(req.headers['content-length'])
+  if (Number.isFinite(declared) && declared > MAX_BODY_BYTES) throw tooLarge
   const chunks: Buffer[] = []
-  for await (const chunk of req) chunks.push(chunk as Buffer)
+  let received = 0
+  for await (const chunk of req) {
+    received += (chunk as Buffer).length
+    // Chunked transfers carry no Content-Length — enforce while reading.
+    if (received > MAX_BODY_BYTES) throw tooLarge
+    chunks.push(chunk as Buffer)
+  }
   if (chunks.length === 0) return undefined
   try {
     return JSON.parse(Buffer.concat(chunks).toString('utf8'))
@@ -144,7 +167,11 @@ async function handleRequest(
     let body: unknown
     try {
       body = await readJsonBody(req)
-    } catch {
+    } catch (err) {
+      if (err instanceof BodyTooLargeError) {
+        sendJson(res, 413, { error: err.message })
+        return
+      }
       sendJson(res, 400, { error: 'request body is not valid JSON' })
       return
     }
@@ -161,7 +188,14 @@ async function handleRequest(
         sendJson(res, 400, { error: err.message })
         return
       }
-      throw err
+      // Persisting to the auth file failed (disk full, permissions, …).
+      // setToken guarantees the active token is unchanged in that case, so
+      // say so — a 200 here would hand out a token that reverts on restart.
+      console.error('[clusterfuck-proxy] failed to persist auth token:', err)
+      sendJson(res, 500, {
+        error: 'failed to persist the token; the previous token (if any) is still active',
+      })
+      return
     }
     auth.setSessionCookie(res)
     sendJson(res, 200, { token: next })
@@ -178,7 +212,11 @@ async function handleRequest(
     let body: unknown
     try {
       body = await readJsonBody(req)
-    } catch {
+    } catch (err) {
+      if (err instanceof BodyTooLargeError) {
+        sendJson(res, 413, { error: err.message })
+        return
+      }
       sendJson(res, 400, { error: 'request body is not valid JSON' })
       return
     }
@@ -830,6 +868,10 @@ async function handleRequest(
       }
     }
   } catch (err) {
+    if (err instanceof BodyTooLargeError) {
+      sendJson(res, 413, { error: err.message })
+      return
+    }
     if (err instanceof BodyParseError || err instanceof InvalidTargetError) {
       sendJson(res, 400, { error: err.message })
       return
