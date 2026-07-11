@@ -1002,9 +1002,15 @@ function DeviceQr({ deviceId }: { deviceId: string }) {
 }
 
 export function DetailPanel({ cluster, selection, onSelect, isLive }: DetailPanelProps) {
+  // The whole panel is keyed by the selection identity (see each branch's
+  // <aside key=…>). Switching selection then remounts the subtree wholesale,
+  // so per-editor state (loaded options, ignore patterns, QR toggle) resets
+  // cleanly and never carries over to the next device/folder/share — and,
+  // crucially, no stale instance survives the switch (mixing a keyed child
+  // among unkeyed siblings used to leave a duplicate "Show QR" behind).
   if (!selection) {
     return (
-      <aside className="detail-panel detail-panel--empty">
+      <aside key="empty" className="detail-panel detail-panel--empty">
         Select a device, folder, or link to see details.
       </aside>
     )
@@ -1020,7 +1026,7 @@ export function DetailPanel({ cluster, selection, onSelect, isLive }: DetailPane
     const deviceById = new Map(cluster.devices.map((d) => [d.id, d]))
 
     return (
-      <aside className="detail-panel">
+      <aside key={`device:${device.id}`} className="detail-panel">
         <h3>{device.name}</h3>
         <p>
           <strong>State:</strong> {style.label}
@@ -1029,14 +1035,10 @@ export function DetailPanel({ cluster, selection, onSelect, isLive }: DetailPane
           <strong>Device ID:</strong> <code>{device.id}</code>{' '}
           <CopyButton text={device.id} />
         </p>
-        {isLive && <DeviceQr key={device.id} deviceId={device.id} />}
+        {isLive && <DeviceQr deviceId={device.id} />}
         {device.systemStatus && <SystemStatusSection status={device.systemStatus} />}
         {isLive && <DeviceActions device={device} />}
-        {/* Keyed by device so switching selection remounts the editor instead
-            of carrying the previous device's loaded options over. */}
-        {isLive && device.state !== 'this-device' && (
-          <DeviceOptionsSection key={device.id} device={device} />
-        )}
+        {isLive && device.state !== 'this-device' && <DeviceOptionsSection device={device} />}
         {device.managed && <ConnectionsSection connections={connections} deviceById={deviceById} />}
         <h4>Folder shares ({shares.length})</h4>
         <ul className="attention-list">
@@ -1075,7 +1077,7 @@ export function DetailPanel({ cluster, selection, onSelect, isLive }: DetailPane
     const deviceById = new Map(cluster.devices.map((d) => [d.id, d]))
 
     return (
-      <aside className="detail-panel">
+      <aside key={`folder:${folder.id}`} className="detail-panel">
         <h3>{folder.label}</h3>
         <p>
           <strong>Folder ID:</strong> <code>{folder.id}</code>
@@ -1092,24 +1094,13 @@ export function DetailPanel({ cluster, selection, onSelect, isLive }: DetailPane
                   <StatusBadge state={share.state} />
                 </header>
                 <div className="node-section__type">{typeStyle.label}</div>
-                {/* Keyed by the share so switching the selected folder remounts the
-                    editor instead of carrying the previous folder's drafts over. */}
-                {isLive && (
-                  <ShareActions
-                    key={`${share.folderId}:${share.deviceId}`}
-                    cluster={cluster}
-                    share={share}
-                  />
-                )}
+                {isLive && <ShareActions cluster={cluster} share={share} />}
               </section>
             )
           })}
         </div>
-        {/* Keyed by folder: without it React reuses the instance across folder
-            switches and the previous folder's loaded patterns/drafts would be
-            shown — and saved — under the new folder's id. */}
-        {isLive && <ProblemsSection key={`problems:${folder.id}`} cluster={cluster} folderId={folder.id} />}
-        {isLive && <IgnorePatternsSection key={folder.id} cluster={cluster} folderId={folder.id} />}
+        {isLive && <ProblemsSection cluster={cluster} folderId={folder.id} />}
+        {isLive && <IgnorePatternsSection cluster={cluster} folderId={folder.id} />}
       </aside>
     )
   }
@@ -1126,7 +1117,7 @@ export function DetailPanel({ cluster, selection, onSelect, isLive }: DetailPane
   const stateStyle = FOLDER_STATE_STYLE[share.state]
 
   return (
-    <aside className="detail-panel">
+    <aside key={`share:${share.folderId}:${share.deviceId}`} className="detail-panel">
       <h3>
         {device.name} ↔ {folder.label}
       </h3>
@@ -1166,13 +1157,7 @@ export function DetailPanel({ cluster, selection, onSelect, isLive }: DetailPane
           <strong>Error:</strong> {share.errorMessage}
         </p>
       )}
-      {isLive && (
-        <ShareActions
-          key={`${share.folderId}:${share.deviceId}`}
-          cluster={cluster}
-          share={share}
-        />
-      )}
+      {isLive && <ShareActions cluster={cluster} share={share} />}
     </aside>
   )
 }

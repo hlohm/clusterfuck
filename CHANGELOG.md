@@ -4,6 +4,18 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.4.30]
+
+- **Fixed: the graph detail panel's "Show QR" button duplicated as you
+  clicked from device to device.** `DeviceQr` was keyed among unkeyed
+  sibling elements, so when the key changed on each new selection React
+  failed to unmount the previous instance and the control accumulated (one
+  extra per device visited). The panel is now keyed by the selection
+  identity (`device:…` / `folder:…` / `share:…`) and remounts wholesale on
+  every selection change — one QR control again, and per-editor state
+  (loaded device/folder options, ignore patterns, the QR toggle) resets on
+  switch instead of leaning on scattered, fragile per-child keys.
+
 ## [0.4.29]
 
 - **Overview sections are collapsible and re-arrangeable** (ROADMAP "UI

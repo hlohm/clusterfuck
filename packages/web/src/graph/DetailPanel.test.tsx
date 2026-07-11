@@ -260,3 +260,37 @@ describe('DetailPanel sendonly override / receiveonly revert', () => {
     expect(screen.queryByText('Revert local changes')).not.toBeInTheDocument()
   })
 })
+
+describe('DetailPanel remounts cleanly when the selection changes', () => {
+  it('keeps a single QR control across successive device selections (no duplication)', () => {
+    // Regression: DeviceQr was keyed among unkeyed siblings, so switching
+    // devices left the previous instance behind and the "Show QR" button
+    // accumulated with every click. The panel is now keyed by selection and
+    // remounts wholesale, so there is always exactly one.
+    const { rerender } = render(
+      <DetailPanel
+        cluster={edgeCases}
+        selection={{ kind: 'device', deviceId: 'device-origin' }}
+        onSelect={vi.fn()}
+        isLive={true}
+      />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Show QR' }))
+    expect(screen.getByRole('button', { name: 'Hide QR' })).toBeInTheDocument()
+
+    for (const deviceId of ['device-mirror', 'device-relay-b', 'device-origin']) {
+      rerender(
+        <DetailPanel
+          cluster={edgeCases}
+          selection={{ kind: 'device', deviceId }}
+          onSelect={vi.fn()}
+          isLive={true}
+        />,
+      )
+      // Exactly one QR control, and it reset to the collapsed "Show" state
+      // rather than carrying the previous device's revealed QR.
+      expect(screen.getAllByRole('button', { name: /QR/ })).toHaveLength(1)
+      expect(screen.getByRole('button', { name: 'Show QR' })).toBeInTheDocument()
+    }
+  })
+})
