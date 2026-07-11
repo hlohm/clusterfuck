@@ -51,7 +51,9 @@ export interface Auth {
   /**
    * Sets (initialises or rotates) the token and persists it. Throws AuthError
    * if the token is env-managed or too short. Rotating changes the session
-   * HMAC, so every previously-issued cookie stops validating at once.
+   * HMAC, so every previously-issued cookie stops validating at once. If the
+   * persist callback throws, the error propagates and the active token is
+   * unchanged — in-memory state never diverges from what's on disk.
    */
   setToken(next: string): void
 }
@@ -137,9 +139,12 @@ export function createAuth(options: CreateAuthOptions = {}): Auth {
       if (typeof next !== 'string' || next.length < MIN_TOKEN_LENGTH) {
         throw new AuthError(`token must be at least ${MIN_TOKEN_LENGTH} characters`)
       }
+      // Persist before mutating: if the disk write fails, the in-memory token
+      // must not change either, or the next restart would silently revert to
+      // the previous token — one the operator may have already discarded.
+      options.persist?.(next)
       token = next
       session = sessionValue(next)
-      options.persist?.(next)
     },
   }
 }

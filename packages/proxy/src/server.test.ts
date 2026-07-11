@@ -173,6 +173,47 @@ describe('GUI token management (PUT /api/auth/token)', () => {
     ).toBe(200)
   })
 
+  it('answers 500 and keeps the old token active when persisting fails', async () => {
+    const { server, base } = startServer({
+      token: 'the-existing-token',
+      persist: () => {
+        throw new Error('disk full')
+      },
+    })
+    running = server
+
+    const res = await fetch(`${base}/api/auth/token`, {
+      method: 'PUT',
+      headers: { Authorization: 'Bearer the-existing-token' },
+      body: JSON.stringify({ token: 'the-would-be-new-token' }),
+    })
+    expect(res.status).toBe(500)
+    expect(((await res.json()) as { error: string }).error).toContain('persist')
+
+    // The rotation did not happen: old token still works, new one doesn't.
+    expect(
+      (await fetch(`${base}/api/cluster`, { headers: { Authorization: 'Bearer the-existing-token' } })).status,
+    ).toBe(200)
+    expect(
+      (await fetch(`${base}/api/cluster`, { headers: { Authorization: 'Bearer the-would-be-new-token' } })).status,
+    ).toBe(401)
+
+    // Bootstrapping from open fails the same way — the proxy stays open
+    // instead of enabling a token that a restart would silently drop.
+    const openServer = startServer({
+      persist: () => {
+        throw new Error('disk full')
+      },
+    })
+    try {
+      const boot = await fetch(`${openServer.base}/api/auth/token`, { method: 'PUT', body: '{}' })
+      expect(boot.status).toBe(500)
+      expect((await fetch(`${openServer.base}/api/cluster`)).status).toBe(200)
+    } finally {
+      openServer.server.close()
+    }
+  })
+
   it('refuses to change an env-managed token (409) but still reports and reveals it', async () => {
     const { server, base } = startServer({ token: 'env-token-value', managedByEnv: true })
     running = server
@@ -186,6 +227,67 @@ describe('GUI token management (PUT /api/auth/token)', () => {
       body: '{}',
     })
     expect(res.status).toBe(409)
+  })
+})
+
+describe('request body size cap', () => {
+  const oversized = `{"token":"${'x'.repeat(1024 * 1024 + 64)}"}`
+
+  it('answers 413 on the unauthenticated login and token-bootstrap routes', async () => {
+    // Open proxy: the PUT is reachable with no credentials — the cap is what
+    // keeps an anonymous caller from buffering arbitrary data into memory.
+    const open = startServer()
+    running = open.server
+    const put = await fetch(`${open.base}/api/auth/token`, { method: 'PUT', body: oversized })
+    expect(put.status).toBe(413)
+    // Nothing was applied: the proxy is still open.
+    expect((await fetch(`${open.base}/api/cluster`)).status).toBe(200)
+    open.server.close()
+
+    const gated = startServer('sekrit')
+    running = gated.server
+    const login = await fetch(`${gated.base}/api/login`, { method: 'POST', body: oversized })
+    expect(login.status).toBe(413)
+  })
+
+  it('caps chunked transfers, which carry no Content-Length to pre-check', async () => {
+    const { server, base } = startServer('sekrit')
+    running = server
+
+    const port = Number(new URL(base).port)
+    const status = await new Promise<number>((resolve, reject) => {
+      const req = request(
+        { host: '127.0.0.1', port, path: '/api/login', method: 'POST' },
+        (res) => {
+          res.resume()
+          resolve(res.statusCode ?? 0)
+        },
+      )
+      // The server may tear the socket down as soon as it has answered —
+      // writes racing that teardown are expected, not a test failure.
+      req.on('error', reject)
+      const chunk = 'y'.repeat(64 * 1024)
+      let sent = 0
+      const writeMore = () => {
+        while (sent < 1024 * 1024 + 128 * 1024) {
+          sent += chunk.length
+          if (!req.write(chunk)) {
+            req.once('drain', writeMore)
+            return
+          }
+        }
+        req.end()
+      }
+      writeMore()
+    }).catch((err: unknown) => {
+      // An ECONNRESET/EPIPE here means the server cut the upload off — the
+      // cap worked; only a completed non-413 response is a real failure.
+      if ((err as NodeJS.ErrnoException).code === 'ECONNRESET' || (err as NodeJS.ErrnoException).code === 'EPIPE') {
+        return 413
+      }
+      throw err
+    })
+    expect(status).toBe(413)
   })
 })
 

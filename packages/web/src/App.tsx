@@ -19,13 +19,9 @@ import { SettingsOverlay } from './views/SettingsOverlay'
 import { getAuthStatus } from './data/auth'
 import { setUnauthorizedListener } from './data/http'
 import { loadPref, savePref } from './data/localPrefs'
+import { clampSidebarWidth, startSidebarDrag } from './sidebarResize'
 
 const LIVE_SOURCE_ID = '__live__'
-
-/** Wide enough for the share editors, never wider than half a typical screen. */
-function clampSidebarWidth(width: number): number {
-  return Math.min(640, Math.max(260, Math.round(width)))
-}
 
 type ViewId = 'graph' | 'overview' | 'table'
 
@@ -111,21 +107,9 @@ function App() {
   }
   const startSidebarResize = (event: React.PointerEvent) => {
     event.preventDefault()
-    const startX = event.clientX
-    const startWidth = sidebarWidth
-    let latest = startWidth
-    const onMove = (move: PointerEvent) => {
-      // The sidebar sits right of the divider, so dragging left widens it.
-      latest = clampSidebarWidth(startWidth + (startX - move.clientX))
-      setSidebarWidth(latest)
-    }
-    const onUp = () => {
-      window.removeEventListener('pointermove', onMove)
-      window.removeEventListener('pointerup', onUp)
-      savePref('sidebarWidth', latest)
-    }
-    window.addEventListener('pointermove', onMove)
-    window.addEventListener('pointerup', onUp)
+    startSidebarDrag(event.clientX, sidebarWidth, setSidebarWidth, (width) =>
+      savePref('sidebarWidth', width),
+    )
   }
   const resizeSidebarByKey = (event: React.KeyboardEvent) => {
     if (event.key === 'ArrowLeft') setAndSaveSidebarWidth(sidebarWidth + 16)

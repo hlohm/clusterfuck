@@ -452,6 +452,7 @@ button {
   flex-direction: column;
   gap: 24px;
   max-width: 1100px;
+  margin-inline: auto;
 }
 
 .kpi-row {
@@ -702,12 +703,13 @@ button {
 
 .table-view {
   padding: 20px;
+  max-width: 1100px;
+  margin-inline: auto;
 }
 
 .shares-table {
   border-collapse: collapse;
   width: 100%;
-  max-width: 1100px;
   font-size: 13px;
 }
 
