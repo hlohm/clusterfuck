@@ -230,6 +230,67 @@ describe('GUI token management (PUT /api/auth/token)', () => {
   })
 })
 
+describe('request body size cap', () => {
+  const oversized = `{"token":"${'x'.repeat(1024 * 1024 + 64)}"}`
+
+  it('answers 413 on the unauthenticated login and token-bootstrap routes', async () => {
+    // Open proxy: the PUT is reachable with no credentials — the cap is what
+    // keeps an anonymous caller from buffering arbitrary data into memory.
+    const open = startServer()
+    running = open.server
+    const put = await fetch(`${open.base}/api/auth/token`, { method: 'PUT', body: oversized })
+    expect(put.status).toBe(413)
+    // Nothing was applied: the proxy is still open.
+    expect((await fetch(`${open.base}/api/cluster`)).status).toBe(200)
+    open.server.close()
+
+    const gated = startServer('sekrit')
+    running = gated.server
+    const login = await fetch(`${gated.base}/api/login`, { method: 'POST', body: oversized })
+    expect(login.status).toBe(413)
+  })
+
+  it('caps chunked transfers, which carry no Content-Length to pre-check', async () => {
+    const { server, base } = startServer('sekrit')
+    running = server
+
+    const port = Number(new URL(base).port)
+    const status = await new Promise<number>((resolve, reject) => {
+      const req = request(
+        { host: '127.0.0.1', port, path: '/api/login', method: 'POST' },
+        (res) => {
+          res.resume()
+          resolve(res.statusCode ?? 0)
+        },
+      )
+      // The server may tear the socket down as soon as it has answered —
+      // writes racing that teardown are expected, not a test failure.
+      req.on('error', reject)
+      const chunk = 'y'.repeat(64 * 1024)
+      let sent = 0
+      const writeMore = () => {
+        while (sent < 1024 * 1024 + 128 * 1024) {
+          sent += chunk.length
+          if (!req.write(chunk)) {
+            req.once('drain', writeMore)
+            return
+          }
+        }
+        req.end()
+      }
+      writeMore()
+    }).catch((err: unknown) => {
+      // An ECONNRESET/EPIPE here means the server cut the upload off — the
+      // cap worked; only a completed non-413 response is a real failure.
+      if ((err as NodeJS.ErrnoException).code === 'ECONNRESET' || (err as NodeJS.ErrnoException).code === 'EPIPE') {
+        return 413
+      }
+      throw err
+    })
+    expect(status).toBe(413)
+  })
+})
+
 describe('static SPA serving', () => {
   function makeWebRoot(): string {
     const root = mkdtempSync(join(tmpdir(), 'cf-web-'))
