@@ -4,6 +4,17 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.4.36]
+
+- Roadmap: the **Syncthing 2.x support** decision is settled — per-node
+  version detection (owner, 2026-07-11; the live cluster is already mixed
+  1.x/2.x) — and the leg is itemized in `ROADMAP.md`, shipping as 0.5.0:
+  per-node version in the model/UI, 2.x response-shape compatibility tests
+  (with the researched endpoint deltas recorded), and a major-version gate
+  for the upgrade sweep (which today would silently jump 1.x→2.x). A
+  **review & live-cluster hardening** leg follows 0.5, starting with a
+  safe-testing strategy to be devised with the owner. Phase 6 stays parked.
+
 ## [0.4.35]
 
 - Post-review polish, three small items:

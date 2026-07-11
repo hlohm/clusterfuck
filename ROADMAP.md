@@ -4,11 +4,12 @@ The plan is phased and each phase is independently shippable. We don't start
 management until the visualization reads cleanly, and we don't chase
 cluster-wide parity until per-node actions are proven safe.
 
-**Status:** Phases 1–4 are done. Phase 5's four feature sections (folder
-management, device management, cluster operations, observability) are
-**complete**; what remains of Phase 5 is its foundations — auth on the proxy
-and Syncthing 2.x support — both flagged decisions to settle before building
-(and auth is the hard gate for 1.0 and Phase 6).
+**Status:** Phases 1–5 and the pre-1.0 UI refinement leg are done, auth
+included (shipped 0.4.22, GUI-managed 0.4.28). The last foundation —
+**Syncthing 2.x support** — is decided (per-node version detection; owner,
+2026-07-11) and itemized as its own leg below, shipping as **0.5.0**. A
+review & live-cluster hardening pass follows 0.5 before 1.0. Phase 6
+(multi-cluster + multi-user, 2.0) stays parked.
 
 Legend: `[x]` shipped · `[ ]` not yet · **(next)** = prioritized for the next
 iteration.
@@ -260,7 +261,9 @@ tabs. Mapped from the GUI's actual surface, in priority order.
       signs out. The GUI can never *disable* auth (that needs removing the
       auth file + restarting the proxy, out-of-band), so a hijacked session
       can't reopen the door
-- [ ] Syncthing 2.x REST support (currently targets 1.x)
+- [ ] Syncthing 2.x REST support — **decision settled** (per-node version
+      detection; owner, 2026-07-11), itemized as its own leg below and
+      shipping as 0.5.0
 
 ## UI design refinement (pre-1.0)
 
@@ -283,6 +286,60 @@ items don't absorb ad-hoc UI changes.
       added in later builds (they slot into their default position), and
       moves skip over currently-empty sections so they never look like
       no-ops. Layout logic is pure and unit-tested (`sectionLayout.ts`).
+
+## Syncthing 2.x support (0.5.0) **(next)**
+
+The last Phase 5 foundation. **Decision settled (owner, 2026-07-11):
+per-node version detection** — the owner's live cluster is already mixed
+1.x/2.x, so the proxy adapts to each node's actual version instead of
+assuming one cluster-wide. Completing this leg ships as **0.5.0**.
+
+What actually differs (researched 2026-07-11 against the official docs repo
+diffed across the 2.0 release boundary, and the v2.0.0 release notes — the
+REST subset this proxy consumes is largely stable across 2.0):
+
+- `/rest/system/connections` no longer lists the local device itself, and
+  connection `type` strings changed format back in 1.25 (`tcp-client` vs
+  `TCP (Client)`). We read neither today; tests must pin that.
+- `/rest/db/status` deprecates `invalid` and `version` (both unused here)
+  and its `errors` field may be absent — already tolerated by the
+  `pullErrors ?? errors ?? folder-errors-length` fallback chain, needs a
+  2.x-shape test.
+- The config schema dropped `weakHashThresholdPct`, `disableTempIndexes`,
+  `databaseTuning` and `gui.debugging`; 2.1 adds `folder.group`. Our config
+  writes are GET-modify-PUT round-trips that never invent fields, so absent
+  fields pass through — needs 2.x-shape tests.
+- The legacy `/rest/system/config` endpoint and the debug endpoints are
+  gone in 2.x (this proxy never used either).
+- On a 1.x node the upgrade check can now offer a 2.x release as `latest`
+  with `majorNewer: true` — and the upgrade sweep currently ignores that
+  flag, so "Upgrade all" would silently jump a node across the major.
+
+- [ ] Per-node version surfaced first-class: the model carries each
+      registered node's Syncthing version (+ parsed major) from the probe
+      the snapshot already does; shown in the UI where nodes appear;
+      fixtures gain a mixed 1.x/2.x cluster and the coverage test enforces
+      the field.
+- [ ] 2.x response-shape compatibility: per-endpoint tests feeding
+      2.x-shaped responses (connections without the self entry, db/status
+      without `errors`, config without the removed fields) through
+      snapshot/aggregate; fix anything that assumed 1.x shapes; per-endpoint
+      compat notes in `syncthing/types.ts`.
+- [ ] The upgrade sweep never crosses a major version silently:
+      `majorNewer`-only nodes are reported as such and skipped by the
+      normal sweep; a major upgrade is its own explicitly-confirmed action
+      (mirroring Syncthing's own GUI treating majors specially).
+- [ ] Docs: README/HOW-IT-WORKS supported-versions story; CHANGELOG 0.5.0
+      milestone entry.
+
+## Review & live-cluster hardening (post-0.5)
+
+An extensive review-and-refinement pass follows 0.5, validating the whole
+surface against the owner's real, mixed-version cluster (owner, 2026-07-11).
+**First open item: devise the safe-testing strategy** before any live
+testing — e.g. a read-only soak first, then mutations against a sacrificial
+folder/node only, defined rollback paths, and an explicit definition of
+done. Deliberately not scoped further until 0.5 has shipped.
 
 ## Phase 6 — Multi-cluster + multi-user (2.0, parked)
 

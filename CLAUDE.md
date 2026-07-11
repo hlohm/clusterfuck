@@ -15,14 +15,14 @@ the API keys; the browser never sees a key.
 
 ## Current state
 
-Phases 1–4 are **shipped** (fixtures → live read-only → per-node management →
-multi-view visual refresh), and Phase 5 (cluster-wide Syncthing-GUI parity)
-is complete except one foundation: **Syncthing 2.x support**, still a flagged
-decision awaiting the owner's call (proxy auth shipped in 0.4.22 — opt-in
-token — and became fully GUI-managed in 0.4.28: initialise/rotate/generate
-from a Settings overlay, token persisted in a gitignored `auth.json`, with
-`CLUSTERFUCK_TOKEN` still authoritative when set). A pre-1.0 UI-refinement
-pass is queued in the roadmap. `ROADMAP.md` is the authoritative, itemized status — check it (and
+Phases 1–5 and the pre-1.0 UI-refinement pass are **shipped** (fixtures →
+live read-only → per-node management → multi-view visual refresh →
+cluster-wide Syncthing-GUI parity, proxy auth included: opt-in token since
+0.4.22, fully GUI-managed since 0.4.28 with `CLUSTERFUCK_TOKEN` still
+authoritative when set). The last foundation, **Syncthing 2.x support**, is
+decided — per-node version detection (owner, 2026-07-11) — and is the
+current leg, shipping as 0.5.0; a review & live-cluster hardening pass
+follows before 1.0. `ROADMAP.md` is the authoritative, itemized status — check it (and
 the current version in the root `package.json`) before assuming what exists.
 The monorepo is three workspace packages: `packages/shared` (the normalized
 model + pure logic), `packages/proxy` (Node/TS backend), `packages/web`
