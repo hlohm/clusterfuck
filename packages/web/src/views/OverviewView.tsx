@@ -38,6 +38,7 @@ import {
   EMPTY_LAYOUT,
   moveSection,
   normalizeOrder,
+  pruneCollapsed,
   toggleCollapsed,
   type SectionLayout,
 } from './sectionLayout'
@@ -895,8 +896,12 @@ export function OverviewView({ cluster, onOpenShare, isLive }: OverviewViewProps
   // keeps its slot in the order but renders nothing.
   const [layout, setLayout] = useState<SectionLayout>(() => loadPref('overviewLayout', EMPTY_LAYOUT))
   const updateLayout = (next: SectionLayout) => {
-    setLayout(next)
-    savePref('overviewLayout', next)
+    // `sections` is defined below but only read at call time (from render
+    // callbacks). Pruning on every save keeps ids of sections removed in a
+    // later build from accumulating in the persisted layout.
+    const pruned = { ...next, collapsed: pruneCollapsed(next.collapsed, sections.map((s) => s.id)) }
+    setLayout(pruned)
+    savePref('overviewLayout', pruned)
   }
 
   const sections: { id: string; title: string; content: ReactNode | null }[] = [

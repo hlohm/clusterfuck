@@ -42,6 +42,11 @@ describe('shared http helpers', () => {
     expect(onUnauthorized).not.toHaveBeenCalled()
   })
 
+  it('tolerates an empty success body instead of throwing on JSON parse', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 204 })))
+    await expect(call('DELETE', '/api/x')).resolves.toBeUndefined()
+  })
+
   it('notifyUnauthorized lets non-fetch callers (the SSE probe) trigger the same hook', () => {
     const onUnauthorized = vi.fn()
     setUnauthorizedListener(onUnauthorized)

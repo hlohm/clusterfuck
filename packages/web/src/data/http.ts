@@ -44,7 +44,10 @@ export async function callJson<T>(method: string, path: string, body?: unknown):
     body: body !== undefined ? JSON.stringify(body) : undefined,
   })
   if (!res.ok) await handleFailure(method, path, res)
-  return (await res.json()) as T
+  // Tolerate an empty success body (a future 204-style route): a mutation
+  // that succeeded must never throw on the way out of the fetch layer.
+  const text = await res.text()
+  return (text === '' ? undefined : (JSON.parse(text) as T)) as T
 }
 
 /** GET variant of `call` for the routes that return data, not just `{ ok }`. */

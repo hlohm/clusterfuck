@@ -4,6 +4,18 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.4.35]
+
+- Post-review polish, three small items:
+  - The Settings overlay's env-managed token reveal has a **Hide** button
+    again (the file-managed branch already did) — once shown, the token no
+    longer stays on screen until the dialog closes.
+  - The fetch layer tolerates an empty success body instead of throwing on
+    JSON parse — defuses a latent trap for any future 204-style route.
+  - Collapsed-section ids in the persisted Overview layout are pruned
+    against the live section list on save, so sections removed in a later
+    build don't accumulate in localStorage forever.
+
 ## [0.4.30]
 
 - **Fixed: the graph detail panel's "Show QR" button duplicated as you

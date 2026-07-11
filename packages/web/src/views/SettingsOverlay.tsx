@@ -207,6 +207,12 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
                     <>
                       <code className="access-token">{revealed}</code>
                       <CopyButton text={revealed} />
+                      <button
+                        className="detail-panel__link-button"
+                        onClick={() => setRevealed(undefined)}
+                      >
+                        Hide
+                      </button>
                     </>
                   ) : (
                     <button
