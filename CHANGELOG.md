@@ -4,6 +4,13 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.4.31]
+
+- Overview and Table views are horizontally centered (`margin-inline: auto`
+  on their max-width containers) instead of hugging the left edge on wide
+  windows. The table keeps its 1100px cap — it moved from the table element
+  to the `.table-view` container so the whole view centers as one block.
+
 ## [0.4.30]
 
 - **Fixed: the graph detail panel's "Show QR" button duplicated as you
