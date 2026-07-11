@@ -4,6 +4,15 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.4.33]
+
+- **Request bodies are capped at 1 MiB** (413 beyond it). The proxy buffered
+  JSON bodies without a limit, and two body-reading routes are reachable
+  without credentials (`POST /api/login`, and `PUT /api/auth/token` on a
+  still-open proxy) — so anyone who could reach the port could stream
+  arbitrary data into proxy memory. Oversize declared lengths are rejected
+  before reading; chunked transfers are cut off at the cap mid-stream.
+
 ## [0.4.30]
 
 - **Fixed: the graph detail panel's "Show QR" button duplicated as you
