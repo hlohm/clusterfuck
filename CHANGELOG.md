@@ -4,6 +4,16 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.5.7]
+
+- **Docs: [docs/READONLY-SOAK.md](docs/READONLY-SOAK.md)** (hardening
+  Tier 2 procedure): running the proxy against the real cluster under
+  `CLUSTERFUCK_READONLY=1` — verify the lock before trusting it — for 5+
+  days spanning a sync burst, a node restart, and an outage; what to
+  actually watch (app-vs-Syncthing-GUI correctness, event liveness and SSE
+  reconnects, zero unexplained proxy errors, flat memory), how findings
+  are logged, and what "done" means before Tier 3 may start.
+
 ## [0.5.6]
 
 - **`dev-cluster/` — a throwaway Syncthing cluster** (hardening Tier 1):
