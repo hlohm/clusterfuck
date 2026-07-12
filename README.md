@@ -12,7 +12,9 @@ sync setup — and its important options — is legible at a glance, and lets yo
 manage devices and folders across every node from one place.
 
 > **⚠️ DISCLAIMER ⚠️ 100% AI-GENERATED CODE ⚠️ USE AT YOUR OWN RISK ⚠️**
+>
 > [BEGINHUMAN]
+>
 > These lines are the only thing in this repo actually written by a human.
 > Since this starts to look like something that might actually get useful for
 > someone eventually, I felt I owe the courtesy. That's pretty much where my
@@ -31,6 +33,7 @@ manage devices and folders across every node from one place.
 > TL;DR:
 > 
 > [ENDHUMAN]
+> 
 > ⚠️ **100% vibe coded by an amateur, use at your own peril!** This is a
 > hobby project built fast with an AI coding agent. It talks to your
 > Syncthing nodes' REST APIs and can mutate their config. Read the security
