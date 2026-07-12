@@ -113,6 +113,70 @@ describe('fetchNodeSnapshot systemStatus derivation', () => {
   })
 })
 
+describe('fetchNodeSnapshot Syncthing 1.x/2.x response shapes', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it("excludes 1.x's not-connected self entry from connections, matching the 2.x shape", async () => {
+    const client = installClient(
+      {},
+      {
+        // 1.x includes the local device itself; it must not become a
+        // connection row or a "not connected" vote on the node's own state.
+        'DEVICE-A': { connected: false, paused: false, inBytesTotal: 0, outBytesTotal: 0 },
+        'DEVICE-B': { connected: true, paused: false, inBytesTotal: 5, outBytesTotal: 6 },
+      },
+    )
+    const snap = await fetchNodeSnapshot(client, 'st-a')
+
+    expect(Object.keys(snap.connections)).toEqual(['DEVICE-B'])
+    expect(snap.connections['DEVICE-B']).toEqual({
+      connected: true,
+      paused: false,
+      inBytesTotal: 5,
+      outBytesTotal: 6,
+    })
+  })
+
+  it('handles a 2.x db/status that reports pullErrors and omits the errors field', async () => {
+    const fetchMock = vi.fn(async (input: string | URL) => {
+      const url = new URL(input)
+      if (url.pathname === '/rest/system/status') {
+        return jsonResponse({ myID: 'DEVICE-A', uptime: 1, alloc: 1, connectionServiceStatus: {}, discoveryStatus: {} })
+      }
+      if (url.pathname === '/rest/system/version') return jsonResponse({ version: 'v2.0.4' })
+      if (url.pathname === '/rest/config') {
+        return jsonResponse({
+          devices: [],
+          folders: [
+            { id: 'f1', label: 'F1', type: 'sendreceive', paused: false, devices: [{ deviceID: 'DEVICE-A' }] },
+          ],
+        })
+      }
+      if (url.pathname === '/rest/system/connections') return jsonResponse({ connections: {} })
+      if (url.pathname === '/rest/db/status') {
+        // 2.x shape: pullErrors present, the old `errors` count absent.
+        return jsonResponse({ state: 'idle', needFiles: 2, needItems: 2, globalFiles: 10, pullErrors: 3 })
+      }
+      if (url.pathname === '/rest/folder/errors') return jsonResponse({ folder: 'f1', errors: [] })
+      if (url.pathname === '/rest/cluster/pending/devices' || url.pathname === '/rest/cluster/pending/folders') {
+        return jsonResponse({})
+      }
+      throw new Error(`unexpected fetch in snapshot test: ${url.href}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const client = new SyncthingClient({ id: 'st-a', url: 'http://a.test', apiKey: 'ka' })
+
+    const snap = await fetchNodeSnapshot(client, 'st-a')
+
+    expect(snap.systemStatus.version).toBe('v2.0.4')
+    expect(snap.folders[0]!.failedItems).toBe(3)
+    expect(snap.folders[0]!.outOfSyncItems).toBe(2)
+    expect(snap.folders[0]!.state).toBe('out-of-sync')
+  })
+})
+
 describe('fetchNodeSnapshot versioning', () => {
   afterEach(() => {
     vi.unstubAllGlobals()

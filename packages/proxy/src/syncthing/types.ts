@@ -1,8 +1,13 @@
-// Subset of the Syncthing 1.x REST API response shapes actually consumed by
-// the proxy. Not exhaustive — extend as new fields are needed. See
-// https://docs.syncthing.net/dev/rest.html. Syncthing 2.x renames/reshapes
-// some of these; this proxy targets 1.x until we know which version is
-// actually deployed.
+// Subset of the Syncthing REST API response shapes actually consumed by the
+// proxy. Not exhaustive — extend as new fields are needed. See
+// https://docs.syncthing.net/dev/rest.html.
+//
+// Version compatibility (ROADMAP "Syncthing 2.x support"): this subset was
+// checked against both 1.x and 2.x by diffing the official docs across the
+// 2.0 release boundary (2026-07). The shapes below hold for both majors;
+// where the majors differ, the field carries an inline note. 2.x removed the
+// legacy /rest/system/config and /rest/system/debug endpoints — this proxy
+// never used either.
 
 export interface SystemStatusResponse {
   myID: string
@@ -83,6 +88,13 @@ export interface ConfigFolderVersioning {
   fsType?: string
 }
 
+/**
+ * Config writes are GET-modify-PUT round-trips of the full object Syncthing
+ * returned, so fields this type doesn't model pass through untouched — that
+ * includes fields one major has and the other doesn't (2.0 dropped
+ * `weakHashThresholdPct`/`disableTempIndexes`; 2.1 added `folder.group`).
+ * Never construct one of these from scratch for an existing folder.
+ */
 export interface ConfigFolder {
   id: string
   label: string
@@ -120,6 +132,14 @@ export interface ConnectionInfo {
   outBytesTotal: number
 }
 
+/**
+ * GET /rest/system/connections, keyed by device ID. On 1.x the local device
+ * itself appears as a permanently not-connected entry; 2.x dropped it —
+ * fetchNodeSnapshot filters it out so both majors normalize to the 2.x
+ * shape. Entries also carry a `type` string whose format changed in 1.25
+ * (`tcp-client` vs `TCP (Client)`); deliberately not modeled — nothing here
+ * may depend on it without version-aware parsing.
+ */
 export interface ConnectionsResponse {
   connections: Record<string, ConnectionInfo>
 }
@@ -149,8 +169,9 @@ export interface DbStatusResponse {
   needFiles: number
   needItems: number
   globalFiles: number
-  errors: number
-  /** Count of items the last pull failed on — newer Syncthings report it here; older ones only in `errors`. */
+  /** Older 1.x reports the failed-pull count here; may be absent on 2.x. Prefer `pullErrors`. */
+  errors?: number
+  /** Count of items the last pull failed on — newer Syncthings (and all 2.x) report it here. */
   pullErrors?: number
 }
 
