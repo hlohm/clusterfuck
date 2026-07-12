@@ -4,6 +4,12 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.5.4]
+
+- The detail panel's "Show QR" toggle aligns with the content column (and
+  the Copy button above it) instead of hanging 8px indented — the link-
+  button style's left margin is meant for inline use after text.
+
 ## [0.5.3]
 
 - **Theme toggle in the header** (owner request): a button next to ⚙ cycles
