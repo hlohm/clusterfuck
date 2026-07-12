@@ -4,6 +4,16 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.5.3]
+
+- **Theme toggle in the header** (owner request): a button next to ⚙ cycles
+  **auto** (follow the OS — the previous and default behavior) → **light** →
+  **dark**, persisted per browser. Under the hood every themed CSS variable
+  now goes through `light-dark()` driven by one `color-scheme` declaration —
+  the same mechanism the encoding palette already used — so the manual
+  override is a single `data-theme` attribute and the old duplicated
+  dark-mode variable block is gone entirely.
+
 ## [0.5.2]
 
 - **`CLUSTERFUCK_READONLY=1` — read-only proxy mode** (hardening Tier 2's
