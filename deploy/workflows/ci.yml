@@ -1,0 +1,25 @@
+# The same four gates CLAUDE.md requires before every commit, enforced
+# server-side on every PR and push to main. The install-leg workflows
+# (Docker image, release tarball) build on top of a repo that has this.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4 # reads the pinned version from packageManager
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm test
+      - run: pnpm build

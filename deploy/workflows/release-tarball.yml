@@ -1,0 +1,27 @@
+# Builds the no-Docker install artifact (web pre-built, Node 24 the only
+# requirement) and attaches it to the GitHub release for the tag.
+# Parked — see README.md in this directory for how to activate.
+name: Release tarball
+
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  tarball:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: scripts/make-release-tarball.sh
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist-release/clusterfuck-*.tar.gz
+          generate_release_notes: true

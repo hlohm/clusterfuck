@@ -4,6 +4,17 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.5.10]
+
+- **CI/publish workflows, parked** (`deploy/workflows/`): three complete
+  GitHub Actions workflows — the four gates on every PR/push (`ci.yml`),
+  GHCR image publish on version tags (`docker-publish.yml`), and the
+  release tarball on version tags (`release-tarball.yml`). Parked rather
+  than live because the repo's PAT lacks the `workflow` scope, so the
+  agent cannot push into `.github/workflows/` — the directory README
+  explains the two ways to activate them (grant the scope, or
+  `git mv` + merge yourself).
+
 ## [0.5.9]
 
 - **Docs: [docs/HARDENING-RUNBOOK.md](docs/HARDENING-RUNBOOK.md)** — the
