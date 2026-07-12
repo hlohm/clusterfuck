@@ -1,2 +1,6 @@
 packages:
   - "packages/**"
+  # Deliberately outside the workspace: its Electron devDependency is a
+  # ~100MB download that normal dev/CI installs must not pay for. It has
+  # its own lockfile and is installed/built on demand (see its README).
+  - "!packages/desktop"

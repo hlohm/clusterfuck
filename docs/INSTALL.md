@@ -59,8 +59,12 @@ untouched.
 
 See the README's Quick start — `pnpm install && pnpm dev`.
 
-## Desktop app (planned)
+## Desktop app (Electron)
 
-An Electron bundle — double-click app that runs the proxy and opens the UI
-in its own window, aimed at the low-friction Windows case — is on the
-roadmap ("Easier installation"). Not built yet.
+A double-click app — the same proxy running inside Electron, the UI in its
+own window, state in the OS per-user app dir. Aimed at the low-friction
+Windows case (installer + portable exe); macOS/Linux come out of the same
+build. Build it locally per `packages/desktop/README.md` (`npm install &&
+npm run dist` in that directory); prebuilt installers attach to releases
+once the parked CI workflows are activated. Unsigned binaries — expect a
+SmartScreen/Gatekeeper warning until code-signing lands (post-1.0).

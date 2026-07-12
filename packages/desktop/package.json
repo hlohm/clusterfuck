@@ -1,0 +1,36 @@
+{
+  "name": "@clusterfuck/desktop",
+  "private": true,
+  "version": "0.5.12",
+  "description": "clusterfuck as a desktop app: the proxy in Electron's main process, the UI in a window",
+  "main": "main.cjs",
+  "scripts": {
+    "build:proxy": "esbuild ../proxy/src/index.ts --bundle --platform=node --format=esm --alias:@clusterfuck/shared=../shared/src/index.ts --outfile=dist/proxy.mjs",
+    "build:web": "cd ../.. && pnpm --filter @clusterfuck/web build",
+    "build": "npm run build:proxy && npm run build:web && node copy-web.mjs",
+    "start": "npm run build && electron .",
+    "dist": "npm run build && electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^38.4.0",
+    "electron-builder": "^26.0.12",
+    "esbuild": "^0.25.12"
+  },
+  "build": {
+    "appId": "dev.clusterfuck.app",
+    "productName": "clusterfuck",
+    "files": ["main.cjs", "dist/**"],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": ["nsis", "portable"]
+    },
+    "mac": {
+      "target": ["dmg"]
+    },
+    "linux": {
+      "target": ["AppImage"]
+    }
+  }
+}

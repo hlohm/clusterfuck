@@ -1,0 +1,7 @@
+node_modules/
+dist/
+release/
+# No lockfile committed yet: generating one means downloading Electron,
+# which the agent's environment can't justify — first `npm install` on a
+# real machine should commit the resulting package-lock.json.
+package-lock.json

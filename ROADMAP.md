@@ -415,7 +415,7 @@ and deliberately skipped (name/ongoing-surface concerns).
       as above. First-run fix that fell out: a missing `cluster.json` now
       starts an empty registry (the Register-node UI bootstraps it)
       instead of crash-looping every packaged install.
-- [ ] **Desktop app (Electron)** — decision settled (owner, 2026-07-12:
+- [x] **Desktop app (Electron)** — decision settled (owner, 2026-07-12:
       an "electron-like bundle" — and actual Electron over Tauri, since
       the proxy is Node and runs in Electron's main process directly,
       where Tauri would force compiling it into a sidecar binary). One
@@ -423,7 +423,11 @@ and deliberately skipped (name/ongoing-surface concerns).
       UI. Covers the low-friction Windows case (installer + portable exe;
       macOS/Linux as byproducts of the same build). Known caveat to
       accept: unsigned binaries trip SmartScreen; code-signing is out of
-      scope pre-1.0.
+      scope pre-1.0. Shipped as `packages/desktop` (outside the pnpm
+      workspace so the Electron download never taxes normal installs;
+      proxy esbuild-bundled to one ESM file, boot-verified). Remaining:
+      first `npm start` on a real desktop (Electron can't run in the
+      authoring sandbox) + committing the package-lock it produces.
 
 ## Phase 6 — Multi-cluster + multi-user (2.0, parked)
 
