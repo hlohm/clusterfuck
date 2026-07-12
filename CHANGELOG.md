@@ -4,6 +4,16 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.5.2]
+
+- **`CLUSTERFUCK_READONLY=1` — read-only proxy mode** (hardening Tier 2's
+  foundation, and a dashboard deployment mode in general): every mutating
+  `/api` route answers 403 at the gate, before routing — the instance
+  provably cannot change the cluster, which is the precondition for the
+  read-only soak against the real cluster. The login/logout handshake stays
+  available (signing in to look is the point); token rotation is blocked
+  too — a read-only instance is fully immutable.
+
 ## [0.5.1]
 
 - Roadmap: the **live-cluster safe-testing strategy is agreed** (owner,

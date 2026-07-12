@@ -28,6 +28,12 @@ pnpm dev
 
 Listens on `PORT` (default `4000`).
 
+Set `CLUSTERFUCK_READONLY=1` for a **read-only instance**: every mutating
+`/api` route answers 403 at the gate (login/logout still work — signing in
+to look is the point). For dashboard-style deployments, and for provably
+safe soaks against a cluster you must not touch. Token rotation is blocked
+too; manage the token via `CLUSTERFUCK_TOKEN` or a normal instance.
+
 ## Auth
 
 (Plain-language explainer: [docs/HOW-AUTH-WORKS.md](../../docs/HOW-AUTH-WORKS.md).)
