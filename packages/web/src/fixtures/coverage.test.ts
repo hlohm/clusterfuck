@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { detectDrift, validateCluster } from '@clusterfuck/shared'
+import { detectDrift, syncthingMajors, validateCluster } from '@clusterfuck/shared'
 import type { DeviceState, FolderState, FolderType } from '@clusterfuck/shared'
 import { FIXTURE_CLUSTERS } from './index'
 
@@ -80,6 +80,14 @@ describe('fixture clusters', () => {
     const findings = FIXTURE_CLUSTERS.flatMap(detectDrift)
     expect(findings.some((f) => f.severity === 'warning')).toBe(true)
     expect(findings.some((f) => f.severity === 'info')).toBe(true)
+  })
+
+  it('include a cluster with mixed Syncthing majors, so mid-migration rendering is explorable', () => {
+    // ROADMAP "Syncthing 2.x support": per-node detection exists because a
+    // cluster is temporarily mixed 1.x/2.x during a rolling upgrade — a
+    // fixture must keep the mixed-major hint and version chips reachable.
+    const hasMixed = FIXTURE_CLUSTERS.some((c) => syncthingMajors(c).length > 1)
+    expect(hasMixed).toBe(true)
   })
 
   it('include at least one receiveencrypted share', () => {

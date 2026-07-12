@@ -6,8 +6,10 @@ import {
   deviceTransferTotals,
   folderHealth,
   folderHealthForDevice,
+  parseSyncthingMajor,
   sharesByDevice,
   sharesByFolder,
+  syncthingMajors,
 } from './derive.ts'
 import type { ClusterModel } from './types.ts'
 
@@ -158,5 +160,40 @@ describe('clusterTransferTotals', () => {
     // (see Connection's doc comment), so the cluster total isn't halved or
     // deduplicated down to "one link's worth".
     expect(clusterTransferTotals(cluster())).toEqual({ inBytesTotal: 1500, outBytesTotal: 2250 })
+  })
+})
+
+describe('parseSyncthingMajor', () => {
+  it('parses release, pre-release, and unprefixed version strings', () => {
+    expect(parseSyncthingMajor('v1.29.2')).toBe(1)
+    expect(parseSyncthingMajor('v2.0.5')).toBe(2)
+    expect(parseSyncthingMajor('v2.0.0-rc.1')).toBe(2)
+    expect(parseSyncthingMajor('2.1.0')).toBe(2)
+  })
+
+  it('is undefined for garbage and the empty probe-failed string', () => {
+    expect(parseSyncthingMajor('')).toBeUndefined()
+    expect(parseSyncthingMajor('unknown')).toBeUndefined()
+    expect(parseSyncthingMajor('v2')).toBeUndefined()
+  })
+})
+
+describe('syncthingMajors', () => {
+  it('collects distinct majors ascending from nodes that report a version', () => {
+    const c = cluster()
+    const status = {
+      uptimeSeconds: 1,
+      ramBytes: 1,
+      listeners: { total: 0, ok: 0, errors: [] },
+      discovery: { total: 0, ok: 0, errors: [] },
+    }
+    c.devices[0]!.systemStatus = { ...status, version: 'v2.0.4' }
+    c.devices[1]!.systemStatus = { ...status, version: 'v1.29.2' }
+    expect(syncthingMajors(c)).toEqual([1, 2])
+
+    // A failed probe (empty version) contributes nothing.
+    c.devices[1]!.systemStatus = { ...status, version: '' }
+    expect(syncthingMajors(c)).toEqual([2])
+    expect(syncthingMajors(cluster())).toEqual([])
   })
 })

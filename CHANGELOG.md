@@ -4,6 +4,17 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.4.37]
+
+- **Per-node Syncthing versions are first-class in the UI** (ROADMAP
+  "Syncthing 2.x support", first item): each node card in the Overview shows
+  the version that node reports about itself (already carried in
+  `Device.systemStatus`), and when the cluster's managed nodes span more
+  than one major — normal mid-migration — the Nodes section says so
+  explicitly. New pure helpers `parseSyncthingMajor`/`syncthingMajors` in
+  `@clusterfuck/shared`; the edge-cases fixture is now a mixed 1.x/2.x
+  cluster and the coverage test enforces one exists.
+
 ## [0.4.36]
 
 - Roadmap: the **Syncthing 2.x support** decision is settled — per-node

@@ -37,8 +37,11 @@ export const edgeCases: ClusterModel = {
       managed: true,
       // A live systemStatus example with a failing listener — exercises the
       // "not everything is OK" rendering path, not just the all-healthy one.
+      // Deliberately Syncthing 2.x while origin reports 1.x: that makes this
+      // a mixed-major cluster (ROADMAP "Syncthing 2.x support"), keeping the
+      // mixed-cluster hint and per-node version chips explorable.
       systemStatus: {
-        version: 'v1.23.7',
+        version: 'v2.0.4',
         uptimeSeconds: 900,
         ramBytes: 41_200_000,
         listeners: { total: 3, ok: 2, errors: ['relay://relays.syncthing.net: dial tcp: connection refused'] },
