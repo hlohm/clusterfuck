@@ -1,0 +1,41 @@
+# Throwaway Syncthing cluster (hardening Tier 1 — see README.md here and
+# docs/HARDENING-RUNBOOK.md). Three disposable nodes, deliberately
+# mixed-major: st1 runs 1.x, st2/st3 run 2.x — the same shape as a real
+# cluster mid-migration.
+#
+# Only the GUI/API ports are published; the nodes sync with each other over
+# the compose network (local discovery works on the shared bridge).
+#
+# NOTE: these images ship with Syncthing's self-upgrade disabled, so the
+# upgrade-sweep rehearsal cannot run here — use a release-binary install on
+# the sacrificial node for that (see the runbook).
+services:
+  st1:
+    image: syncthing/syncthing:1.29
+    hostname: st1
+    environment:
+      - STGUIADDRESS=0.0.0.0:8384
+    ports:
+      - '127.0.0.1:18384:8384'
+    volumes:
+      - ./data/st1:/var/syncthing
+
+  st2:
+    image: syncthing/syncthing:2
+    hostname: st2
+    environment:
+      - STGUIADDRESS=0.0.0.0:8384
+    ports:
+      - '127.0.0.1:28384:8384'
+    volumes:
+      - ./data/st2:/var/syncthing
+
+  st3:
+    image: syncthing/syncthing:2
+    hostname: st3
+    environment:
+      - STGUIADDRESS=0.0.0.0:8384
+    ports:
+      - '127.0.0.1:38384:8384'
+    volumes:
+      - ./data/st3:/var/syncthing
