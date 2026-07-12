@@ -55,6 +55,50 @@ describe('executeUpgradeRun', () => {
     expect(order.slice(0, 2)).toEqual(['check A', 'check B'])
   })
 
+  it('reports a major-only upgrade and skips it without aborting the sweep', async () => {
+    // A 1.x node whose only available upgrade is 2.x: never installed by a
+    // normal sweep — and NOT a failure, so the sweep continues past it.
+    const a = target('A', {
+      upgradeCheck: vi
+        .fn()
+        .mockResolvedValue({ running: 'v1.29.2', latest: 'v2.0.4', newer: true, majorNewer: true }),
+    })
+    const b = target('B', {
+      upgradeCheck: vi
+        .fn()
+        .mockResolvedValue({ running: 'v1.0.0', latest: 'v1.1.0', newer: true, majorNewer: false }),
+      systemVersion: vi.fn().mockResolvedValue({ version: 'v1.1.0' }),
+    })
+
+    const run = newUpgradeRun([a, b])
+    await executeUpgradeRun(run, [a, b], OPTS)
+
+    expect(run.nodes[0]).toMatchObject({
+      nodeId: 'A',
+      status: 'major-available',
+      fromVersion: 'v1.29.2',
+      toVersion: 'v2.0.4',
+    })
+    expect(a.client.upgradePerform).not.toHaveBeenCalled()
+    expect(run.nodes[1]!.status).toBe('done')
+    expect(run.aborted).toBe(false)
+  })
+
+  it('crosses the major when the run was started with includeMajor', async () => {
+    const a = target('A', {
+      upgradeCheck: vi
+        .fn()
+        .mockResolvedValue({ running: 'v1.29.2', latest: 'v2.0.4', newer: true, majorNewer: true }),
+      systemVersion: vi.fn().mockResolvedValue({ version: 'v2.0.4' }),
+    })
+
+    const run = newUpgradeRun([a])
+    await executeUpgradeRun(run, [a], { ...OPTS, includeMajor: true })
+
+    expect(a.client.upgradePerform).toHaveBeenCalled()
+    expect(run.nodes[0]).toMatchObject({ nodeId: 'A', status: 'done', toVersion: 'v2.0.4' })
+  })
+
   it('tolerates the connection dropping while the upgrade restarts the node', async () => {
     const a = target('A', {
       upgradeCheck: vi.fn().mockResolvedValue({ running: 'v1.0.0', latest: 'v1.1.0', newer: true, majorNewer: false }),

@@ -257,10 +257,14 @@ hard 404s (the stale-proxy diagnostic). Override the directory with
   check, 5-minute default timeout) before the next node starts. A failure
   aborts the remaining nodes. Returns immediately; one run at a time (400
   if one is already in progress). Nodes not built with upgrade support
-  (distro packages) fail their step with Syncthing's own error.
+  (distro packages) fail their step with Syncthing's own error. A node whose
+  only available upgrade crosses a **major version** (1.x → 2.x) is reported
+  as `major-available` and skipped — send body `{ "includeMajor": true }`
+  to deliberately cross it (the UI confirms this separately).
 - `GET /api/upgrade` — the current/most recent run, mutating live:
   `{ "run": { "running": true, "aborted": false, "nodes": [{ "nodeId":
-  "...", "status": "pending|checking|up-to-date|upgrading|done|failed|skipped",
+  "...", "status":
+  "pending|checking|up-to-date|upgrading|done|failed|skipped|major-available",
   "fromVersion": "...", "toVersion": "...", "detail": "..." }] } }` (`run`
   is `null` before the first sweep; in-memory only, gone after a proxy
   restart).

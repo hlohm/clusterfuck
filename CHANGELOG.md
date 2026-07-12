@@ -4,6 +4,18 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.4.39]
+
+- **The upgrade sweep never crosses a Syncthing major silently** (ROADMAP
+  "Syncthing 2.x support", third item). On a 1.x node the upgrade check can
+  offer 2.x as `latest` — previously "Upgrade all nodes" would install it
+  like any other update. A node whose available upgrade crosses a major is
+  now reported as `major-available` and skipped (not a failure; the sweep
+  continues), and crossing it is its own deliberate path:
+  `POST /api/upgrade` body `{ "includeMajor": true }`, offered in the UI as
+  a separate danger-styled button (only after a sweep has reported a major)
+  with its own confirmation spelling out the 2.0 database migration.
+
 ## [0.4.38]
 
 - **Syncthing 2.x response-shape compatibility** (ROADMAP "Syncthing 2.x

@@ -315,17 +315,17 @@ REST subset this proxy consumes is largely stable across 2.0):
   with `majorNewer: true` — and the upgrade sweep currently ignores that
   flag, so "Upgrade all" would silently jump a node across the major.
 
-- [ ] Per-node version surfaced first-class: the model carries each
+- [x] Per-node version surfaced first-class: the model carries each
       registered node's Syncthing version (+ parsed major) from the probe
       the snapshot already does; shown in the UI where nodes appear;
       fixtures gain a mixed 1.x/2.x cluster and the coverage test enforces
       the field.
-- [ ] 2.x response-shape compatibility: per-endpoint tests feeding
+- [x] 2.x response-shape compatibility: per-endpoint tests feeding
       2.x-shaped responses (connections without the self entry, db/status
       without `errors`, config without the removed fields) through
       snapshot/aggregate; fix anything that assumed 1.x shapes; per-endpoint
       compat notes in `syncthing/types.ts`.
-- [ ] The upgrade sweep never crosses a major version silently:
+- [x] The upgrade sweep never crosses a major version silently:
       `majorNewer`-only nodes are reported as such and skipped by the
       normal sweep; a major upgrade is its own explicitly-confirmed action
       (mirroring Syncthing's own GUI treating majors specially).

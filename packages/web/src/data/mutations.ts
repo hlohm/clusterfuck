@@ -69,9 +69,15 @@ export function getUpgradeRun(): Promise<{ run: UpgradeRun | null }> {
   return getJson('/api/upgrade')
 }
 
-/** Starts an upgrade sweep: every registered node, one at a time, health-checked. Returns immediately. */
-export function startUpgradeAll(): Promise<void> {
-  return call('POST', '/api/upgrade')
+/**
+ * Starts an upgrade sweep: every registered node, one at a time,
+ * health-checked. Returns immediately. Without includeMajor a node whose
+ * only available upgrade crosses a major boundary (1.x → 2.x) is reported
+ * as major-available and skipped — crossing it is a separate, deliberately
+ * confirmed run.
+ */
+export function startUpgradeAll(includeMajor = false): Promise<void> {
+  return call('POST', '/api/upgrade', { includeMajor })
 }
 
 /** Restarts (or shuts down) one registered node's Syncthing. Shutdown does not come back on its own. */
