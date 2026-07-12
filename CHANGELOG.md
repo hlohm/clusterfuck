@@ -4,6 +4,18 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.5.6]
+
+- **`dev-cluster/` — a throwaway Syncthing cluster** (hardening Tier 1):
+  `docker compose` + `setup.sh` bring up three disposable nodes,
+  deliberately mixed-major (1.x + 2×2.x, the mid-migration shape), API keys
+  pinned to known dev values, GUIs on localhost only — then the cluster is
+  wired up *through the app itself*, which is the exercise. Doubles as a
+  permanent dev fixture. Discovered deviation, recorded in ROADMAP: the
+  official Syncthing images ship with self-upgrade disabled, so the
+  upgrade-sweep rehearsal (incl. the 1.x→2.x major path) moves to the
+  sacrificial node with a release-binary install.
+
 ## [0.5.5]
 
 - **Docs: [docs/BACKUP-AND-RESTORE.md](docs/BACKUP-AND-RESTORE.md)** —

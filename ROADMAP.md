@@ -355,14 +355,19 @@ already prove safe. Work the tiers in order.
 
 ### Tier 1 — throwaway cluster (every mutation, incl. the scary ones)
 
-- [ ] In-repo `docker compose` dev/test cluster: 2–3 disposable Syncthing
-      containers pre-wired as a cluster. Doubles as a permanent dev fixture
-      and as groundwork for the Docker install below.
+- [x] In-repo `docker compose` dev/test cluster (`dev-cluster/`): three
+      disposable Syncthing containers, deliberately mixed-major (1.x +
+      2×2.x), wired into a cluster *through the app itself*. Doubles as a
+      permanent dev fixture and as groundwork for the Docker install below.
 - [ ] Exercise **every mutation class** against it: folder CRUD, type
       changes, versioning, ignores, encryption passwords, device options,
-      pause/resume, restart/shutdown, bandwidth caps — and the **upgrade
-      sweep including a real 1.x → 2.x major upgrade** (start a container on
-      1.x, take the gated includeMajor path, watch the DB migration).
+      pause/resume, restart/shutdown, bandwidth caps (itemized as
+      checkboxes in `docs/HARDENING-RUNBOOK.md`).
+- [ ] **Upgrade-sweep rehearsal incl. the real 1.x → 2.x major path** — on
+      the **sacrificial node with a release-binary install**, not in the
+      compose cluster: the official Syncthing images ship with self-upgrade
+      disabled, so `POST /rest/system/upgrade` can't work there (deviation
+      from the original plan, discovered while building Tier 1).
 
 ### Tier 2 — read-only soak (real cluster, provably safe)
 

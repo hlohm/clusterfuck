@@ -1,0 +1,3 @@
+# Node state (configs, keys, synced data) is generated at first run and is
+# strictly throwaway — never committed.
+data/
