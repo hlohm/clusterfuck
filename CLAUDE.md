@@ -19,10 +19,12 @@ Phases 1–5 and the pre-1.0 UI-refinement pass are **shipped** (fixtures →
 live read-only → per-node management → multi-view visual refresh →
 cluster-wide Syncthing-GUI parity, proxy auth included: opt-in token since
 0.4.22, fully GUI-managed since 0.4.28 with `CLUSTERFUCK_TOKEN` still
-authoritative when set). The last foundation, **Syncthing 2.x support**, is
-decided — per-node version detection (owner, 2026-07-11) — and is the
-current leg, shipping as 0.5.0; a review & live-cluster hardening pass
-follows before 1.0. `ROADMAP.md` is the authoritative, itemized status — check it (and
+authoritative when set). **Syncthing 2.x support shipped as 0.5.0** —
+per-node version detection (owner, 2026-07-11): 1.x/2.x nodes mix freely,
+and the upgrade sweep never crosses a major without explicit opt-in. Current
+leg: review & live-cluster hardening (devise the safe-testing strategy with
+the owner first — never test against the live cluster without it), before
+1.0. `ROADMAP.md` is the authoritative, itemized status — check it (and
 the current version in the root `package.json`) before assuming what exists.
 The monorepo is three workspace packages: `packages/shared` (the normalized
 model + pure logic), `packages/proxy` (Node/TS backend), `packages/web`

@@ -87,7 +87,11 @@ Node's native type-stripping (no build step).
 - **Node.js 24+** (the proxy relies on native TypeScript stripping)
 - **pnpm** (`corepack enable`, or install per pnpm's docs — the repo pins a
   version via `packageManager`)
-- One or more reachable **Syncthing 1.x** nodes, each with its REST API key
+- One or more reachable **Syncthing 1.x or 2.x** nodes, each with its REST
+  API key — mixed-major clusters (normal mid-migration) are supported: the
+  proxy adapts per node, the UI shows each node's version and flags the mix,
+  and the cluster upgrade sweep never crosses a major version without an
+  explicit, separately-confirmed opt-in
 
 ## Quick start (local)
 

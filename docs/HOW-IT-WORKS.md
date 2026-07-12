@@ -101,6 +101,16 @@ and each is followed by a refresh so the UI reflects reality quickly. The
 proxy never invents higher-level operations — every button corresponds to
 something Syncthing itself can do, which keeps behavior predictable.
 
+**Syncthing versions.** Nodes may run Syncthing 1.x or 2.x, mixed in one
+cluster — which is the normal state mid-migration, since a rolling upgrade
+takes the cluster through it one node at a time. The proxy reads each node's
+own reported version and adapts per node rather than assuming one version
+cluster-wide; the UI shows every node's version and points out a mixed
+cluster. The one place a major version matters operationally is the cluster
+upgrade sweep: it never installs an upgrade that crosses a major boundary
+(say 1.x → 2.x, which migrates the node's database on first launch) unless
+you take the separate, explicitly-confirmed "include major" path.
+
 ### `packages/web` — the frontend
 
 A React single-page app: the server hands the browser one bundle of

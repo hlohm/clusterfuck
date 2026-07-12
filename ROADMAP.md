@@ -4,12 +4,12 @@ The plan is phased and each phase is independently shippable. We don't start
 management until the visualization reads cleanly, and we don't chase
 cluster-wide parity until per-node actions are proven safe.
 
-**Status:** Phases 1–5 and the pre-1.0 UI refinement leg are done, auth
-included (shipped 0.4.22, GUI-managed 0.4.28). The last foundation —
-**Syncthing 2.x support** — is decided (per-node version detection; owner,
-2026-07-11) and itemized as its own leg below, shipping as **0.5.0**. A
-review & live-cluster hardening pass follows 0.5 before 1.0. Phase 6
-(multi-cluster + multi-user, 2.0) stays parked.
+**Status:** Phases 1–5, the pre-1.0 UI refinement leg, and **Syncthing 2.x
+support** (per-node version detection; shipped as **0.5.0**) are done — every
+Phase 5 foundation included (auth: 0.4.22, GUI-managed 0.4.28). **(next)** is
+the review & live-cluster hardening leg, starting with devising its
+safe-testing strategy with the owner. Phase 6 (multi-cluster + multi-user,
+2.0) stays parked.
 
 Legend: `[x]` shipped · `[ ]` not yet · **(next)** = prioritized for the next
 iteration.
@@ -63,7 +63,8 @@ Real, live cluster state via the proxy. Read-only — no mutations.
   `disconnected`. Folder type/state/completion are known only first-hand from a
   device's own node; a device seen only as a remote peer still appears in the
   graph but gets no `Share` rows.
-- **Targets Syncthing 1.x's REST shape** — revisit for 2.x.
+- **Targets Syncthing 1.x's REST shape** — revisited 2026-07-12: the proxy
+  now supports 1.x and 2.x per node (see the Syncthing 2.x leg below).
 
 ## Phase 3 — Management ✅ (first slice)
 
@@ -287,7 +288,7 @@ items don't absorb ad-hoc UI changes.
       moves skip over currently-empty sections so they never look like
       no-ops. Layout logic is pure and unit-tested (`sectionLayout.ts`).
 
-## Syncthing 2.x support (0.5.0) **(next)**
+## Syncthing 2.x support (0.5.0) ✅
 
 The last Phase 5 foundation. **Decision settled (owner, 2026-07-11):
 per-node version detection** — the owner's live cluster is already mixed
@@ -329,7 +330,7 @@ REST subset this proxy consumes is largely stable across 2.0):
       `majorNewer`-only nodes are reported as such and skipped by the
       normal sweep; a major upgrade is its own explicitly-confirmed action
       (mirroring Syncthing's own GUI treating majors specially).
-- [ ] Docs: README/HOW-IT-WORKS supported-versions story; CHANGELOG 0.5.0
+- [x] Docs: README/HOW-IT-WORKS supported-versions story; CHANGELOG 0.5.0
       milestone entry.
 
 ## Review & live-cluster hardening (post-0.5)
@@ -339,7 +340,8 @@ surface against the owner's real, mixed-version cluster (owner, 2026-07-11).
 **First open item: devise the safe-testing strategy** before any live
 testing — e.g. a read-only soak first, then mutations against a sacrificial
 folder/node only, defined rollback paths, and an explicit definition of
-done. Deliberately not scoped further until 0.5 has shipped.
+done. **(next)** now that 0.5 has shipped; the strategy is worked out with
+the owner before anything touches the live cluster.
 
 ## Phase 6 — Multi-cluster + multi-user (2.0, parked)
 
