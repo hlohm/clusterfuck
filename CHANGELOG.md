@@ -4,6 +4,19 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.4.38]
+
+- **Syncthing 2.x response-shape compatibility** (ROADMAP "Syncthing 2.x
+  support", second item). Fixed while pinning shapes with tests: Syncthing
+  1.x lists the local device itself in `/rest/system/connections` as a
+  permanently not-connected entry, and the snapshot passed it through —
+  a false "not connected" vote on the node's own aggregated state and a
+  self-loop connection edge; both majors now normalize to the 2.x shape
+  (self entry dropped). `db/status`'s `errors` is optional (2.x omits it;
+  `pullErrors` preferred, as before). `syncthing/types.ts` now records
+  per-endpoint 1.x/2.x compat notes verified against the official docs
+  diffed across the 2.0 boundary, replacing its "targets 1.x" disclaimer.
+
 ## [0.4.37]
 
 - **Per-node Syncthing versions are first-class in the UI** (ROADMAP

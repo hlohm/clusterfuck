@@ -130,6 +130,12 @@ export async function fetchNodeSnapshot(
 
   const connections: NodeSnapshot['connections'] = {}
   for (const [deviceId, info] of Object.entries(connectionsRes.connections)) {
+    // Syncthing 1.x lists the local device itself as a permanently
+    // not-connected entry; 2.x dropped it. Normalize to the 2.x shape: the
+    // self entry is not a connection, and counting it would push a false
+    // "not connected" vote onto this node's own aggregated state and emit a
+    // self-loop connection edge.
+    if (deviceId === myID) continue
     connections[deviceId] = {
       connected: info.connected,
       paused: info.paused,
