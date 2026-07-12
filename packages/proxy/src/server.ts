@@ -406,13 +406,21 @@ async function handleRequest(
     // GET /api/upgrade — the current/most recent upgrade sweep (null before
     // the first). POST /api/upgrade — start a sweep: every registered node,
     // one at a time, health-checked; returns immediately, poll the GET.
+    // Body `{ includeMajor: true }` lets the sweep cross a major version
+    // boundary (1.x → 2.x); without it, major-only upgrades are reported
+    // as `major-available` and skipped.
     if (parts.length === 2 && parts[0] === 'api' && parts[1] === 'upgrade') {
       if (method === 'GET') {
         sendJson(res, 200, { run: manager.getUpgradeRun() ?? null })
         return
       }
       if (method === 'POST') {
-        sendJson(res, 200, { run: manager.startUpgradeAll() })
+        const body = (await readJsonBody(req)) as { includeMajor?: unknown } | undefined
+        if (body?.includeMajor !== undefined && typeof body.includeMajor !== 'boolean') {
+          sendJson(res, 400, { error: 'includeMajor must be a boolean' })
+          return
+        }
+        sendJson(res, 200, { run: manager.startUpgradeAll({ includeMajor: body?.includeMajor === true }) })
         return
       }
     }

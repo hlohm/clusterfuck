@@ -343,6 +343,7 @@ const UPGRADE_STATUS_LABELS: Record<UpgradeNodeStatus, string> = {
   done: 'upgraded',
   failed: 'FAILED',
   skipped: 'skipped',
+  'major-available': 'major upgrade available',
 }
 
 /**
@@ -392,6 +393,25 @@ function UpgradeSection({ cluster }: { cluster: ClusterModel }) {
             >
               {run?.running ? 'Upgrade in progress…' : 'Upgrade all nodes'}
             </button>
+            {/* Only offered once a normal sweep has reported a major-only
+                upgrade — crossing 1.x → 2.x is never the default path. */}
+            {!run?.running && run?.nodes.some((n) => n.status === 'major-available') && (
+              <button
+                className="detail-panel__button--danger"
+                disabled={busy}
+                onClick={() =>
+                  confirmRun(
+                    'Upgrade across a MAJOR Syncthing version (e.g. 1.x → 2.x)? This changes ' +
+                      'behavior and migrates the database on first launch (which can take a ' +
+                      'while on large setups) — read the release notes first. Nodes upgrade ' +
+                      'one at a time and each must come back before the next starts.',
+                    () => mutations.startUpgradeAll(true).then(load),
+                  )
+                }
+              >
+                Upgrade including major…
+              </button>
+            )}
             <button className="detail-panel__link-button" onClick={load}>
               {loaded ? 'Reload' : 'Load status'}
             </button>

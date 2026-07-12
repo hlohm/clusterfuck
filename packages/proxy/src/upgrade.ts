@@ -26,6 +26,14 @@ export interface UpgradeRunOpts {
   pollMs: number
   /** How long a node may stay unreachable mid-upgrade before the run fails and aborts. */
   timeoutMs: number
+  /**
+   * Install across a major version boundary (e.g. 1.x → 2.x). Off by
+   * default: a major upgrade changes behavior (2.0 migrates the database on
+   * first launch, which can be lengthy) and must be a deliberate,
+   * separately-confirmed choice — mirroring Syncthing's own GUI, which
+   * treats major upgrades specially rather than auto-applying them.
+   */
+  includeMajor?: boolean
 }
 
 function sleep(ms: number): Promise<void> {
@@ -72,7 +80,18 @@ export async function executeUpgradeRun(
     }
     node.fromVersion = check.running
 
-    if (!check.newer) {
+    // The major gate comes first: when `latest` crosses a major boundary,
+    // "up to date within its major" and "newer available" both collapse into
+    // the same truth — a major is available and a normal sweep won't touch
+    // it. Skipping is not a failure; the sweep continues with the next node.
+    if (check.majorNewer && opts.includeMajor !== true) {
+      node.status = 'major-available'
+      node.toVersion = check.latest
+      node.detail = `${check.latest} is a major upgrade — excluded from a normal sweep`
+      continue
+    }
+
+    if (!check.newer && !check.majorNewer) {
       node.status = 'up-to-date'
       continue
     }

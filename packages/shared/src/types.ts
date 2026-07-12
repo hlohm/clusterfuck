@@ -324,6 +324,11 @@ export type UpgradeNodeStatus =
   | 'failed'
   /** Not attempted because an earlier node failed — the run aborts rather than risking the rest. */
   | 'skipped'
+  /**
+   * Only a new major version (e.g. 1.x → 2.x) is available — a normal sweep
+   * never installs it silently; a run started with includeMajor does.
+   */
+  | 'major-available'
 
 export interface UpgradeNodeProgress {
   /** The registered node's own device ID. */

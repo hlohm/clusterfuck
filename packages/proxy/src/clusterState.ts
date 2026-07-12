@@ -1022,7 +1022,7 @@ export class ClusterStateManager {
    * the duration would be worse than the (already-serialized-per-node)
    * upgrade itself. One sweep at a time.
    */
-  startUpgradeAll(): UpgradeRun {
+  startUpgradeAll(options: { includeMajor?: boolean } = {}): UpgradeRun {
     if (this.upgradeRun?.running) {
       throw new InvalidTargetError('an upgrade run is already in progress')
     }
@@ -1037,6 +1037,7 @@ export class ClusterStateManager {
     this.upgradePromise = executeUpgradeRun(run, targets, {
       pollMs: this.upgradePollMs,
       timeoutMs: this.upgradeTimeoutMs,
+      includeMajor: options.includeMajor,
     }).then(() => this.refreshAfterMutation())
     return run
   }
