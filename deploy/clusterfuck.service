@@ -1,0 +1,27 @@
+# systemd unit for the release-tarball install (see docs/INSTALL.md).
+# Assumes the tarball unpacked to /opt/clusterfuck and a `clusterfuck`
+# system user owning /var/lib/clusterfuck.
+[Unit]
+Description=clusterfuck — Syncthing cluster visualization & management
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=clusterfuck
+WorkingDirectory=/opt/clusterfuck
+Environment=PORT=4000
+Environment=CLUSTERFUCK_CONFIG=/var/lib/clusterfuck/cluster.json
+Environment=CLUSTERFUCK_AUTH_CONFIG=/var/lib/clusterfuck/auth.json
+ExecStart=/usr/bin/node packages/proxy/src/index.ts
+Restart=on-failure
+# Hardening — the process only needs to read its install dir and write its
+# state dir.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/clusterfuck
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

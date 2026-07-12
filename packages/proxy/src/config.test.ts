@@ -30,8 +30,17 @@ describe('loadNodeConfig / saveNodeConfig', () => {
     ])
   })
 
-  it('throws a friendly error when the file is missing', () => {
-    expect(() => loadNodeConfig(join(dir, 'does-not-exist.json'))).toThrow(/Could not read node config/)
+  it('starts with an empty registry when the file is missing — the packaged-install first run', () => {
+    // A fresh Docker volume or unpacked tarball has no cluster.json yet;
+    // the Register-node UI bootstraps it (the first registration writes
+    // the file). Dying here would crash-loop every packaged install.
+    expect(loadNodeConfig(join(dir, 'does-not-exist.json'))).toEqual([])
+  })
+
+  it('still fails loudly when the config path exists but cannot be read as a file', () => {
+    // Not ENOENT: a directory in the way is a real misconfiguration, not a
+    // first run.
+    expect(() => loadNodeConfig(dir)).toThrow(/Could not read node config/)
   })
 
   it('rejects a missing or non-array nodes field', () => {

@@ -1,0 +1,17 @@
+# Example production deployment (see docs/INSTALL.md). Copy next to a
+# ./data directory holding your cluster.json; auth.json appears there once
+# you enable auth from the app's Settings.
+services:
+  clusterfuck:
+    # Once the GHCR publish workflow is active, use:
+    #   image: ghcr.io/hlohm/clusterfuck:latest
+    # Until then, build locally from a repo checkout:
+    build: ..
+    ports:
+      - '4000:4000'
+    volumes:
+      - ./data:/data
+    restart: unless-stopped
+    # environment:
+    #   - CLUSTERFUCK_TOKEN=…       # ops-managed auth (else manage from the GUI)
+    #   - CLUSTERFUCK_READONLY=1    # dashboard-only instance

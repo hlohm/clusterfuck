@@ -400,16 +400,30 @@ Owner (2026-07-12): "clone + pnpm install" is fine for development, not for
 users — ship low-friction installs before 1.0. npm publishing was considered
 and deliberately skipped (name/ongoing-surface concerns).
 
-- [ ] **Docker image + compose example** — one container serving the proxy
-      and the built web app on one origin; volumes for `cluster.json` /
-      `auth.json`; published to GHCR via GitHub Actions (which the repo
-      doesn't have yet — the image build is the occasion to add CI).
-- [ ] **Release tarball + systemd unit docs** — web app pre-built into the
-      tarball so Node 24 is the only requirement (the proxy runs its `.ts`
-      source natively); documented unit file. The no-Docker path.
-- [ ] **Low-friction Windows option** — on the map per the owner, low
-      priority; approach (winget / scoop / zip-with-launcher) deliberately
-      TBD until picked up.
+- [x] **Docker image + compose example** — multi-stage `Dockerfile` (no
+      package manager in the runtime stage: the proxy's only dep is the
+      workspace `shared` package, one symlink), `/data` volume for
+      `cluster.json`/`auth.json`, healthcheck, non-root; example compose in
+      `deploy/`. GHCR publish is written but **parked** with CI in
+      `deploy/workflows/` — the PAT lacks the `workflow` scope (see that
+      directory's README for the two activation paths).
+- [x] **Release tarball + systemd unit docs** — `scripts/
+      make-release-tarball.sh` packs the pre-built web app + plain `.ts`
+      proxy/shared sources; Node 24 is the only requirement. Verified by
+      actually booting the artifact. Hardened unit file in `deploy/`;
+      `docs/INSTALL.md` covers all routes. Release-attach workflow parked
+      as above. First-run fix that fell out: a missing `cluster.json` now
+      starts an empty registry (the Register-node UI bootstraps it)
+      instead of crash-looping every packaged install.
+- [ ] **Desktop app (Electron)** — decision settled (owner, 2026-07-12:
+      an "electron-like bundle" — and actual Electron over Tauri, since
+      the proxy is Node and runs in Electron's main process directly,
+      where Tauri would force compiling it into a sidecar binary). One
+      window app: main process starts the proxy, a BrowserWindow shows the
+      UI. Covers the low-friction Windows case (installer + portable exe;
+      macOS/Linux as byproducts of the same build). Known caveat to
+      accept: unsigned binaries trip SmartScreen; code-signing is out of
+      scope pre-1.0.
 
 ## Phase 6 — Multi-cluster + multi-user (2.0, parked)
 

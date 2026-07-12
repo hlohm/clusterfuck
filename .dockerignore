@@ -1,0 +1,10 @@
+.git
+node_modules
+**/node_modules
+packages/web/dist
+dev-cluster/data
+dist-release
+cluster.json
+**/cluster.json
+auth.json
+**/auth.json

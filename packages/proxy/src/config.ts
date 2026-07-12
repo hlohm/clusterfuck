@@ -22,6 +22,18 @@ export function loadNodeConfig(path = configPath()): NodeConfig[] {
   try {
     raw = readFileSync(path, 'utf-8')
   } catch (err) {
+    // A missing file is the normal first-run state for every packaged
+    // install (fresh Docker volume, unpacked tarball): start with an empty
+    // registry and let the app's Register-node UI bootstrap it — the first
+    // registration writes this very file. Anything else (permissions, a
+    // directory in the way) still fails loudly.
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+      console.log(
+        `[clusterfuck-proxy] no node config at ${path} — starting with an empty registry. ` +
+          'Register your nodes from the app (or create the file; see cluster.example.json).',
+      )
+      return []
+    }
     throw new Error(
       `Could not read node config at ${path}. Copy cluster.example.json to ${path} and fill in ` +
         `your nodes, or set CLUSTERFUCK_CONFIG to point elsewhere. (${(err as Error).message})`,
