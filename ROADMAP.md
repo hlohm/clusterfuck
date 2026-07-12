@@ -7,9 +7,10 @@ cluster-wide parity until per-node actions are proven safe.
 **Status:** Phases 1–5, the pre-1.0 UI refinement leg, and **Syncthing 2.x
 support** (per-node version detection; shipped as **0.5.0**) are done — every
 Phase 5 foundation included (auth: 0.4.22, GUI-managed 0.4.28). **(next)** is
-the review & live-cluster hardening leg, starting with devising its
-safe-testing strategy with the owner. Phase 6 (multi-cluster + multi-user,
-2.0) stays parked.
+the review & live-cluster hardening leg — its safe-testing strategy was
+agreed with the owner 2026-07-12 and is itemized below — followed by the
+easier-installation leg, both before 1.0. Phase 6 (multi-cluster +
+multi-user, 2.0) stays parked.
 
 Legend: `[x]` shipped · `[ ]` not yet · **(next)** = prioritized for the next
 iteration.
@@ -333,15 +334,73 @@ REST subset this proxy consumes is largely stable across 2.0):
 - [x] Docs: README/HOW-IT-WORKS supported-versions story; CHANGELOG 0.5.0
       milestone entry.
 
-## Review & live-cluster hardening (post-0.5)
+## Review & live-cluster hardening (pre-1.0) **(next)**
 
-An extensive review-and-refinement pass follows 0.5, validating the whole
-surface against the owner's real, mixed-version cluster (owner, 2026-07-11).
-**First open item: devise the safe-testing strategy** before any live
-testing — e.g. a read-only soak first, then mutations against a sacrificial
-folder/node only, defined rollback paths, and an explicit definition of
-done. **(next)** now that 0.5 has shipped; the strategy is worked out with
-the owner before anything touches the live cluster.
+An extensive review-and-refinement pass validating the whole surface against
+the owner's real, mixed-version cluster. **Strategy agreed with the owner
+2026-07-12**, tiered so no tier can hurt anything the previous tier didn't
+already prove safe. Work the tiers in order.
+
+### Tier 0 — backups & rollback rehearsal (before any live contact)
+
+- [ ] Document the backup procedure (docs-only — decision, owner
+      2026-07-12: no proxy backup endpoint, zero new attack surface):
+      per-node **file-level backup of the Syncthing config directory**
+      (`config.xml` + device certs/keys — the authoritative restore), plus a
+      curl one-liner for per-node `/rest/config` JSON dumps used to **diff**
+      config before/after each test session (not for restore).
+- [ ] Rehearse a full restore once on the sacrificial node before any real
+      node is touched — an untested backup is a hope, not a rollback path.
+
+### Tier 1 — throwaway cluster (every mutation, incl. the scary ones)
+
+- [ ] In-repo `docker compose` dev/test cluster: 2–3 disposable Syncthing
+      containers pre-wired as a cluster. Doubles as a permanent dev fixture
+      and as groundwork for the Docker install below.
+- [ ] Exercise **every mutation class** against it: folder CRUD, type
+      changes, versioning, ignores, encryption passwords, device options,
+      pause/resume, restart/shutdown, bandwidth caps — and the **upgrade
+      sweep including a real 1.x → 2.x major upgrade** (start a container on
+      1.x, take the gated includeMajor path, watch the DB migration).
+
+### Tier 2 — read-only soak (real cluster, provably safe)
+
+- [ ] **`CLUSTERFUCK_READONLY=1` proxy mode** — every mutation route
+      answers 403 at the gate (decision, owner 2026-07-12: build it; the
+      soak must be provably read-only, not discipline-based — and it stays
+      useful as a dashboard-only deployment mode).
+- [ ] Multi-day soak with all real nodes registered, readonly on:
+      aggregation correctness, mixed-major rendering, event-stream
+      stability, memory; finishes with zero proxy errors.
+
+### Tier 3 — graduated live mutations
+
+- [ ] Sacrificial node joins the real cluster; one new junk folder shared
+      between it and **one** real node. Mutations start against that
+      folder/node pair only, with Tier 0's pre/post config diffs checked
+      every session; scope widens one mutation class at a time as each
+      proves clean.
+
+**Definition of done (the 1.0 gate):** every mutation class green on the
+throwaway cluster including a real major upgrade; restore rehearsed; the
+read-only soak clean; Tier 3 diffs clean.
+
+## Easier installation (pre-1.0)
+
+Owner (2026-07-12): "clone + pnpm install" is fine for development, not for
+users — ship low-friction installs before 1.0. npm publishing was considered
+and deliberately skipped (name/ongoing-surface concerns).
+
+- [ ] **Docker image + compose example** — one container serving the proxy
+      and the built web app on one origin; volumes for `cluster.json` /
+      `auth.json`; published to GHCR via GitHub Actions (which the repo
+      doesn't have yet — the image build is the occasion to add CI).
+- [ ] **Release tarball + systemd unit docs** — web app pre-built into the
+      tarball so Node 24 is the only requirement (the proxy runs its `.ts`
+      source natively); documented unit file. The no-Docker path.
+- [ ] **Low-friction Windows option** — on the map per the owner, low
+      priority; approach (winget / scoop / zip-with-launcher) deliberately
+      TBD until picked up.
 
 ## Phase 6 — Multi-cluster + multi-user (2.0, parked)
 

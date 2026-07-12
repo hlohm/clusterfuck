@@ -22,9 +22,11 @@ cluster-wide Syncthing-GUI parity, proxy auth included: opt-in token since
 authoritative when set). **Syncthing 2.x support shipped as 0.5.0** —
 per-node version detection (owner, 2026-07-11): 1.x/2.x nodes mix freely,
 and the upgrade sweep never crosses a major without explicit opt-in. Current
-leg: review & live-cluster hardening (devise the safe-testing strategy with
-the owner first — never test against the live cluster without it), before
-1.0. `ROADMAP.md` is the authoritative, itemized status — check it (and
+leg: review & live-cluster hardening — the tiered safe-testing strategy is
+agreed (owner, 2026-07-12) and itemized in `ROADMAP.md`; **work its tiers in
+order and never touch the owner's live cluster outside what the current tier
+allows**. An easier-installation leg follows, then 1.0.
+`ROADMAP.md` is the authoritative, itemized status — check it (and
 the current version in the root `package.json`) before assuming what exists.
 The monorepo is three workspace packages: `packages/shared` (the normalized
 model + pure logic), `packages/proxy` (Node/TS backend), `packages/web`
