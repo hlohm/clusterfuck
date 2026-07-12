@@ -11,6 +11,26 @@ sync. **clusterfuck** renders the whole cluster as a graph so the shape of your
 sync setup — and its important options — is legible at a glance, and lets you
 manage devices and folders across every node from one place.
 
+> **⚠️ DISCLAIMER ⚠️ 100% AI-GENERATED CODE ⚠️ USE AT YOUR OWN RISK ⚠️**
+> [BEGINHUMAN]
+> These lines are the only thing in this repo actually written by a human.
+> Since this starts to look like something that might actually get useful for
+> someone eventually, I felt I owe the courtesy. That's pretty much where my
+> willingness to take resposnsibility for this ends, however.
+>
+> While I do take some care to test stuff and have the agent review his code
+> periodically, I strongly emphasize that I am not a software developer and cannot
+> reallycjudge the quality of the code produced here. I do this because I felt this
+> is a fun project that fills an actual, clusterfuck-shaped hole in my toolkit. If
+> you feel similarly about this and know more about programming than I do, I
+> would be more than happy to listen to your suggestions. I expressly do not make
+> any promises however, about how or whether at all I take this project forward. 
+>
+>Thanks for coming to my TED-Talk.
+>
+> TL;DR:
+> 
+> [ENDHUMAN]
 > ⚠️ **100% vibe coded by an amateur, use at your own peril!** This is a
 > hobby project built fast with an AI coding agent. It talks to your
 > Syncthing nodes' REST APIs and can mutate their config. Read the security
