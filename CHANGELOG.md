@@ -4,6 +4,18 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.5.8]
+
+- **Docs: [docs/LIVE-MUTATION-TESTING.md](docs/LIVE-MUTATION-TESTING.md)**
+  (hardening Tier 3 protocol): the sacrificial node joins the real cluster
+  with one junk folder shared to exactly one real node; every session runs
+  the dump-mutate-dump-diff protocol against **all** nodes (out-of-scope
+  diffs must be empty — the blast-radius check); mutation classes widen
+  one per session in a defined least-to-most-invasive order; device
+  removal, node shutdown, pause-all and the upgrade sweep stay off real
+  nodes until after 1.0 sign-off. Exit criteria = the leg's definition of
+  done = the 1.0 gate.
+
 ## [0.5.7]
 
 - **Docs: [docs/READONLY-SOAK.md](docs/READONLY-SOAK.md)** (hardening
