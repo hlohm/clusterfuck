@@ -137,3 +137,30 @@ export function clusterHealth(cluster: ClusterModel): ClusterHealth {
 
   return { deviceCounts, folderCounts, outOfSyncItems, failedItems, attention }
 }
+
+/**
+ * Parses the major out of a Syncthing version string ("v2.0.5", "v1.29.2",
+ * "v2.0.0-rc.1"). Undefined when unparseable — including the empty string a
+ * node whose version probe failed reports.
+ */
+export function parseSyncthingMajor(version: string): number | undefined {
+  const match = /^v?(\d+)\./.exec(version)
+  return match ? Number(match[1]) : undefined
+}
+
+/**
+ * The distinct Syncthing major versions running across the cluster's managed
+ * nodes, ascending. More than one entry means a mixed cluster — relevant
+ * wherever behavior differs across majors (see ROADMAP "Syncthing 2.x").
+ */
+export function syncthingMajors(cluster: ClusterModel): number[] {
+  const majors = new Set<number>()
+  for (const device of cluster.devices) {
+    const major =
+      device.systemStatus !== undefined
+        ? parseSyncthingMajor(device.systemStatus.version)
+        : undefined
+    if (major !== undefined) majors.add(major)
+  }
+  return [...majors].sort((a, b) => a - b)
+}

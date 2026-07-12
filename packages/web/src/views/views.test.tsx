@@ -17,6 +17,16 @@ describe('OverviewView', () => {
     expect(screen.getByText('12')).toBeInTheDocument()
   })
 
+  it('shows per-node Syncthing versions and flags the mixed-major cluster', () => {
+    render(<OverviewView cluster={edgeCases} />)
+
+    // edge-cases: origin reports v1.27.3, relay-b v2.0.4 — both chips render,
+    // and the mix triggers the Nodes section's mixed-majors hint.
+    expect(screen.getByText('v1.27.3')).toBeInTheDocument()
+    expect(screen.getByText('v2.0.4')).toBeInTheDocument()
+    expect(screen.getByText(/Mixed Syncthing majors across nodes \(v1 \/ v2\)/)).toBeInTheDocument()
+  })
+
   it('renders a cluster-wide data-transferred tile, summed across every reported connection', () => {
     render(<OverviewView cluster={edgeCases} />)
 

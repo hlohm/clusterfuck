@@ -22,6 +22,7 @@ import {
   folderHealthForDevice,
   sharesByDevice,
   sharesByFolder,
+  syncthingMajors,
 } from '@clusterfuck/shared'
 import { FOLDER_TYPE_STYLE } from '../encoding/folderTypeStyle'
 import { DEVICE_STATE_STYLE } from '../encoding/deviceStateStyle'
@@ -793,6 +794,14 @@ function NodeCard({
     <article className="folder-card">
       <header className="folder-card__header">
         <h4>{device.name}</h4>
+        {device.systemStatus?.version ? (
+          <span
+            className="folder-card__version"
+            title="Syncthing version this node reports about itself"
+          >
+            {device.systemStatus.version}
+          </span>
+        ) : undefined}
         {worst ? <StatusBadge state={worst} /> : <DeviceStatusBadge state={device.state} />}
       </header>
       {shares.length > 0 ? (
@@ -890,6 +899,10 @@ export function OverviewView({ cluster, onOpenShare, isLive }: OverviewViewProps
     .filter(Boolean)
     .join(', ')
 
+  // Mixed 1.x/2.x clusters are normal mid-migration (ROADMAP "Syncthing 2.x
+  // support") — surface it rather than leaving versions buried per card.
+  const majors = syncthingMajors(cluster)
+
   // Section layout (ROADMAP "UI design refinement"): every section below the
   // KPI row is collapsible and re-arrangeable, persisted per browser. A
   // section with null content (fixture source, nothing pending, no drift)
@@ -964,17 +977,25 @@ export function OverviewView({ cluster, onOpenShare, isLive }: OverviewViewProps
       id: 'nodes',
       title: 'Nodes',
       content: (
-        <div className="folder-cards">
-          {cluster.devices.map((device) => (
-            <NodeCard
-              key={device.id}
-              cluster={cluster}
-              device={device}
-              onOpenShare={onOpenShare}
-              isLive={isLive}
-            />
-          ))}
-        </div>
+        <>
+          {majors.length > 1 && (
+            <p className="overview-note">
+              Mixed Syncthing majors across nodes (v{majors.join(' / v')}) — behavior can differ
+              between them; each card shows the node's own reported version.
+            </p>
+          )}
+          <div className="folder-cards">
+            {cluster.devices.map((device) => (
+              <NodeCard
+                key={device.id}
+                cluster={cluster}
+                device={device}
+                onOpenShare={onOpenShare}
+                isLive={isLive}
+              />
+            ))}
+          </div>
+        </>
       ),
     },
     {
