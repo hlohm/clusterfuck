@@ -4,6 +4,28 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.5.11]
+
+- **Packaged installs** (ROADMAP "Easier installation"; docs in
+  [docs/INSTALL.md](docs/INSTALL.md)):
+  - **Docker**: multi-stage `Dockerfile` — runtime stage has no package
+    manager (the proxy's only dependency is the workspace `shared`
+    package, resolved via one symlink), `/data` volume for
+    `cluster.json`/`auth.json`, healthcheck, runs as `node`. Example
+    compose file in `deploy/`.
+  - **Release tarball**: `scripts/make-release-tarball.sh` packs the
+    pre-built web app + plain-`.ts` proxy/shared sources — Node 24 is the
+    only requirement. Verified by booting the actual artifact. Hardened
+    systemd unit in `deploy/clusterfuck.service`.
+  - **First-run fix that fell out of testing the artifact:** a missing
+    `cluster.json` no longer kills the proxy at startup — it starts with
+    an empty registry (the app's Register-node UI bootstraps the file),
+    instead of crash-looping every fresh Docker volume/tarball install.
+    A malformed or unreadable config still fails loudly.
+  - **Desktop app decision recorded** (owner, 2026-07-12): an Electron
+    bundle (proxy in the main process, UI in a window) covers the
+    low-friction Windows case — queued as the leg's remaining item.
+
 ## [0.5.10]
 
 - **CI/publish workflows, parked** (`deploy/workflows/`): three complete

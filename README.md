@@ -158,6 +158,10 @@ live cluster. Run just one side with `pnpm dev:web` or `pnpm dev:proxy`.
 
 ## Deployment
 
+**Packaged installs — Docker image (+ compose) or a release tarball with a
+systemd unit — are covered in [docs/INSTALL.md](docs/INSTALL.md).** The
+manual route below still works and explains the moving parts.
+
 The two halves deploy independently: a static site and a long-running Node
 service.
 
