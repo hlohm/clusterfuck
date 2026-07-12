@@ -20,6 +20,15 @@ import { getAuthStatus } from './data/auth'
 import { setUnauthorizedListener } from './data/http'
 import { loadPref, savePref } from './data/localPrefs'
 import { clampSidebarWidth, startSidebarDrag } from './sidebarResize'
+import {
+  applyTheme,
+  loadTheme,
+  nextTheme,
+  saveTheme,
+  THEME_ICONS,
+  THEME_LABELS,
+  type ThemeMode,
+} from './theme'
 
 const LIVE_SOURCE_ID = '__live__'
 
@@ -47,6 +56,19 @@ function App() {
     setUnauthorizedListener(() => setAuthState('login'))
     return () => setUnauthorizedListener(undefined)
   }, [])
+
+  // Theme: auto (follow the OS) / light / dark, persisted per browser. The
+  // CSS does the heavy lifting (index.css light-dark() + data-theme); this
+  // just keeps the attribute in sync with the chosen mode.
+  const [theme, setTheme] = useState<ThemeMode>(() => loadTheme())
+  useEffect(() => {
+    applyTheme(theme)
+  }, [theme])
+  const cycleTheme = () => {
+    const next = nextTheme(theme)
+    setTheme(next)
+    saveTheme(next)
+  }
 
   const [sourceId, setSourceId] = useState(FIXTURE_CLUSTERS[0]!.id)
   const [view, setView] = useState<ViewId>('graph')
@@ -168,6 +190,14 @@ function App() {
               {cluster && <button onClick={() => setDialog('folder')}>＋ Folder</button>}
             </div>
           )}
+          <button
+            className="app__settings"
+            title={THEME_LABELS[theme]}
+            aria-label={THEME_LABELS[theme]}
+            onClick={cycleTheme}
+          >
+            {THEME_ICONS[theme]}
+          </button>
           <button
             className="app__settings"
             title="Authentication settings"

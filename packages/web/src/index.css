@@ -1,17 +1,25 @@
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
+  /* Every themed value goes through light-dark(), driven by the single
+     color-scheme declaration below — same mechanism the encoding palette
+     (encoding/colors.ts) already uses. The header's theme toggle overrides
+     color-scheme via data-theme (see the two rules after this block), which
+     flips ALL of these at once; there is deliberately no separate dark
+     @media block to keep in sync. */
+  --text: light-dark(#6b6375, #9ca3af);
+  --text-h: light-dark(#08060d, #f3f4f6);
+  --bg: light-dark(#fff, #16171d);
+  --border: light-dark(#e5e4e7, #2e303a);
+  --code-bg: light-dark(#f4f3ec, #1f2028);
   /* --accent below is the UI chrome color, harmonized with the actual
      Syncthing web GUI's palette (its btn-primary blue) — the logo mark itself
-     keeps its own literal gradient anchors (#0882c8 / #26b6db, see Logo.tsx). */
+     keeps its own literal gradient anchors (#0882c8 / #26b6db, see Logo.tsx).
+     --accent/--accent-hover are the same in both themes on purpose —
+     Syncthing keeps its btn-primary blue identical across its themes. */
   --accent: #217dbb;
   /* Syncthing's btn-primary hover is this exact blue in both its themes. */
   --accent-hover: #3498db;
-  --accent-bg: rgba(33, 125, 187, 0.08);
-  --accent-border: rgba(33, 125, 187, 0.5);
+  --accent-bg: light-dark(rgba(33, 125, 187, 0.08), rgba(52, 152, 219, 0.14));
+  --accent-border: light-dark(rgba(33, 125, 187, 0.5), rgba(52, 152, 219, 0.5));
   /* Syncthing's own btn-danger / btn-warning colors, for destructive and
      cautionary actions (Remove, Pause) — kept separate from the validated
      data-encoding palette in encoding/colors.ts, which this does not touch. */
@@ -19,8 +27,12 @@
   --danger-hover: #e74c3c;
   --warning-strong: #c29d0b;
   --warning-strong-hover: #f1c40f;
+  /* light-dark() is a color function, so the composite shadow list splits
+     its two colors out into their own vars. */
+  --shadow-strong: light-dark(rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.4));
+  --shadow-soft: light-dark(rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.25));
   --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+    var(--shadow-strong) 0 10px 15px -3px, var(--shadow-soft) 0 4px 6px -2px;
 
   /* Same body font stack and Raleway heading face as the Syncthing web GUI. */
   --sans:
@@ -43,21 +55,15 @@
   }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    /* --accent/--accent-hover are intentionally NOT redefined here — Syncthing
-       keeps its btn-primary blue identical across its light and dark themes. */
-    --accent-bg: rgba(52, 152, 219, 0.14);
-    --accent-border: rgba(52, 152, 219, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
+/* Manual theme override from the header toggle: swapping color-scheme is all
+   it takes — every light-dark() above and in the encoding palette follows.
+   No data-theme attribute = auto (follow the OS). */
+:root[data-theme='light'] {
+  color-scheme: light;
+}
 
+:root[data-theme='dark'] {
+  color-scheme: dark;
 }
 
 html,
