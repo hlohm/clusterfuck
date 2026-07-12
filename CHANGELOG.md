@@ -4,6 +4,23 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.5.12]
+
+- **Desktop app scaffold** (`packages/desktop` — the "electron-like
+  bundle"; owner, 2026-07-12): the same proxy every install runs, started
+  inside Electron's main process, UI in a sandboxed window on
+  `127.0.0.1:41945`, state in the OS per-user app dir (`cluster.json` /
+  `auth.json`, same formats and env overrides as everywhere). The proxy is
+  esbuild-bundled to one dependency-free **ESM** file (ESM is load-bearing
+  for `import.meta.url`-based version resolution) and that bundle is
+  boot-verified with plain Node. The package sits **outside the pnpm
+  workspace** so the ~100 MB Electron download never taxes normal dev/CI
+  installs. Parked `desktop-build.yml` builds installers on a
+  three-OS matrix once workflows are activated. Known unfinished edges,
+  recorded in its README: Electron itself can't run in the authoring
+  sandbox (first `npm start` is the owner's), the package-lock from that
+  first install should be committed, and binaries are unsigned pre-1.0.
+
 ## [0.5.11]
 
 - **Packaged installs** (ROADMAP "Easier installation"; docs in

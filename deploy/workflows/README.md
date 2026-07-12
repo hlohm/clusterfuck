@@ -18,6 +18,7 @@ To activate them, either:
 | `ci.yml` | every PR / push to main | the four gates: typecheck, lint, test, build |
 | `docker-publish.yml` | tag `v*` | builds the Docker image and pushes it to GHCR |
 | `release-tarball.yml` | tag `v*` | builds the release tarball and attaches it to the GitHub release |
+| `desktop-build.yml` | tag `v*` | builds the Electron app on a Windows/macOS/Linux matrix and attaches the installers |
 
 The publish workflows call the same `Dockerfile` / `scripts/` used for
 local builds — no logic lives only in the workflow.
