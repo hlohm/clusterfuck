@@ -49,9 +49,19 @@ if (staticHandler === undefined) {
   )
 }
 
+// Read-only deployment mode: every mutating /api route answers 403. For
+// dashboard-style instances, and for provably-safe soaks against a real
+// cluster (ROADMAP "live-cluster hardening" Tier 2).
+const readonly = ['1', 'true', 'yes'].includes(
+  (process.env.CLUSTERFUCK_READONLY ?? '').toLowerCase(),
+)
+if (readonly) {
+  console.log('[clusterfuck-proxy] CLUSTERFUCK_READONLY is set — all mutation routes answer 403')
+}
+
 const nodes = loadNodeConfig()
 const manager = new ClusterStateManager(nodes, { clusterId: 'live', label: 'Live cluster' })
-const server = createHttpServer(manager, webOrigin, auth, staticHandler)
+const server = createHttpServer(manager, webOrigin, auth, staticHandler, readonly)
 
 manager.start().catch((err: unknown) => {
   console.error('[clusterfuck-proxy] failed to start cluster state manager:', err)

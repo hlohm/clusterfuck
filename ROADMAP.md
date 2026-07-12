@@ -365,7 +365,7 @@ already prove safe. Work the tiers in order.
 
 ### Tier 2 — read-only soak (real cluster, provably safe)
 
-- [ ] **`CLUSTERFUCK_READONLY=1` proxy mode** — every mutation route
+- [x] **`CLUSTERFUCK_READONLY=1` proxy mode** — every mutation route
       answers 403 at the gate (decision, owner 2026-07-12: build it; the
       soak must be provably read-only, not discipline-based — and it stays
       useful as a dashboard-only deployment mode).

@@ -16,6 +16,7 @@ import { createStaticHandler } from './static.ts'
 function startServer(
   auth?: string | Parameters<typeof createAuth>[0],
   webRoot?: string,
+  readonly?: boolean,
 ) {
   const manager = new ClusterStateManager([], { clusterId: 'test', label: 'Test' })
   const authOpts = typeof auth === 'string' || auth === undefined ? { token: auth } : auth
@@ -24,6 +25,7 @@ function startServer(
     'http://localhost:5173',
     createAuth(authOpts),
     webRoot !== undefined ? createStaticHandler(webRoot) : undefined,
+    readonly,
   )
   server.listen(0)
   const address = server.address()
@@ -288,6 +290,42 @@ describe('request body size cap', () => {
       throw err
     })
     expect(status).toBe(413)
+  })
+})
+
+describe('read-only mode', () => {
+  it('answers 403 on every mutating route, before routing even matches', async () => {
+    const { server, base } = startServer(undefined, undefined, true)
+    running = server
+
+    expect((await fetch(`${base}/api/cluster`)).status).toBe(200)
+
+    const paused = await fetch(`${base}/api/devices/SOME-DEVICE/pause`, { method: 'POST' })
+    expect(paused.status).toBe(403)
+    expect(((await paused.json()) as { error: string }).error).toContain('read-only')
+    // Even routes that mutate only the proxy itself (token rotation) are
+    // blocked — a read-only instance is fully immutable.
+    expect((await fetch(`${base}/api/auth/token`, { method: 'PUT', body: '{}' })).status).toBe(403)
+  })
+
+  it('still allows the login/logout handshake and every read', async () => {
+    const { server, base } = startServer('sekrit-token-value', undefined, true)
+    running = server
+
+    const login = await fetch(`${base}/api/login`, {
+      method: 'POST',
+      body: JSON.stringify({ token: 'sekrit-token-value' }),
+    })
+    expect(login.status).toBe(200)
+    const cookie = login.headers.get('set-cookie')!.split(';')[0]!
+
+    expect((await fetch(`${base}/api/cluster`, { headers: { cookie } })).status).toBe(200)
+    expect((await fetch(`${base}/api/auth/token`, { headers: { cookie } })).status).toBe(200)
+    expect((await fetch(`${base}/api/logout`, { method: 'POST' })).status).toBe(200)
+    // The auth gate still wins over the read-only gate: no credential -> 401.
+    expect((await fetch(`${base}/api/devices/X/pause`, { method: 'POST' })).status).toBe(401)
+    // And with a credential, mutation is 403, not attempted.
+    expect((await fetch(`${base}/api/devices/X/pause`, { method: 'POST', headers: { cookie } })).status).toBe(403)
   })
 })
 

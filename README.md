@@ -154,6 +154,7 @@ Proxy environment variables:
 | `PORT` | `4000` | HTTP port |
 | `CLUSTERFUCK_CONFIG` | `./cluster.json` | Path to the nodes config (relative to cwd) — the proxy also writes to this file when nodes are registered/removed at runtime |
 | `CLUSTERFUCK_WEB_ORIGIN` | `http://localhost:5173` | CORS allow-origin — the URL the SPA is served from (only needed when the SPA calls the proxy cross-origin) |
+| `CLUSTERFUCK_READONLY` | unset | Set to `1` for a read-only instance: every mutating `/api` route answers 403 (dashboard mode; login still works) |
 
 **2. Web** — build the static bundle:
 

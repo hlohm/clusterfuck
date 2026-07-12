@@ -80,6 +80,8 @@ export function createHttpServer(
   allowedOrigin: string,
   auth: Auth,
   staticHandler?: StaticHandler,
+  /** CLUSTERFUCK_READONLY: every mutating /api route answers 403 (dashboard mode). */
+  readonly = false,
 ): Server {
   // One subscription serializes each new model once and fans the same frame
   // out to every SSE client, instead of stringifying per client per change.
@@ -94,7 +96,7 @@ export function createHttpServer(
     res.setHeader('Access-Control-Allow-Origin', allowedOrigin)
     // Cookies across a split-origin deployment need the explicit opt-in.
     res.setHeader('Access-Control-Allow-Credentials', 'true')
-    handleRequest(req, res, manager, sseClients, auth, staticHandler).catch((err: unknown) => {
+    handleRequest(req, res, manager, sseClients, auth, staticHandler, readonly).catch((err: unknown) => {
       console.error('[clusterfuck-proxy] unhandled request error:', err)
       if (!res.headersSent) sendJson(res, 500, { error: 'internal error' })
     })
@@ -123,6 +125,7 @@ async function handleRequest(
   sseClients: Set<ServerResponse>,
   auth: Auth,
   staticHandler?: StaticHandler,
+  readonly = false,
 ): Promise<void> {
   const method = req.method ?? 'GET'
   const url = new URL(req.url ?? '/', 'http://internal')
@@ -143,6 +146,24 @@ async function handleRequest(
   const authorized = auth.isAuthorized(req)
   if (auth.enabled && isApi && !authorized && !isAuthExempt(method, url.pathname)) {
     sendJson(res, 401, { error: 'authentication required' })
+    return
+  }
+
+  // Read-only deployment mode (ROADMAP "live-cluster hardening" Tier 2, and
+  // a dashboard-only mode in general): every mutating route answers 403 at
+  // the gate, so an instance soaking against a real cluster provably cannot
+  // change it. The login/logout handshake stays available — signing in to
+  // *look* is the point. Token rotation is deliberately blocked too: a
+  // read-only instance is fully immutable; manage the token via the env var
+  // or a normal instance.
+  if (
+    readonly &&
+    isApi &&
+    method !== 'GET' &&
+    method !== 'HEAD' &&
+    !(method === 'POST' && (url.pathname === '/api/login' || url.pathname === '/api/logout'))
+  ) {
+    sendJson(res, 403, { error: 'this proxy is read-only (CLUSTERFUCK_READONLY)' })
     return
   }
 
