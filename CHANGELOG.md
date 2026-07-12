@@ -4,6 +4,24 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.5.5]
+
+- **Docs: [docs/BACKUP-AND-RESTORE.md](docs/BACKUP-AND-RESTORE.md)** —
+  hardening Tier 0. The two-layer procedure: file-level config-directory
+  backups per node (`config.xml` + device certs — the authoritative
+  restore; locations discovered via `/rest/system/paths`, not guessed) and
+  per-node `/rest/config` JSON dumps for before/after diffing of every
+  test session, plus the restore procedure and the once-per-node rehearsal
+  checklist on the sacrificial node. Also fixed stale HOW-IT-WORKS claims
+  that predated auth ("no login yet", "cluster.json is the only
+  secret-bearing file").
+
+## [0.5.4]
+
+- The detail panel's "Show QR" toggle aligns with the content column (and
+  the Copy button above it) instead of hanging 8px indented — the link-
+  button style's left margin is meant for inline use after text.
+
 ## [0.5.3]
 
 - **Theme toggle in the header** (owner request): a button next to ⚙ cycles

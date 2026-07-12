@@ -1185,6 +1185,13 @@ button {
   color: var(--accent);
 }
 
+/* The link-button's 8px left margin is for inline use after text; as a
+   block-level toggle it left the button hanging indented relative to the
+   Copy button on the device-ID line above. Align it with the content column. */
+.device-qr > .detail-panel__link-button {
+  margin-left: 0;
+}
+
 .device-qr__image {
   display: block;
   margin-top: 6px;

@@ -149,15 +149,24 @@ At no point did the browser hold a key or touch a Syncthing directly.
 
 ## Things worth knowing before exposing it
 
-- **The proxy has no login yet.** Anyone who can reach its port can read
-  *and manage* the cluster. Keep it on a trusted network / behind your own
-  reverse-proxy auth; proper auth is a roadmap prerequisite for 1.0.
+- **Auth is opt-in — turn it on before exposing the proxy.** With no token
+  configured the proxy runs open: anyone who can reach its port can read
+  *and manage* the cluster (a loud startup warning says so). Enable it from
+  the app (Settings ⚙) or via `CLUSTERFUCK_TOKEN`; see
+  [HOW-AUTH-WORKS.md](HOW-AUTH-WORKS.md). A `CLUSTERFUCK_READONLY=1`
+  instance additionally refuses every mutation — the dashboard mode.
 - **One version number everywhere.** The web UI shows its version and the
   proxy reports its own at `/api/version`; the header compares them. A
   mismatch almost always means a stale proxy process is still running.
-- **`cluster.json` is the only secret-bearing file.** It's git-ignored,
-  written by the proxy itself when you register/remove nodes in the UI, and
-  its contents never appear in any HTTP response.
+- **Two secret-bearing files, both git-ignored:** `cluster.json` (the node
+  registry with API keys, written by the proxy itself when you
+  register/remove nodes) and `auth.json` (the proxy's own access token when
+  GUI-managed). Neither's contents appear in any HTTP response, except the
+  token via the deliberate, signed-in-only "show token" reveal.
+- **Back up your nodes' configs** — see
+  [BACKUP-AND-RESTORE.md](BACKUP-AND-RESTORE.md) for the two-layer
+  procedure (file-level restore + REST diff dumps) and the restore
+  rehearsal checklist.
 
 ## Multi-cluster: today and someday
 

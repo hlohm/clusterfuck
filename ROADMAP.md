@@ -343,8 +343,9 @@ already prove safe. Work the tiers in order.
 
 ### Tier 0 — backups & rollback rehearsal (before any live contact)
 
-- [ ] Document the backup procedure (docs-only — decision, owner
-      2026-07-12: no proxy backup endpoint, zero new attack surface):
+- [x] Document the backup procedure (docs-only — decision, owner
+      2026-07-12: no proxy backup endpoint, zero new attack surface —
+      shipped as `docs/BACKUP-AND-RESTORE.md`):
       per-node **file-level backup of the Syncthing config directory**
       (`config.xml` + device certs/keys — the authoritative restore), plus a
       curl one-liner for per-node `/rest/config` JSON dumps used to **diff**
