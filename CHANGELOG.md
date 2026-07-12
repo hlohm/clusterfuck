@@ -4,6 +4,20 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.5.0]
+
+- **Milestone: Syncthing 2.x support** (ROADMAP leg complete; decision:
+  per-node version detection, owner 2026-07-11). Summing the leg
+  (0.4.36–0.4.39 + this release): the proxy supports Syncthing 1.x and 2.x
+  nodes **mixed in one cluster** — each node's self-reported version drives
+  behavior, response shapes are normalized and pinned by tests against both
+  majors' documented formats, the Overview shows per-node versions and flags
+  a mixed-major cluster, and the upgrade sweep reports (never silently
+  installs) major-version jumps, with an explicit separately-confirmed
+  "include major" path. Docs: README requirements and HOW-IT-WORKS now
+  state the supported-versions story. Next per the roadmap: the review &
+  live-cluster hardening leg, starting with its safe-testing strategy.
+
 ## [0.4.39]
 
 - **The upgrade sweep never crosses a Syncthing major silently** (ROADMAP
