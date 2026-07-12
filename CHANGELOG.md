@@ -4,6 +4,19 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.5.1]
+
+- Roadmap: the **live-cluster safe-testing strategy is agreed** (owner,
+  2026-07-12) and itemized — Tier 0 backups/rollback rehearsal (docs-only,
+  no proxy backup endpoint), Tier 1 throwaway compose cluster exercising
+  every mutation incl. a real 1.x→2.x major upgrade, Tier 2 read-only soak
+  behind a new `CLUSTERFUCK_READONLY` proxy mode (decision: build it), Tier
+  3 graduated live mutations via a sacrificial node/folder; the definition
+  of done doubles as the 1.0 gate. New **easier-installation leg** (owner,
+  2026-07-12): Docker image + compose and a release tarball + systemd docs
+  ship pre-1.0, a low-friction Windows option is on the map (low priority),
+  npm publishing deliberately skipped.
+
 ## [0.5.0]
 
 - **Milestone: Syncthing 2.x support** (ROADMAP leg complete; decision:
