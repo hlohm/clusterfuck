@@ -4,6 +4,19 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.5.9]
+
+- **Docs: [docs/HARDENING-RUNBOOK.md](docs/HARDENING-RUNBOOK.md)** — the
+  single box-by-box execution checklist for the whole hardening stage:
+  Tier 0 per-node backup rows + restore rehearsal, Tier 1 with every
+  mutation class itemized (incl. cross-cutting checks like partial-failure
+  reporting and touching both majors), Tier 1b upgrade rehearsal on the
+  sacrificial node, Tier 2 soak observations, Tier 3 one-class-per-session
+  live mutations with the empty-out-of-scope-diff rule baked into each
+  box, a sign-off section that is the 1.0 gate, and an append-only
+  findings log. ROADMAP stays item-level and now points here for
+  execution.
+
 ## [0.5.8]
 
 - **Docs: [docs/LIVE-MUTATION-TESTING.md](docs/LIVE-MUTATION-TESTING.md)**

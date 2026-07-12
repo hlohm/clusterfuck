@@ -339,7 +339,10 @@ REST subset this proxy consumes is largely stable across 2.0):
 An extensive review-and-refinement pass validating the whole surface against
 the owner's real, mixed-version cluster. **Strategy agreed with the owner
 2026-07-12**, tiered so no tier can hurt anything the previous tier didn't
-already prove safe. Work the tiers in order.
+already prove safe. Work the tiers in order. **Execution is tracked
+box-by-box in [docs/HARDENING-RUNBOOK.md](docs/HARDENING-RUNBOOK.md)** —
+this section stays item-level; the runbook is where sessions get ticked
+off and findings logged.
 
 ### Tier 0 — backups & rollback rehearsal (before any live contact)
 
