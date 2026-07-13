@@ -19,7 +19,8 @@ Versioning policy is in `CLAUDE.md`; the phased feature history is in
 
 - **CI and publish workflows activated**: the owner granted the PAT the
   `workflow` scope, so the four workflows parked in `deploy/workflows/`
-  since 0.5.10 moved to `.github/workflows/` unchanged. Every PR and push
+  since 0.5.10 moved to `.github/workflows/` with only their parked-status
+  header comments removed. Every PR and push
   to main now runs the four gates (typecheck, lint, test, build) server-
   side; tagging `v*` publishes the Docker image to GHCR, attaches the
   release tarball, and builds desktop installers on a three-OS matrix.
