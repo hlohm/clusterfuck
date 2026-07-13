@@ -104,6 +104,34 @@ export function createHttpServer(
 }
 
 /**
+ * Starts listening and resolves once the port is actually bound — or rejects
+ * when the bind fails. Without this, a bind failure (EADDRINUSE being the
+ * classic) surfaces as an async 'error' event AFTER server.listen() has
+ * already returned: an uncaught exception no caller's try/catch can reach,
+ * which crashed every install type with a raw stack and, embedded in the
+ * desktop app, popped Electron's raw error dialog instead of ours.
+ */
+export function listenReady(server: Server, port: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const onError = (err: Error & { code?: string }) => {
+      reject(
+        err.code === 'EADDRINUSE'
+          ? new Error(
+              `port ${port} is already in use — is another clusterfuck proxy (or the desktop ` +
+                `app) running? Stop it or set PORT to a free port. (${err.message})`,
+            )
+          : err,
+      )
+    }
+    server.once('error', onError)
+    server.listen(port, () => {
+      server.removeListener('error', onError)
+      resolve()
+    })
+  })
+}
+
+/**
  * Routes reachable without credentials when auth is on: the login handshake
  * (logout included — clearing a cookie needs no valid session, and gating it
  * would strand a browser whose session was just revoked), and the

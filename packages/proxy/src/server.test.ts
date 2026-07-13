@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { request, type Server } from 'node:http'
 import { ClusterStateManager } from './clusterState.ts'
 import { createAuth } from './auth.ts'
-import { createHttpServer } from './server.ts'
+import { createHttpServer, listenReady } from './server.ts'
 import { createStaticHandler } from './static.ts'
 
 /**
@@ -432,5 +432,32 @@ describe('static SPA serving', () => {
 
   it('createStaticHandler returns undefined without a build (API-only mode)', () => {
     expect(createStaticHandler('/definitely/not/a/dir')).toBeUndefined()
+  })
+})
+
+describe('listenReady', () => {
+  it('resolves once the port is bound and the server answers', async () => {
+    const manager = new ClusterStateManager([], { clusterId: 't', label: 'T' })
+    const server = createHttpServer(manager, '*', createAuth({}))
+    await listenReady(server, 0)
+    const address = server.address()
+    expect(address).not.toBeNull()
+    server.close()
+  })
+
+  // Regression: server.listen() reports a failed bind via an async 'error'
+  // event after the call returns — an uncaught exception no caller could
+  // catch, which crashed every install with a raw stack (and, embedded in
+  // the desktop app, popped Electron's raw error dialog instead of ours).
+  it('rejects with a friendly message when the port is already taken', async () => {
+    const manager = new ClusterStateManager([], { clusterId: 't', label: 'T' })
+    const first = createHttpServer(manager, '*', createAuth({}))
+    await listenReady(first, 0)
+    const port = (first.address() as { port: number }).port
+
+    const second = createHttpServer(manager, '*', createAuth({}))
+    await expect(listenReady(second, port)).rejects.toThrow(/already in use/)
+
+    first.close()
   })
 })

@@ -16,7 +16,7 @@ function errorText(err) {
   return err instanceof Error ? err.message : String(err)
 }
 
-function startProxy() {
+async function startProxy() {
   // State lives in the OS-conventional per-user app dir (e.g.
   // %APPDATA%/clusterfuck on Windows) — same files, same formats, same
   // env overrides as every other install.
@@ -27,10 +27,11 @@ function startProxy() {
   process.env.CLUSTERFUCK_WEB_DIST ??= join(__dirname, 'dist', 'web')
   // ESM bundle (import.meta.url must stay real — version.ts resolves the
   // app's package.json through it), loaded from CJS via dynamic import.
-  // Returned so startup failures that happen during module evaluation (a
-  // malformed cluster.json throws there) surface with their real message
-  // instead of as a generic health-poll timeout.
-  return import('./dist/proxy.mjs')
+  // Awaiting the import surfaces module-evaluation errors (a malformed
+  // cluster.json throws there) with their real message; awaiting `ready`
+  // surfaces bind failures (EADDRINUSE), which fire only after evaluation.
+  const proxy = await import('./dist/proxy.mjs')
+  await proxy.ready
 }
 
 async function waitForProxy(url, tries = 50) {
