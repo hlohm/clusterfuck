@@ -404,15 +404,15 @@ and deliberately skipped (name/ongoing-surface concerns).
       package manager in the runtime stage: the proxy's only dep is the
       workspace `shared` package, one symlink), `/data` volume for
       `cluster.json`/`auth.json`, healthcheck, non-root; example compose in
-      `deploy/`. GHCR publish is written but **parked** with CI in
-      `deploy/workflows/` — the PAT lacks the `workflow` scope (see that
-      directory's README for the two activation paths).
+      `deploy/`. GHCR publish + CI live in `.github/workflows/` (initially
+      parked in `deploy/workflows/` while the PAT lacked the `workflow`
+      scope; activated once the owner granted it, 2026-07-13).
 - [x] **Release tarball + systemd unit docs** — `scripts/
       make-release-tarball.sh` packs the pre-built web app + plain `.ts`
       proxy/shared sources; Node 24 is the only requirement. Verified by
       actually booting the artifact. Hardened unit file in `deploy/`;
-      `docs/INSTALL.md` covers all routes. Release-attach workflow parked
-      as above. First-run fix that fell out: a missing `cluster.json` now
+      `docs/INSTALL.md` covers all routes. Release-attach workflow active
+      with the rest. First-run fix that fell out: a missing `cluster.json` now
       starts an empty registry (the Register-node UI bootstraps it)
       instead of crash-looping every packaged install.
 - [x] **Desktop app (Electron)** — decision settled (owner, 2026-07-12:

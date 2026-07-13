@@ -33,9 +33,9 @@ npm run dist           # installers into release/ (NSIS + portable on Windows,
                        # dmg on macOS, AppImage on Linux — build on the target OS)
 ```
 
-CI builds for all three OSes are in the parked
-`deploy/workflows/desktop-build.yml` (blocked on the PAT `workflow`
-scope, like the rest — see `deploy/workflows/README.md`).
+CI builds for all three OSes run on tagged releases (`v*`) via
+`.github/workflows/desktop-build.yml` and attach the installers to the
+GitHub release.
 
 ## Known caveats
 

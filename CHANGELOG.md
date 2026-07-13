@@ -4,6 +4,16 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.5.13]
+
+- **CI and publish workflows activated**: the owner granted the PAT the
+  `workflow` scope, so the four workflows parked in `deploy/workflows/`
+  since 0.5.10 moved to `.github/workflows/` unchanged. Every PR and push
+  to main now runs the four gates (typecheck, lint, test, build) server-
+  side; tagging `v*` publishes the Docker image to GHCR, attaches the
+  release tarball, and builds desktop installers on a three-OS matrix.
+  Docs that pointed at the parked location updated.
+
 ## [0.5.12]
 
 - **Desktop app scaffold** (`packages/desktop` — the "electron-like

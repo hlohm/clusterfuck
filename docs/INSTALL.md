@@ -12,8 +12,8 @@ nodes, and **enable auth before exposing the port beyond localhost**
 
 ## Docker (recommended)
 
-Once the GHCR publish workflow is active (see `deploy/workflows/README.md`),
-images live at `ghcr.io/hlohm/clusterfuck`. Until then, build locally:
+Tagged releases (`v*`) publish images to `ghcr.io/hlohm/clusterfuck` via
+`.github/workflows/docker-publish.yml`. To build locally instead:
 
 ```sh
 git clone https://github.com/hlohm/clusterfuck && cd clusterfuck
@@ -31,8 +31,8 @@ compose up -d`. Useful environment variables (full table in the README):
 
 The tarball has the web app pre-built and no install step — **Node.js 24+
 is the only requirement** (the proxy runs its TypeScript sources natively).
-Download `clusterfuck-<version>.tar.gz` from the GitHub release (once the
-release workflow is active; until then build it from a checkout with
+Download `clusterfuck-<version>.tar.gz` from the GitHub release (attached
+automatically on tagged releases; or build it from a checkout with
 `pnpm install && scripts/make-release-tarball.sh`), then:
 
 ```sh
