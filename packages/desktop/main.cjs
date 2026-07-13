@@ -10,6 +10,12 @@ const { join } = require('node:path')
 // with a manually-run proxy on 4000. Overridable like any install.
 const PORT = process.env.PORT ?? '41945'
 
+const POLL_INTERVAL_MS = 100
+
+function errorText(err) {
+  return err instanceof Error ? err.message : String(err)
+}
+
 function startProxy() {
   // State lives in the OS-conventional per-user app dir (e.g.
   // %APPDATA%/clusterfuck on Windows) — same files, same formats, same
@@ -34,17 +40,15 @@ async function waitForProxy(url, tries = 50) {
     } catch {
       // not up yet
     }
-    await new Promise((resolve) => setTimeout(resolve, 100))
+    await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS))
   }
   throw new Error(
-    `The proxy did not answer on ${url} within ${(tries * 100) / 1000}s. ` +
+    `The proxy did not answer on ${url} within ${(tries * POLL_INTERVAL_MS) / 1000}s. ` +
       `Is something else already using port ${PORT}? (Override with the PORT env var.)`,
   )
 }
 
 async function createWindow() {
-  const url = `http://127.0.0.1:${PORT}`
-  await waitForProxy(url)
   const win = new BrowserWindow({
     width: 1280,
     height: 840,
@@ -57,28 +61,58 @@ async function createWindow() {
     void shell.openExternal(external)
     return { action: 'deny' }
   })
-  await win.loadURL(url)
+  await win.loadURL(`http://127.0.0.1:${PORT}`)
 }
 
-app.whenReady().then(async () => {
+// The one createWindow entry point for every call site, so a failed open is
+// never a silently dropped rejection — the bug class this file's error
+// handling exists to prevent.
+function openWindow() {
+  createWindow().catch((err) => {
+    // Closing the window mid-load aborts loadURL — that's the quit path
+    // (window-all-closed fires), not an error worth a dialog.
+    if (err?.code === 'ERR_ABORTED') return
+    dialog.showErrorBox('clusterfuck window failed to open', errorText(err))
+    app.quit()
+  })
+}
+
+async function start() {
   // A failed start must never leave the app running invisibly — no window,
   // no error is indistinguishable from "the app is broken". Show what went
-  // wrong and quit.
+  // wrong and quit. Window/page failures after the proxy is up are handled
+  // separately in openWindow, so they can't masquerade as startup errors.
   try {
     await startProxy()
-    await createWindow()
+    await waitForProxy(`http://127.0.0.1:${PORT}`)
   } catch (err) {
-    dialog.showErrorBox(
-      'clusterfuck could not start',
-      err instanceof Error ? err.message : String(err),
-    )
+    dialog.showErrorBox('clusterfuck could not start', errorText(err))
     app.quit()
     return
   }
+  openWindow()
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) void createWindow()
+    if (BrowserWindow.getAllWindows().length === 0) openWindow()
   })
-})
+}
+
+// Two copies of the app would fight over one port and one state dir — the
+// second launch hands over to the first instance's window instead. (Without
+// this, the second instance's proxy loses the port bind but its health poll
+// would happily answer from the *first* instance's proxy, wiring one backend
+// to two windows.)
+if (app.requestSingleInstanceLock()) {
+  app.on('second-instance', () => {
+    const [win] = BrowserWindow.getAllWindows()
+    if (win) {
+      if (win.isMinimized()) win.restore()
+      win.focus()
+    }
+  })
+  app.whenReady().then(start)
+} else {
+  app.quit()
+}
 
 app.on('window-all-closed', () => {
   // The proxy dies with the app on every platform — a hidden always-on

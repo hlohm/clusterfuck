@@ -6,14 +6,25 @@ Versioning policy is in `CLAUDE.md`; the phased feature history is in
 
 ## [0.5.14]
 
-- **Desktop: startup failures now show an error dialog and quit** (review
-  finding). Previously, if the embedded proxy failed to start — malformed
-  `cluster.json`, port 41945 already taken — the rejection went unhandled
-  and the app kept running with no window and no error. The proxy import
-  is now awaited (so module-evaluation errors like a bad config surface
-  with their real message), the health-poll timeout names the port and the
-  `PORT` override, and any startup error shows in a dialog before the app
-  quits.
+- **Desktop: startup and window failures now show an error dialog and
+  quit** (review findings). Previously, if the embedded proxy failed to
+  start (e.g. malformed `cluster.json`), the rejection went unhandled and
+  the app kept running with no window and no error. The proxy import is
+  now awaited (so module-evaluation errors surface with their real
+  message), the health-poll timeout names the port and the `PORT`
+  override, and startup errors show in a dialog before the app quits.
+  (A port bind failure still reaches the dialog only via that timeout —
+  the proxy learns to reject bind failures cleanly in 0.5.15.)
+- **Desktop: single-instance lock.** A second launch used to start a proxy
+  that lost the port bind, then silently attach its window to the *first*
+  instance's backend — one state dir, two windows, undiagnosed. Now the
+  second launch just focuses the existing window.
+- **Desktop: window-open failures are their own path.** Every
+  `createWindow` call site (startup and macOS dock re-activate) goes
+  through one handler: failures show a dialog instead of vanishing into a
+  dropped promise, closing the window mid-load isn't treated as an error,
+  and a page-load failure after the proxy is up can no longer masquerade
+  as "could not start".
 
 ## [0.5.13]
 

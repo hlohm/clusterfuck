@@ -43,6 +43,9 @@ GitHub release.
   warn. Code-signing is deliberately out of scope pre-1.0.
 - The proxy binds `127.0.0.1:41945` inside the app; enable auth anyway if
   other users share the machine (Settings ⚙, same as everywhere).
+- Single-instance: launching the app again focuses the existing window
+  instead of starting a second copy (which would fight over the port and
+  the state dir).
 - Electron has not been executed in the authoring environment (headless
   sandbox): the proxy bundle is boot-verified with plain Node; the first
   `npm start` on a real desktop is the first full run.
