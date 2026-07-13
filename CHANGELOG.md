@@ -4,6 +4,13 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.5.18]
+
+- **CI cancels superseded runs** (review finding): a new push to the same
+  branch/PR now cancels the previous SHA's in-flight run instead of
+  letting full typecheck+lint+test+build runs pile up for commits nobody
+  will merge. Pushes to `main` are exempt and always run to completion.
+
 ## [0.5.17]
 
 - **Docker publish: `:latest` no longer force-moves on every tag** (review

@@ -8,6 +8,13 @@ on:
     branches: [main]
   pull_request:
 
+# A new push to the same branch/PR obsoletes the previous SHA's run —
+# cancel it instead of letting stale runs pile up. main is exempt: every
+# push that lands there runs to completion.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
   gates:
     runs-on: ubuntu-latest
