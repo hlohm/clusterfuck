@@ -22,10 +22,15 @@ jobs:
         id: meta
         with:
           images: ghcr.io/${{ github.repository }}
+          # No explicit :latest — metadata-action's default flavor
+          # (latest=auto) adds it for semver tags that aren't prereleases,
+          # so tagging v1.0.0-rc.1 can no longer repoint every :latest
+          # puller at a prerelease. (A backport tag of an older line would
+          # still take :latest — don't tag backports without revisiting
+          # this.)
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=raw,value=latest
       - uses: docker/build-push-action@v6
         with:
           context: .

@@ -4,6 +4,15 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.5.17]
+
+- **Docker publish: `:latest` no longer force-moves on every tag** (review
+  finding). The unconditional `type=raw,value=latest` repointed `:latest`
+  at whatever `v*` tag was pushed most recently — including a prerelease
+  like `v1.0.0-rc.1`, silently downgrading/derailing every `:latest`
+  puller. Dropped in favor of metadata-action's default `latest=auto`,
+  which applies `:latest` only to non-prerelease semver tags.
+
 ## [0.5.16]
 
 - **Release workflows consolidated into one `release.yml`** (review
