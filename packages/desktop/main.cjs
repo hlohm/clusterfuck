@@ -3,7 +3,7 @@
 // bundled to a single dependency-free file by esbuild (see build:proxy), so
 // nothing here depends on Electron's embedded Node supporting native
 // TypeScript type-stripping.
-const { app, BrowserWindow, shell } = require('electron')
+const { app, BrowserWindow, dialog, shell } = require('electron')
 const { join } = require('node:path')
 
 // A fixed, uncommon port: stable enough to bookmark, unlikely to collide
@@ -21,7 +21,10 @@ function startProxy() {
   process.env.CLUSTERFUCK_WEB_DIST ??= join(__dirname, 'dist', 'web')
   // ESM bundle (import.meta.url must stay real — version.ts resolves the
   // app's package.json through it), loaded from CJS via dynamic import.
-  void import('./dist/proxy.mjs')
+  // Returned so startup failures that happen during module evaluation (a
+  // malformed cluster.json throws there) surface with their real message
+  // instead of as a generic health-poll timeout.
+  return import('./dist/proxy.mjs')
 }
 
 async function waitForProxy(url, tries = 50) {
@@ -33,7 +36,10 @@ async function waitForProxy(url, tries = 50) {
     }
     await new Promise((resolve) => setTimeout(resolve, 100))
   }
-  throw new Error(`proxy did not answer on ${url} within ${tries * 100}ms`)
+  throw new Error(
+    `The proxy did not answer on ${url} within ${(tries * 100) / 1000}s. ` +
+      `Is something else already using port ${PORT}? (Override with the PORT env var.)`,
+  )
 }
 
 async function createWindow() {
@@ -54,9 +60,21 @@ async function createWindow() {
   await win.loadURL(url)
 }
 
-app.whenReady().then(() => {
-  startProxy()
-  void createWindow()
+app.whenReady().then(async () => {
+  // A failed start must never leave the app running invisibly — no window,
+  // no error is indistinguishable from "the app is broken". Show what went
+  // wrong and quit.
+  try {
+    await startProxy()
+    await createWindow()
+  } catch (err) {
+    dialog.showErrorBox(
+      'clusterfuck could not start',
+      err instanceof Error ? err.message : String(err),
+    )
+    app.quit()
+    return
+  }
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) void createWindow()
   })

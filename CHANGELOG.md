@@ -4,6 +4,17 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.5.14]
+
+- **Desktop: startup failures now show an error dialog and quit** (review
+  finding). Previously, if the embedded proxy failed to start — malformed
+  `cluster.json`, port 41945 already taken — the rejection went unhandled
+  and the app kept running with no window and no error. The proxy import
+  is now awaited (so module-evaluation errors like a bad config surface
+  with their real message), the health-poll timeout names the port and the
+  `PORT` override, and any startup error shows in a dialog before the app
+  quits.
+
 ## [0.5.13]
 
 - **CI and publish workflows activated**: the owner granted the PAT the
