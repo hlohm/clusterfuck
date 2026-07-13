@@ -4,6 +4,19 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.5.16]
+
+- **Release workflows consolidated into one `release.yml`** (review
+  findings). The tarball and desktop workflows both fired on `v*` tags
+  and raced — up to four parallel `action-gh-release` jobs each trying to
+  create the release, a known 422 `already_exists` failure that would
+  have dropped installers from the very first tagged release; which job
+  won the race also decided whether the release got generated notes. Now
+  one job creates the release (with notes) and attaches the tarball, and
+  the desktop matrix uploads into the existing release afterwards. The
+  matrix also sets `fail-fast: false`: one OS's transient build failure
+  no longer cancels the other two installers.
+
 ## [0.5.15]
 
 - **Proxy: port bind failures now fail cleanly everywhere** (review
