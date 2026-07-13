@@ -1,6 +1,5 @@
 # Builds the no-Docker install artifact (web pre-built, Node 24 the only
 # requirement) and attaches it to the GitHub release for the tag.
-# Parked — see README.md in this directory for how to activate.
 name: Release tarball
 
 on:

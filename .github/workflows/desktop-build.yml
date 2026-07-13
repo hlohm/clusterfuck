@@ -1,5 +1,5 @@
 # Builds the desktop app for all three OSes on version tags and attaches
-# the installers to the GitHub release. Parked — see README.md here.
+# the installers to the GitHub release.
 name: Desktop app
 
 on:
