@@ -4,6 +4,29 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning policy is in `CLAUDE.md`; the phased feature history is in
 `ROADMAP.md` — this file is the terse, dated version-by-version log.
 
+## [0.5.15]
+
+- **Proxy: port bind failures now fail cleanly everywhere** (review
+  finding — the root cause behind 0.5.14's known gap). `server.listen()`
+  reports a failed bind (`EADDRINUSE`) via an async `'error'` event after
+  the call returns, which no caller's try/catch can reach: every install
+  type crashed with a raw stack, and the desktop app popped Electron's
+  raw error dialog. New `listenReady()` turns the bind into a promise
+  with a friendly port-in-use message; the entry point exports it as
+  `ready`. CLI installs (Docker/tarball/systemd) log the message and exit
+  1; the desktop app awaits `ready` and shows the message in its own
+  dialog immediately instead of via the 5-second health-poll timeout.
+  Verified end-to-end through the actual esbuild bundle (occupied port →
+  clean rejection; free port → resolves).
+- **Proxy: no `process.exit()` when embedded.** The entry point also runs
+  bundled inside Electron's main process, where `process.exit(1)` (the
+  cluster-manager startup catch, and the new bind-failure path) would
+  kill the whole app with no window and no dialog. Fatal exits are now
+  gated on not running under Electron; embedded, the proxy logs and lets
+  the host present the failure.
+- The startup log reports the actually bound port rather than the
+  requested one (they differ for `PORT=0`).
+
 ## [0.5.14]
 
 - **Desktop: startup and window failures now show an error dialog and

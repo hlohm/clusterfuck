@@ -3,7 +3,7 @@ import { createAuth } from './auth.ts'
 import { loadAuthToken, saveAuthToken } from './authStore.ts'
 import { loadNodeConfig } from './config.ts'
 import { ClusterStateManager } from './clusterState.ts'
-import { createHttpServer } from './server.ts'
+import { createHttpServer, listenReady } from './server.ts'
 import { createStaticHandler } from './static.ts'
 
 const port = Number(process.env.PORT ?? 4000)
@@ -63,11 +63,32 @@ const nodes = loadNodeConfig()
 const manager = new ClusterStateManager(nodes, { clusterId: 'live', label: 'Live cluster' })
 const server = createHttpServer(manager, webOrigin, auth, staticHandler, readonly)
 
+// This entry point also runs esbuild-bundled inside Electron's main process
+// (packages/desktop), where process.exit() would kill the whole app with no
+// window and no dialog — there, fatal errors are the host's to present, via
+// the exported `ready` promise below.
+const embedded = Boolean(process.versions.electron)
+
 manager.start().catch((err: unknown) => {
   console.error('[clusterfuck-proxy] failed to start cluster state manager:', err)
-  process.exit(1)
+  // Embedded: stay up. The window is already open (or opening) against a
+  // healthy listener — a visible app with an empty model and this log beats
+  // an app that silently vanishes.
+  if (!embedded) process.exit(1)
 })
 
-server.listen(port, () => {
-  console.log(`[clusterfuck-proxy] listening on http://localhost:${port}`)
+/**
+ * Resolves once the proxy is listening; rejects if the port can't be bound.
+ * The desktop app awaits this to show bind failures in its own dialog.
+ */
+export const ready: Promise<void> = listenReady(server, port).then(() => {
+  // Report the bound port, not the requested one — they differ for PORT=0.
+  const address = server.address()
+  const bound = typeof address === 'object' && address !== null ? address.port : port
+  console.log(`[clusterfuck-proxy] listening on http://localhost:${bound}`)
+})
+
+ready.catch((err: unknown) => {
+  console.error('[clusterfuck-proxy] failed to start:', err instanceof Error ? err.message : err)
+  if (!embedded) process.exit(1)
 })
