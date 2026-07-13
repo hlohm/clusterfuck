@@ -1,0 +1,64 @@
+# Everything that attaches to a GitHub release, in one workflow: exactly one
+# job creates the release (parallel create-if-missing calls from separate
+# workflows are a known 422 already_exists race in action-gh-release), then
+# the desktop matrix uploads its installers into the existing release.
+# The Docker image lives in docker-publish.yml — it publishes to GHCR and
+# never touches the release.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  # Creates the release (with generated notes) and attaches the tarball —
+  # the no-Docker install artifact; web pre-built, Node 24 the only
+  # requirement.
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4 # reads the pinned version from packageManager
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: scripts/make-release-tarball.sh
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist-release/clusterfuck-*.tar.gz
+          generate_release_notes: true
+
+  # Desktop installers for all three OSes, uploaded into the release the job
+  # above created. fail-fast off: one OS's transient build failure must not
+  # cancel the other two installers.
+  desktop:
+    needs: release
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile # workspace (web build needs it)
+      - run: npm install
+        working-directory: packages/desktop
+      - run: npm run dist
+        working-directory: packages/desktop
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            packages/desktop/release/*.exe
+            packages/desktop/release/*.dmg
+            packages/desktop/release/*.AppImage

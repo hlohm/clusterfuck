@@ -34,7 +34,7 @@ npm run dist           # installers into release/ (NSIS + portable on Windows,
 ```
 
 CI builds for all three OSes run on tagged releases (`v*`) via
-`.github/workflows/desktop-build.yml` and attach the installers to the
+`.github/workflows/release.yml` and attach the installers to the
 GitHub release.
 
 ## Known caveats

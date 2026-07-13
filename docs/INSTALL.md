@@ -65,7 +65,7 @@ A double-click app — the same proxy running inside Electron, the UI in its
 own window, state in the OS per-user app dir. Aimed at the low-friction
 Windows case (installer + portable exe); macOS/Linux come out of the same
 build. Prebuilt installers attach to tagged
-releases via `.github/workflows/desktop-build.yml`; or build locally per
+releases via `.github/workflows/release.yml`; or build locally per
 `packages/desktop/README.md` (`npm install && npm run dist` in that
 directory). Unsigned binaries — expect a
 SmartScreen/Gatekeeper warning until code-signing lands (post-1.0).
